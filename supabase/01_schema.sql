@@ -161,6 +161,23 @@ create policy progress_insert on public.progress for insert with check (user_id 
 drop policy if exists progress_delete on public.progress;
 create policy progress_delete on public.progress for delete using (user_id = auth.uid());
 
+-- ---------- Resumen de rutas publicadas ----------
+-- Títulos e ids de números por ruta en una sola llamada (evita una consulta por ruta).
+-- Es security definer para dar el conteo de las rutas premium sin exponer sus ítems.
+create or replace function public.route_unit_map()
+returns table (route_id uuid, item_count bigint, unit_ids uuid[])
+language sql stable security definer set search_path = public as $$
+  select r.id,
+    (select count(*) from public.route_items ri where ri.route_id = r.id),
+    coalesce((
+      select array_agg(distinct mu.unit_id)
+      from public.route_items ri join public.media_units mu on mu.media_id = ri.media_id
+      where ri.route_id = r.id
+    ), '{}')
+  from public.routes r
+  where r.published;
+$$;
+
 -- ---------- Vista de estadísticas para el admin ----------
 create or replace function public.admin_user_stats()
 returns table (user_id uuid, units_done bigint, last_activity timestamptz)

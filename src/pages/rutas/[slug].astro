@@ -3,10 +3,9 @@ import Layout from '../../layouts/Layout.astro';
 import Tracker from '../../components/Tracker.astro';
 import { getDoneUnitIds, getRoute } from '../../lib/data';
 const { supabase, user, profile } = Astro.locals;
-const data = await getRoute(supabase, Astro.params.slug!);
+const data = await getRoute(supabase, Astro.params.slug!, profile);
 if (!data) return new Response('Ruta no encontrada', { status: 404 });
-const { route, items } = data;
-const locked = route.requires_plan === 'premium' && profile?.plan !== 'premium' && profile?.role !== 'admin';
+const { route, items, locked } = data;
 const done = locked ? new Set<string>() : await getDoneUnitIds(supabase, user?.id);
 ---
 <Layout title={route.name} description={route.description ?? undefined}>

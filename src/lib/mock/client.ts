@@ -16,6 +16,16 @@ function toUser(u: MockUser) {
 
 const isBanned = (u: MockUser) => !!u.banned_until && new Date(u.banned_until) > new Date();
 
+/** public.route_unit_map(): security definer, so it sees every item of every published route. */
+function routeUnitMap(db: MockDb) {
+  const t = db.tables;
+  return t.routes.filter((r) => r.published).map((r) => {
+    const mediaIds = new Set(t.route_items.filter((i) => i.route_id === r.id).map((i) => i.media_id));
+    const unitIds = new Set(t.media_units.filter((mu) => mediaIds.has(mu.media_id)).map((mu) => mu.unit_id));
+    return { route_id: r.id, item_count: mediaIds.size, unit_ids: [...unitIds] };
+  });
+}
+
 export function createMockClient(db: MockDb, session: SessionStore) {
   const currentUser = () => {
     const id = session.get();
@@ -28,6 +38,7 @@ export function createMockClient(db: MockDb, session: SessionStore) {
     from: (table: TableName) => new Query(db, table, rls()),
 
     async rpc(name: string) {
+      if (name === 'route_unit_map') return { data: routeUnitMap(db), error: null };
       if (name !== 'admin_user_stats') return { data: null, error: { message: `function ${name} does not exist` } };
       if (!rls().isAdmin) return { data: [], error: null };
       const stats = new Map<string, { user_id: string; units_done: number; last_activity: string }>();

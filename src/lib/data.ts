@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { TrackerItem } from './types';
+import type { Profile, TrackerItem } from './types';
 
 const MEDIA_FIELDS =
   'id, slug, kind, title, credits, year_label, search_hint, where_label, where_url, media_units(short, group_name, position, unit_id, units(label))';
@@ -41,9 +41,17 @@ export async function getDoneUnitIds(sb: SupabaseClient, userId: string | undefi
   return new Set(rows.map((r) => r.unit_id));
 }
 
-export async function getRoute(sb: SupabaseClient, slug: string) {
+type Viewer = Pick<Profile, 'plan' | 'role'> | null;
+
+/** A premium route is locked for viewers who are neither premium nor admin. */
+export const isLocked = (route: { requires_plan: string }, viewer: Viewer) =>
+  route.requires_plan === 'premium' && viewer?.plan !== 'premium' && viewer?.role !== 'admin';
+
+/** Route plus its items; the items of a locked route are not fetched. */
+export async function getRoute(sb: SupabaseClient, slug: string, viewer: Viewer) {
   const { data: route } = await sb.from('routes').select('*').eq('slug', slug).maybeSingle();
   if (!route) return null;
+  if (isLocked(route, viewer)) return { route, items: [] as TrackerItem[], locked: true };
   const { data: rows, error } = await sb
     .from('route_items')
     .select(`section, position, media:media_id(${MEDIA_FIELDS})`)
@@ -53,7 +61,7 @@ export async function getRoute(sb: SupabaseClient, slug: string) {
   const items = (rows ?? [])
     .filter((r: any) => r.media)
     .map((r: any) => toTrackerItem(r.media as MediaRow, r.section));
-  return { route, items };
+  return { route, items, locked: false };
 }
 
 export async function getMedia(sb: SupabaseClient, slug: string) {
@@ -66,24 +74,29 @@ export async function getMedia(sb: SupabaseClient, slug: string) {
   return data as unknown as (MediaRow & { description: string | null; cover_url: string | null; universe: string | null }) | null;
 }
 
-/** Ids de unidades por ruta publicada, para calcular el % de avance. */
+/**
+ * Published routes with their title count and unit ids, for the progress %.
+ * Two queries in total: counts come from the route_unit_map() RPC, which also
+ * covers premium routes whose items the viewer cannot read.
+ */
 export async function getRouteUnitMap(sb: SupabaseClient) {
-  const { data: routes } = await sb
-    .from('routes')
-    .select('id, slug, name, universe, kind, description, requires_plan, position')
-    .eq('published', true)
-    .order('position');
-  const result: { route: any; unitIds: string[]; count: number }[] = [];
-  for (const route of routes ?? []) {
-    const { data: items } = await sb.from('route_items').select('media_id').eq('route_id', route.id);
-    const mediaIds = (items ?? []).map((i) => i.media_id);
-    const units = mediaIds.length
-      ? await fetchAll<{ unit_id: string }>((a, b) => sb.from('media_units').select('unit_id').in('media_id', mediaIds).range(a, b))
-      : [];
-    result.push({ route, unitIds: [...new Set(units.map((u) => u.unit_id))], count: mediaIds.length });
-  }
-  return result;
+  const [{ data: routes, error }, { data: map, error: rpcError }] = await Promise.all([
+    sb.from('routes')
+      .select('id, slug, name, universe, kind, description, requires_plan, position')
+      .eq('published', true)
+      .order('position'),
+    sb.rpc('route_unit_map'),
+  ]);
+  if (error) throw error;
+  if (rpcError) throw rpcError;
+  const byRoute = new Map(((map ?? []) as RouteUnitRow[]).map((r) => [r.route_id, r]));
+  return (routes ?? []).map((route) => {
+    const row = byRoute.get(route.id);
+    return { route, unitIds: row?.unit_ids ?? [], count: Number(row?.item_count ?? 0) };
+  });
 }
+
+type RouteUnitRow = { route_id: string; item_count: number; unit_ids: string[] };
 
 export function slugify(s: string) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
