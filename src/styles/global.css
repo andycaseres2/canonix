@@ -108,3 +108,4 @@ td select, td input { min-height: 36px; padding: 4px 8px; }
 .results { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
 .results li { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1.5px solid var(--line); background: var(--paper); padding: 6px 6px 6px 10px; }
 .results li.muted { border-style: dashed; padding: 10px; }
+.demo-banner { margin: 0; padding: 6px 16px; text-align: center; font-size: .85rem; background: var(--ink); color: var(--paper); }
