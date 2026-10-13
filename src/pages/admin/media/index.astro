@@ -1,0 +1,58 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+const { supabase } = Astro.locals;
+const { data: media } = await supabase.from('media').select('id, slug, kind, universe, title, year_label, media_units(count)').order('kind').order('year_start').order('title');
+---
+<Layout title="Catálogo · Admin">
+  <h1>Catálogo</h1>
+  <AdminNav />
+  <div class="split">
+    <section>
+      <h2 style="margin-top:0">Títulos ({media?.length ?? 0})</h2>
+      <label class="field" style="margin-bottom:12px">Filtrar<input id="f" type="search" autocomplete="off" /></label>
+      <div class="table-wrap"><table style="min-width:0">
+        <thead><tr><th>Título</th><th>Tipo</th><th>Año</th><th>Unid.</th></tr></thead>
+        <tbody id="rows">
+          {(media ?? []).map((m: any) => (
+            <tr data-s={`${m.title} ${m.universe ?? ''}`.toLowerCase()}>
+              <td><a href={`/admin/media/${m.id}`}><b>{m.title}</b></a><br /><small class="muted">{m.universe} · {m.slug}</small></td>
+              <td><span class={`badge ${m.kind}`}>{m.kind}</span></td>
+              <td>{m.year_label}</td>
+              <td>{m.media_units?.[0]?.count ?? 0}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+    </section>
+    <section id="nuevo">
+      <h2 style="margin-top:0">Agregar título</h2>
+      <form class="panel stack" method="post" action="/api/admin/media">
+        <input type="hidden" name="action" value="create" />
+        <label class="field">Título<input name="title" required /></label>
+        <div class="row">
+          <label class="field">Tipo<select name="kind"><option value="comic">Cómic</option><option value="anime">Anime</option></select></label>
+          <label class="field">Universo <small>marvel, dc, anime…</small><input name="universe" required /></label>
+        </div>
+        <div class="row">
+          <label class="field">Año <small>2000 o 2000–2009</small><input name="year_label" /></label>
+          <label class="field">Créditos <small>autor, estudio</small><input name="credits" /></label>
+        </div>
+        <label class="field">Cómo buscarlo <small>nombre exacto en la plataforma</small><input name="search_hint" /></label>
+        <div class="row">
+          <label class="field">Dónde leer/ver<input name="where_label" placeholder="Marvel Unlimited, Crunchyroll…" /></label>
+          <label class="field">Link oficial<input name="where_url" type="url" placeholder="https://" /></label>
+        </div>
+        <label class="field">Descripción<textarea name="description"></textarea></label>
+        <button class="btn primary" type="submit">Crear y agregar números/episodios</button>
+      </form>
+    </section>
+  </div>
+  <script>
+    const f = document.getElementById('f') as HTMLInputElement;
+    f.addEventListener('input', () => {
+      const v = f.value.trim().toLowerCase();
+      document.querySelectorAll<HTMLElement>('#rows tr').forEach((r) => { r.hidden = !!v && !(r.dataset.s ?? '').includes(v); });
+    });
+  </script>
+</Layout>

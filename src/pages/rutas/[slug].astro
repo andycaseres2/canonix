@@ -1,0 +1,19 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Tracker from '../../components/Tracker.astro';
+import { getDoneUnitIds, getRoute } from '../../lib/data';
+const { supabase, user, profile } = Astro.locals;
+const data = await getRoute(supabase, Astro.params.slug!);
+if (!data) return new Response('Ruta no encontrada', { status: 404 });
+const { route, items } = data;
+const locked = route.requires_plan === 'premium' && profile?.plan !== 'premium' && profile?.role !== 'admin';
+const done = locked ? new Set<string>() : await getDoneUnitIds(supabase, user?.id);
+---
+<Layout title={route.name} description={route.description ?? undefined}>
+  <h1>{route.name}</h1>
+  {route.description && <p class="lead">{route.description}</p>}
+  {!route.published && <p class="alert error">Ruta en borrador: solo la ven los admins.</p>}
+  {locked
+    ? <p class="panel">Esta ruta es parte del plan premium.</p>
+    : <Tracker items={items} done={[...done]} logged={!!user} />}
+</Layout>

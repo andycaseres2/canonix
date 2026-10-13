@@ -1,0 +1,103 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+const { supabase } = Astro.locals;
+const { data: m } = await supabase.from('media').select('*').eq('id', Astro.params.id!).maybeSingle();
+if (!m) return Astro.redirect('/admin/media?error=' + encodeURIComponent('Título no encontrado'));
+const { data: mu } = await supabase.from('media_units').select('unit_id, short, group_name, position, units(label)').eq('media_id', m.id).order('position');
+const groups: { name: string | null; units: any[] }[] = [];
+(mu ?? []).forEach((u: any) => {
+  const last = groups[groups.length - 1];
+  if (!last || last.name !== u.group_name) groups.push({ name: u.group_name, units: [u] });
+  else last.units.push(u);
+});
+const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
+---
+<Layout title={`${m.title} · Admin`}>
+  <p><a href="/admin/media">← Catálogo</a></p>
+  <h1>{m.title}</h1>
+  <AdminNav />
+  <div class="split">
+    <section>
+      <h2 style="margin-top:0">{unitWord[0].toUpperCase() + unitWord.slice(1)} ({mu?.length ?? 0})</h2>
+      {groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Agrégalos con el formulario.</p>}
+      {groups.map((g) => (
+        <div style="margin-bottom:14px">
+          {g.name && <p class="muted" style="margin:0 0 6px;font-weight:700">{g.name}</p>}
+          <div class="chips-admin">
+            {g.units.map((u: any) => (
+              <span class="chip-admin" title={u.units?.label}>{u.short}
+                <form method="post" action="/api/admin/units">
+                  <input type="hidden" name="action" value="remove" /><input type="hidden" name="media_id" value={m.id} /><input type="hidden" name="unit_id" value={u.unit_id} />
+                  <button type="submit" aria-label={`Quitar ${u.units?.label}`}>×</button>
+                </form>
+              </span>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <h3>Agregar un rango</h3>
+      <form class="panel stack" method="post" action="/api/admin/units">
+        <input type="hidden" name="action" value="add_range" /><input type="hidden" name="media_id" value={m.id} />
+        <label class="field">Nombre de la serie <small>Ej: Ultimate Spider-Man, Naruto Shippuden</small><input name="prefix" value={m.title} required /></label>
+        <div class="row">
+          <label class="field">Desde<input type="number" name="from" min="0" value="1" required /></label>
+          <label class="field">Hasta<input type="number" name="to" min="0" required /></label>
+          <label class="field">Formato<select name="format">
+            <option value="issue" selected={m.kind === 'comic'}>#5 (números)</option>
+            <option value="episode" selected={m.kind === 'anime'}>Episodio 5</option>
+          </select></label>
+        </div>
+        <label class="field">Grupo <small>opcional: "Temporada 1", "Arco Chunin"…</small><input name="group" /></label>
+        <button class="btn primary" type="submit">Agregar</button>
+      </form>
+
+      <h3>Agregar uno suelto</h3>
+      <form class="panel stack" method="post" action="/api/admin/units">
+        <input type="hidden" name="action" value="add_one" /><input type="hidden" name="media_id" value={m.id} />
+        <div class="row">
+          <label class="field">Nombre completo <small>único: "Giant-Size X-Men #1"</small><input name="label" required /></label>
+          <label class="field">Texto del botón<input name="short" placeholder="Especial" /></label>
+        </div>
+        <button class="btn" type="submit">Agregar</button>
+      </form>
+      {(mu?.length ?? 0) > 0 && (
+        <form method="post" action="/api/admin/units" style="margin-top:16px" onsubmit="return confirm('¿Quitar todos los números/episodios de este título?')">
+          <input type="hidden" name="action" value="clear" /><input type="hidden" name="media_id" value={m.id} />
+          <button class="btn small danger" type="submit">Quitar todos</button>
+        </form>
+      )}
+    </section>
+
+    <section>
+      <h2 style="margin-top:0">Datos</h2>
+      <form class="panel stack" method="post" action="/api/admin/media">
+        <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={m.id} />
+        <label class="field">Título<input name="title" value={m.title} required /></label>
+        <label class="field">Slug <small>parte de la URL</small><input name="slug" value={m.slug} required pattern="[a-z0-9-]+" /></label>
+        <div class="row">
+          <label class="field">Tipo<select name="kind"><option value="comic" selected={m.kind === 'comic'}>Cómic</option><option value="anime" selected={m.kind === 'anime'}>Anime</option></select></label>
+          <label class="field">Universo<input name="universe" value={m.universe ?? ''} /></label>
+        </div>
+        <div class="row">
+          <label class="field">Año<input name="year_label" value={m.year_label ?? ''} /></label>
+          <label class="field">Créditos<input name="credits" value={m.credits ?? ''} /></label>
+        </div>
+        <label class="field">Cómo buscarlo<input name="search_hint" value={m.search_hint ?? ''} /></label>
+        <div class="row">
+          <label class="field">Dónde leer/ver<input name="where_label" value={m.where_label ?? ''} /></label>
+          <label class="field">Link oficial<input name="where_url" type="url" value={m.where_url ?? ''} /></label>
+        </div>
+        <label class="field">Portada <small>link a imagen, opcional</small><input name="cover_url" type="url" value={m.cover_url ?? ''} /></label>
+        <label class="field">Descripción<textarea name="description">{m.description ?? ''}</textarea></label>
+        <button class="btn primary" type="submit">Guardar</button>
+      </form>
+      <p><a href={`/catalogo/${m.slug}`}>Ver página pública ↗</a></p>
+      <form method="post" action="/api/admin/media" onsubmit="return confirm('¿Borrar este título? También sale de las rutas.')">
+        <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={m.id} />
+        <button class="btn small danger" type="submit">Borrar título</button>
+      </form>
+    </section>
+  </div>
+</Layout>

@@ -1,0 +1,47 @@
+---
+import '../styles/global.css';
+interface Props { title: string; description?: string }
+const { title, description = 'Rutas de lectura de cómics y guías de anime, con tu progreso guardado.' } = Astro.props;
+const { profile, user } = Astro.locals;
+const path = Astro.url.pathname;
+const cur = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'page' : undefined;
+const ok = Astro.url.searchParams.get('ok');
+const error = Astro.url.searchParams.get('error');
+---
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="description" content={description} />
+  <meta name="theme-color" content="#FFC93C" />
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bangers&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet" />
+  <title>{title} · Rutas</title>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="/"><span>RUTAS</span></a>
+      <nav class="nav" aria-label="Principal">
+        <a href="/rutas" aria-current={cur('/rutas')}>Rutas</a>
+        <a href="/catalogo" aria-current={cur('/catalogo')}>Catálogo</a>
+        {user && <a href="/perfil" aria-current={cur('/perfil')}>Mi progreso</a>}
+        {profile?.role === 'admin' && <a href="/admin" aria-current={cur('/admin')}>Admin</a>}
+        {user
+          ? <form method="post" action="/api/auth/logout"><button type="submit">Salir</button></form>
+          : <a class="btn small yellow" href="/login">Entrar</a>}
+      </nav>
+    </div>
+  </header>
+  <main>
+    <div class="wrap">
+      {ok && <p class="alert ok" role="status">{ok}</p>}
+      {error && <p class="alert error" role="alert">{error}</p>}
+      <slot />
+    </div>
+  </main>
+</body>
+</html>

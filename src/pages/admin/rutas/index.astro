@@ -1,0 +1,40 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+const { supabase } = Astro.locals;
+const { data: routes } = await supabase.from('routes').select('id, slug, name, universe, kind, published, requires_plan, position, route_items(count)').order('position').order('name');
+---
+<Layout title="Rutas · Admin">
+  <h1>Rutas</h1>
+  <AdminNav />
+  <div class="split">
+    <section>
+      <div class="table-wrap"><table style="min-width:0">
+        <thead><tr><th>Ruta</th><th>Títulos</th><th>Estado</th></tr></thead>
+        <tbody>
+          {(routes ?? []).map((r: any) => (
+            <tr>
+              <td><a href={`/admin/rutas/${r.id}`}><b>{r.name}</b></a><br /><small class="muted">{r.universe} · /rutas/{r.slug}</small></td>
+              <td>{r.route_items?.[0]?.count ?? 0}</td>
+              <td>{r.published ? 'Publicada' : 'Borrador'}{r.requires_plan === 'premium' && ' · Premium'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table></div>
+      {(routes ?? []).length === 0 && <p class="muted">Aún no hay rutas.</p>}
+    </section>
+    <section id="nueva">
+      <h2 style="margin-top:0">Crear ruta</h2>
+      <form class="panel stack" method="post" action="/api/admin/routes">
+        <input type="hidden" name="action" value="create" />
+        <label class="field">Nombre<input name="name" placeholder="Ruta DC esencial" required /></label>
+        <div class="row">
+          <label class="field">Universo<input name="universe" placeholder="dc" required /></label>
+          <label class="field">Tipo<select name="kind"><option value="comic">Cómics</option><option value="anime">Anime</option><option value="mixed">Mixta</option></select></label>
+        </div>
+        <label class="field">Descripción<textarea name="description"></textarea></label>
+        <button class="btn primary" type="submit">Crear (queda en borrador)</button>
+      </form>
+    </section>
+  </div>
+</Layout>

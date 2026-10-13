@@ -1,0 +1,8 @@
+---
+const path = Astro.url.pathname;
+const links = [['/admin', 'Resumen'], ['/admin/media', 'Catálogo'], ['/admin/rutas', 'Rutas'], ['/admin/usuarios', 'Usuarios']];
+const cur = (h: string) => (h === '/admin' ? path === '/admin' || path === '/admin/' : path.startsWith(h)) ? 'page' : undefined;
+---
+<nav class="admin-nav" aria-label="Administración">
+  {links.map(([h, l]) => <a href={h} aria-current={cur(h)}>{l}</a>)}
+</nav>

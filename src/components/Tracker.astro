@@ -1,0 +1,155 @@
+---
+import type { TrackerItem } from '../lib/types';
+interface Props { items: TrackerItem[]; done: string[]; logged: boolean; openFirst?: boolean; showHero?: boolean }
+const { items, done, logged, openFirst = false, showHero = true } = Astro.props;
+const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).replace(/</g, '\\u003c');
+---
+<div id="tracker" class="tracker" aria-live="polite"></div>
+<script type="application/json" id="tracker-data" set:html={payload}></script>
+
+<style is:global>
+.tracker ol { list-style: none; margin: 0; padding: 0; }
+.tracker li.comic { margin: 0 0 10px; border: 2px solid var(--line); background: var(--panel); scroll-margin-top: 80px; }
+.tracker .item { display: flex; align-items: center; gap: 12px; padding: 12px; background-image: radial-gradient(var(--dot) 1px, transparent 1.2px); background-size: 8px 8px; }
+.tracker .num { font-family: var(--font-display); font-size: 1.35rem; min-width: 1.8em; text-align: right; color: var(--muted); }
+.tracker .txt { flex: 1; min-width: 0; }
+.tracker .t { display: block; font-weight: 700; }
+.tracker .d { display: block; color: var(--muted); font-size: .9rem; }
+.tracker .yr { color: var(--red); font-weight: 700; margin-right: 6px; }
+.tracker .where { display: inline-block; margin-top: 6px; font-size: .85rem; font-weight: 700; }
+.tracker .mini { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .85rem; font-weight: 700; color: var(--muted); }
+.tracker .minibar { flex: 0 0 100px; height: 7px; border: 1.5px solid var(--line); background: var(--paper); }
+.tracker .minibar > span { display: block; height: 100%; background: var(--red); }
+.tracker input[type=checkbox] { appearance: none; -webkit-appearance: none; width: 30px; height: 30px; min-height: 30px; padding: 0; flex: none; margin: 0; border: 3px solid var(--line); background: var(--panel); display: grid; place-content: center; cursor: pointer; }
+.tracker input[type=checkbox]::after { content: ""; width: 12px; height: 7px; border-left: 3.5px solid #fff; border-bottom: 3.5px solid #fff; transform: rotate(-45deg) translate(1px,-2px); opacity: 0; }
+.tracker input[type=checkbox]:checked { background: var(--red); border-color: var(--red); }
+.tracker input[type=checkbox]:checked::after { opacity: 1; }
+.tracker input[type=checkbox]:disabled { opacity: .45; cursor: not-allowed; }
+.tracker li.is-done .t { color: var(--done); text-decoration: line-through; text-decoration-thickness: 2px; }
+.tracker .toggle { display: block; width: 100%; font: inherit; font-weight: 700; font-size: .9rem; text-align: left; padding: 9px 12px 9px 58px; border: 0; border-top: 2px dashed var(--muted); background: transparent; color: var(--ink); cursor: pointer; }
+.tracker .toggle::after { content: " \25BE"; }
+.tracker .toggle[aria-expanded="true"]::after { content: " \25B4"; }
+.tracker .issues { padding: 4px 12px 14px; border-top: 2px solid var(--line); background: var(--paper); }
+.tracker .gname { font-weight: 700; font-size: .85rem; color: var(--muted); margin: 12px 0 6px; }
+.tracker .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(46px, 1fr)); gap: 6px; }
+.tracker .chip { font: inherit; font-weight: 700; min-height: 44px; border: 2px solid var(--line); background: var(--panel); color: var(--ink); cursor: pointer; padding: 4px; }
+.tracker .chip.wide { grid-column: 1 / -1; text-align: left; padding: 8px 12px; }
+.tracker .chip.on { background: var(--red); border-color: var(--red); color: #fff; }
+.tracker .chip.wide.on::after { content: "  \2713"; }
+.tracker .chip:disabled { cursor: not-allowed; }
+.tracker .section { font-family: var(--font-display); font-size: 1.8rem; margin: 30px 0 10px; padding-bottom: 4px; border-bottom: 4px solid var(--line); }
+.tracker .login-note { border: 2px dashed var(--line); padding: 12px 14px; margin-bottom: 18px; font-weight: 700; }
+.tracker .saving { font-size: .85rem; color: var(--muted); min-height: 1.3em; text-align: center; margin-top: 12px; }
+</style>
+
+<script>
+  type Unit = { id: string; label: string; short: string; group: string | null };
+  type Item = { slug: string; title: string; credits: string | null; year: string | null; hint: string | null; whereLabel: string | null; whereUrl: string | null; section: string | null; units: Unit[] };
+
+  const root = document.getElementById('tracker')!;
+  const data = JSON.parse(document.getElementById('tracker-data')!.textContent || '{}') as {
+    items: Item[]; done: string[]; logged: boolean; openFirst: boolean; showHero: boolean;
+  };
+  const done = new Set<string>(data.done);
+  const open = new Set<string>(data.openFirst && data.items[0] ? [data.items[0].slug] : []);
+  const pendingAdd = new Set<string>(), pendingRemove = new Set<string>();
+  let timer: number | undefined, status = '';
+
+  const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
+  const count = (it: Item) => it.units.filter((u) => done.has(u.id)).length;
+  const isDone = (it: Item) => it.units.length > 0 && count(it) === it.units.length;
+
+  function setUnits(ids: string[], on: boolean) {
+    ids.forEach((id) => {
+      if (on) { done.add(id); pendingAdd.add(id); pendingRemove.delete(id); }
+      else { done.delete(id); pendingRemove.add(id); pendingAdd.delete(id); }
+    });
+    status = 'Guardando…';
+    render();
+    clearTimeout(timer);
+    timer = window.setTimeout(flush, 500);
+  }
+
+  async function flush() {
+    const add = [...pendingAdd], remove = [...pendingRemove];
+    pendingAdd.clear(); pendingRemove.clear();
+    try {
+      const res = await fetch('/api/progress', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ add, remove }) });
+      if (!res.ok) throw new Error(await res.text());
+      status = 'Guardado';
+    } catch {
+      add.forEach((id) => done.delete(id)); remove.forEach((id) => done.add(id));
+      status = 'No se pudo guardar. Revisa tu conexión e inténtalo de nuevo.';
+    }
+    render();
+  }
+
+  function row(n: number, it: Item) {
+    const c = count(it), tot = it.units.length, all = tot > 0 && c === tot, isOpen = open.has(it.slug), multi = tot > 1;
+    const dis = data.logged ? '' : ' disabled';
+    let h = `<li class="comic${all ? ' is-done' : ''}" id="c-${esc(it.slug)}"><div class="item"><span class="num">${n}</span><span class="txt">`;
+    h += `<a class="t" href="/catalogo/${esc(it.slug)}">${esc(it.title)}</a>`;
+    h += `<span class="d">${it.year ? `<b class="yr">${esc(it.year)}</b>` : ''}${esc(it.credits)}</span>`;
+    if (it.hint) h += `<span class="d">Busca: <b>${esc(it.hint)}</b></span>`;
+    if (multi) h += `<span class="mini"><span class="minibar"><span style="width:${(c / tot) * 100}%"></span></span>${c} de ${tot}</span>`;
+    if (it.whereUrl) h += `<a class="where" href="${esc(it.whereUrl)}" target="_blank" rel="noopener">Dónde leer: ${esc(it.whereLabel || 'enlace')} ↗</a>`;
+    h += `</span><input type="checkbox" data-all="${esc(it.slug)}"${all ? ' checked' : ''}${dis} aria-label="Marcar ${esc(it.title)} completo"></div>`;
+    if (multi) {
+      h += `<button class="toggle" data-open="${esc(it.slug)}" aria-expanded="${isOpen}">${isOpen ? 'Ocultar' : 'Ver'} números</button>`;
+      if (isOpen) {
+        h += '<div class="issues">';
+        let g: string | null | undefined, chips = '';
+        const flushGroup = () => { if (chips) h += `${g ? `<p class="gname">${esc(g)}</p>` : ''}<div class="chips">${chips}</div>`; chips = ''; };
+        it.units.forEach((u) => {
+          if (u.group !== g) { flushGroup(); g = u.group; }
+          const on = done.has(u.id), wide = u.short.length > 4;
+          chips += `<button class="chip${wide ? ' wide' : ''}${on ? ' on' : ''}" data-u="${u.id}" aria-pressed="${on}" aria-label="${esc(u.label)}"${dis}>${esc(u.short)}</button>`;
+        });
+        flushGroup();
+        h += '</div>';
+      }
+    }
+    return h + '</li>';
+  }
+
+  function render() {
+    const items = data.items;
+    const doneItems = items.filter(isDone).length;
+    let h = '';
+    if (!data.logged) h += '<p class="login-note"><a href="/login">Entra</a> o <a href="/registro">crea tu cuenta</a> para marcar lo que vas leyendo.</p>';
+    if (data.showHero) {
+      const next = items.find((i) => !isDone(i));
+      h += '<section class="hero">';
+      if (next) {
+        const nu = next.units.find((u) => !done.has(u.id));
+        h += `<p class="lbl">Te toca</p><p class="big">${esc(nu?.label ?? next.title)}</p><p>${esc(next.title)}${next.year ? `, ${esc(next.year)}` : ''}${next.units.length > 1 ? `. Vas en ${count(next)} de ${next.units.length}` : ''}</p>`;
+        h += `<button class="btn small" data-jump="${esc(next.slug)}">Ir a este</button>`;
+      } else h += '<p class="big">¡Ruta completa!</p>';
+      h += `<div class="bar"><span style="width:${items.length ? (doneItems / items.length) * 100 : 0}%"></span></div><p><b>${doneItems} de ${items.length} terminados</b></p></section>`;
+    }
+    let sec: string | null | undefined, n = 0, openOl = false;
+    items.forEach((it) => {
+      if (it.section !== sec) { if (openOl) h += '</ol>'; if (it.section) h += `<h2 class="section">${esc(it.section)}</h2>`; h += '<ol>'; openOl = true; sec = it.section; }
+      if (!openOl) { h += '<ol>'; openOl = true; }
+      n++; h += row(n, it);
+    });
+    if (openOl) h += '</ol>';
+    h += `<p class="saving">${esc(status)}</p>`;
+    root.innerHTML = h;
+  }
+
+  root.addEventListener('click', (e) => {
+    const t = (e.target as HTMLElement).closest<HTMLElement>('[data-u],[data-open],[data-jump]');
+    if (!t) return;
+    if (t.dataset.u) { if (!data.logged) return; setUnits([t.dataset.u], !done.has(t.dataset.u)); return; }
+    if (t.dataset.open) { const s = t.dataset.open; open.has(s) ? open.delete(s) : open.add(s); render(); return; }
+    if (t.dataset.jump) { open.add(t.dataset.jump); render(); document.getElementById('c-' + t.dataset.jump)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+  });
+  root.addEventListener('change', (e) => {
+    const el = e.target as HTMLInputElement;
+    const slug = el.dataset.all; if (!slug || !data.logged) return;
+    const it = data.items.find((i) => i.slug === slug); if (!it) return;
+    setUnits(it.units.map((u) => u.id), el.checked);
+  });
+  render();
+</script>

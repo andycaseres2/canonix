@@ -1,0 +1,31 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import { getDoneUnitIds, getRouteUnitMap } from '../../lib/data';
+const { supabase, user } = Astro.locals;
+const [routes, done] = await Promise.all([getRouteUnitMap(supabase), getDoneUnitIds(supabase, user?.id)]);
+const groups = [...new Set(routes.map((r) => r.route.universe))];
+---
+<Layout title="Rutas">
+  <h1>Rutas</h1>
+  <p class="lead">Elige una ruta y sigue el orden. Cada ruta te dice qué te toca leer o ver.</p>
+  {groups.map((g) => (
+    <>
+      <h2 style="text-transform:capitalize">{g}</h2>
+      <div class="grid">
+        {routes.filter((r) => r.route.universe === g).map(({ route, unitIds, count }) => {
+          const d = unitIds.filter((id) => done.has(id)).length;
+          const pct = unitIds.length ? Math.round((d / unitIds.length) * 100) : 0;
+          return (
+            <a class="card" href={`/rutas/${route.slug}`}>
+              <span class="t">{route.name}</span>
+              <span class="muted">{route.description}</span>
+              <span class="muted">{count} títulos</span>
+              {user && <><div class="bar"><span style={`width:${pct}%`}></span></div><b>{pct}%</b></>}
+            </a>
+          );
+        })}
+      </div>
+    </>
+  ))}
+  {routes.length === 0 && <p class="muted">Todavía no hay rutas publicadas.</p>}
+</Layout>
