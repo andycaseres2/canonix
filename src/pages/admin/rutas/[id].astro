@@ -4,128 +4,146 @@ import AdminNav from '../../../components/AdminNav.astro';
 const { supabase } = Astro.locals;
 const { data: r } = await supabase.from('routes').select('*').eq('id', Astro.params.id!).maybeSingle();
 if (!r) return Astro.redirect('/admin/rutas?error=' + encodeURIComponent('Ruta no encontrada'));
-const { data: items } = await supabase.from('route_items').select('id, section, note, position, media(id, title, year_label, kind)').eq('route_id', r.id).order('position');
+const [{ data: stages }, { data: items }, { data: allMedia }] = await Promise.all([
+  supabase.from('route_sections').select('id, title, description, position').eq('route_id', r.id).order('position'),
+  supabase.from('route_items').select('id, section_id, position, media(id, title, year_label, kind, cover_url)').eq('route_id', r.id).order('position'),
+  supabase.from('media').select('id, title, year_label, kind, universe').order('universe').order('year_start').order('title'),
+]);
+const byStage = new Map<string, any[]>();
+(items ?? []).forEach((it: any) => byStage.set(it.section_id, [...(byStage.get(it.section_id) ?? []), it]));
 const used = new Set((items ?? []).map((i: any) => i.media?.id));
-const { data: allMedia } = await supabase.from('media').select('id, title, year_label, kind, universe').order('universe').order('year_start').order('title');
-const options = (allMedia ?? []).filter((m) => !used.has(m.id));
-const sections = [...new Set((items ?? []).map((i: any) => i.section).filter(Boolean))];
+const options = (allMedia ?? []).filter((m) => !used.has(m.id)).map((m) => ({ id: m.id, t: m.title, y: m.year_label, u: m.universe, k: m.kind }));
+const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 'cómics';
 ---
 <Layout title={`${r.name} · Admin`}>
   <p><a href="/admin/rutas">← Rutas</a></p>
   <h1>{r.name}</h1>
   <AdminNav />
-  <div class="split">
-    <section>
-      <h2 style="margin-top:0">Orden ({items?.length ?? 0})</h2>
-      <div class="table-wrap"><table>
-        <thead><tr><th>#</th><th>Título</th><th>Sección</th><th>Mover</th><th></th></tr></thead>
-        <tbody>
-          {(items ?? []).map((it: any, i: number) => (
-            <tr>
-              <td>{i + 1}</td>
-              <td><b>{it.media?.title}</b><br /><small class="muted">{it.media?.year_label}</small></td>
-              <td>
-                <form method="post" action="/api/admin/route-items" class="row" style="gap:4px;flex-wrap:nowrap">
-                  <input type="hidden" name="action" value="section" /><input type="hidden" name="id" value={it.id} /><input type="hidden" name="route_id" value={r.id} />
-                  <input name="section" value={it.section ?? ''} list="sections" aria-label="Sección" style="min-width:120px" />
-                  <button class="btn small" type="submit">OK</button>
-                </form>
-              </td>
-              <td style="white-space:nowrap">
-                {['up', 'down'].map((dir) => (
-                  <form method="post" action="/api/admin/route-items" style="display:inline">
-                    <input type="hidden" name="action" value="move" /><input type="hidden" name="id" value={it.id} /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="dir" value={dir} />
-                    <button class="btn small" type="submit" aria-label={dir === 'up' ? 'Subir' : 'Bajar'} disabled={(dir === 'up' && i === 0) || (dir === 'down' && i === (items?.length ?? 0) - 1)}>{dir === 'up' ? '↑' : '↓'}</button>
-                  </form>
-                ))}
-              </td>
-              <td>
+
+  <div class="route-editor">
+    <div class="section-head">
+      <h2>Ruta</h2>
+      <a class="btn small" href={`/rutas/${r.slug}`}>Ver ruta ↗</a>
+    </div>
+    <form class="panel stack" method="post" action="/api/admin/routes">
+      <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={r.id} />
+      <label class="field">Nombre<input name="name" value={r.name} maxlength="120" required /></label>
+      <label class="field">Descripción<textarea name="description" maxlength="2000">{r.description ?? ''}</textarea></label>
+      <small class="muted">Universo: <b>{r.universe}</b> · Tipo: <b>{kindLabel}</b> · se calculan solos según los títulos.</small>
+      <div class="form-actions">
+        <label class="check"><input type="checkbox" name="published" checked={r.published} /> Publicada</label>
+        <select name="requires_plan" aria-label="Acceso" class="inline-select">
+          <option value="free" selected={r.requires_plan === 'free'}>Gratis</option>
+          <option value="premium" selected={r.requires_plan === 'premium'}>Premium</option>
+        </select>
+        <button class="btn primary" type="submit">Guardar cambios</button>
+      </div>
+    </form>
+
+    <h2>Etapas ({stages?.length ?? 0})</h2>
+    {(stages ?? []).length === 0 && <p class="muted">Crea la primera etapa, por ejemplo «Años 60», y agrégale cómics o animes.</p>}
+
+    {(stages ?? []).map((s, i) => {
+      const list = byStage.get(s.id) ?? [];
+      return (
+        <article class="panel stage" id={`etapa-${s.id}`}>
+          <div class="stage-head">
+            <span class="stage-n">Etapa {i + 1}</span>
+            <div class="actions">
+              {(['up', 'down'] as const).map((dir) => (
                 <form method="post" action="/api/admin/route-items">
-                  <input type="hidden" name="action" value="remove" /><input type="hidden" name="id" value={it.id} /><input type="hidden" name="route_id" value={r.id} />
-                  <button class="btn small danger" type="submit">Quitar</button>
+                  <input type="hidden" name="action" value="section_move" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} /><input type="hidden" name="dir" value={dir} />
+                  <button class="btn small" type="submit" aria-label={dir === 'up' ? 'Subir etapa' : 'Bajar etapa'} disabled={(dir === 'up' && i === 0) || (dir === 'down' && i === (stages?.length ?? 0) - 1)}>{dir === 'up' ? '↑' : '↓'}</button>
                 </form>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table></div>
-      <datalist id="sections">{sections.map((s) => <option value={s} />)}</datalist>
+              ))}
+              <form method="post" action="/api/admin/route-items" data-confirm={list.length ? `Se quitan sus ${list.length} títulos de la ruta (siguen en el catálogo).` : 'La etapa está vacía.'} data-confirm-title={`¿Borrar la etapa «${s.title}»?`} data-confirm-label="Borrar etapa" data-confirm-danger>
+                <input type="hidden" name="action" value="section_delete" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} />
+                <button class="btn small danger" type="submit">Borrar etapa</button>
+              </form>
+            </div>
+          </div>
 
-      <h3 id="agregar">Agregar a la ruta</h3>
-      <div class="panel stack">
-        <label class="field">Sección para lo que agregues <small>opcional, ej: "Años 80"</small><input id="add-section" list="sections" /></label>
-        <label class="field">Busca por nombre <small>escribe y toca Agregar</small><input id="add-q" type="search" placeholder="Ej: Civil War, Alias, Naruto…" autocomplete="off" /></label>
-        <ul id="add-results" class="results" aria-live="polite"></ul>
-      </div>
+          <form class="stack" method="post" action="/api/admin/route-items">
+            <input type="hidden" name="action" value="section_update" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} />
+            <label class="field">Título de la etapa<input name="title" value={s.title} maxlength="120" required /></label>
+            <label class="field">Descripción <small>opcional</small><textarea name="description" rows="2" maxlength="2000">{s.description ?? ''}</textarea></label>
+            <div class="form-actions"><button class="btn" type="submit">Guardar etapa</button></div>
+          </form>
 
-      <h3>Agregar varios de una</h3>
-      <form class="panel stack" method="post" action="/api/admin/route-items">
-        <input type="hidden" name="action" value="bulk" /><input type="hidden" name="route_id" value={r.id} />
-        <label class="field">Un título por línea <small>si hay dos con el mismo nombre, agrega el año ("Thor 1983") o usa su slug</small>
-          <textarea name="titles" rows="7" placeholder={'Civil War\nHouse of M\nThor 1983'} required></textarea></label>
-        <label class="field">Sección <small>opcional, se aplica a todos</small><input name="section" list="sections" /></label>
-        <div class="form-actions">
-          <button class="btn primary" type="submit">Agregar todos al final</button>
-        </div>
+          {list.length === 0
+            ? <p class="muted">Todavía no tiene cómics ni animes.</p>
+            : <ol class="stage-items">
+                {list.map((it: any, k: number) => (
+                  <li>
+                    {it.media?.cover_url ? <img class="stage-thumb" src={it.media.cover_url} alt="" loading="lazy" /> : <span class="stage-thumb empty" aria-hidden="true"></span>}
+                    <span class="stage-item-text"><b>{it.media?.title}</b> <span class="muted">{it.media?.year_label}{it.media?.kind === 'anime' ? ' · anime' : ''}</span></span>
+                    <span class="actions">
+                      {(['up', 'down'] as const).map((dir) => (
+                        <form method="post" action="/api/admin/route-items">
+                          <input type="hidden" name="action" value="item_move" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={it.id} /><input type="hidden" name="dir" value={dir} />
+                          <button class="btn small" type="submit" aria-label={dir === 'up' ? 'Subir' : 'Bajar'} disabled={(dir === 'up' && k === 0) || (dir === 'down' && k === list.length - 1)}>{dir === 'up' ? '↑' : '↓'}</button>
+                        </form>
+                      ))}
+                      <form method="post" action="/api/admin/route-items">
+                        <input type="hidden" name="action" value="item_remove" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={it.id} />
+                        <button class="btn small danger" type="submit" aria-label={`Quitar ${it.media?.title}`}>✕</button>
+                      </form>
+                    </span>
+                  </li>
+                ))}
+              </ol>}
+
+          <div class="stage-add">
+            <label class="field">Agregar cómic o anime <small>escribe para buscar</small>
+              <input type="search" class="stage-search" data-section-id={s.id} placeholder="Ej: Civil War, Naruto…" autocomplete="off" />
+            </label>
+            <ul class="results" aria-live="polite"></ul>
+          </div>
+        </article>
+      );
+    })}
+
+    <form class="panel stack" id="nueva-etapa" method="post" action="/api/admin/route-items">
+      <h3 style="margin:0">Nueva etapa</h3>
+      <input type="hidden" name="action" value="section_create" /><input type="hidden" name="route_id" value={r.id} />
+      <label class="field">Título<input name="title" maxlength="120" placeholder="Ej: Años 60" required /></label>
+      <label class="field">Descripción <small>opcional</small><textarea name="description" rows="2" maxlength="2000"></textarea></label>
+      <div class="form-actions"><button class="btn primary" type="submit">Crear etapa</button></div>
+    </form>
+    <p class="muted">¿No está el título que buscas? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>
+
+    <div class="danger-zone">
+      <p><b>Borrar ruta</b><small>Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer.</small></p>
+      <form method="post" action="/api/admin/routes" data-confirm="Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer." data-confirm-title="¿Borrar ruta?" data-confirm-label="Borrar ruta" data-confirm-danger>
+        <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={r.id} />
+        <button class="btn small danger" type="submit">Borrar ruta</button>
       </form>
-      <script type="application/json" id="add-data" set:html={JSON.stringify(options.map((m) => ({ id: m.id, t: m.title, y: m.year_label, u: m.universe, k: m.kind }))).replace(/</g, '\\u003c')}></script>
-      <script define:vars={{ routeId: r.id }}>
-        const all = JSON.parse(document.getElementById('add-data').textContent || '[]');
-        const q = document.getElementById('add-q'), out = document.getElementById('add-results'), sec = document.getElementById('add-section');
-        const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-        const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-        function show() {
-          const v = norm(q.value.trim());
-          if (!v) { out.innerHTML = ''; return; }
-          const hits = all.filter((m) => norm(`${m.t} ${m.y} ${m.u}`).includes(v)).slice(0, 15);
-          out.innerHTML = hits.length ? hits.map((m) => `<li><span><b>${esc(m.t)}</b> <span class="muted">${esc(m.y)} · ${esc(m.u)} · ${m.k === 'anime' ? 'anime' : 'cómic'}</span></span>
-            <form method="post" action="/api/admin/route-items"><input type="hidden" name="action" value="add"><input type="hidden" name="route_id" value="${routeId}">
-            <input type="hidden" name="media_id" value="${m.id}"><input type="hidden" name="section" value=""><button class="btn small primary" type="submit">Agregar</button></form></li>`).join('')
-            : '<li class="muted">No hay coincidencias. Puede que ya esté en la ruta o que falte crearlo en el catálogo.</li>';
-        }
-        q.addEventListener('input', show);
-        out.addEventListener('submit', (e) => { e.target.querySelector('[name=section]').value = sec.value; });
-        sessionStorage.getItem('add-section') && (sec.value = sessionStorage.getItem('add-section'));
-        sec.addEventListener('input', () => sessionStorage.setItem('add-section', sec.value));
-        if (location.hash === '#agregar') q.focus();
-      </script>
-      <p class="muted">¿No está el título? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>
-    </section>
-
-    <section>
-      <div class="section-head">
-        <h2>Datos</h2>
-        <a class="btn small" href={`/rutas/${r.slug}`}>Ver ruta ↗</a>
-      </div>
-      <form class="panel stack" method="post" action="/api/admin/routes">
-        <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={r.id} />
-        <label class="field">Nombre<input name="name" value={r.name} required /></label>
-        <label class="field">Slug<input name="slug" value={r.slug} required pattern="[a-z0-9-]+" /></label>
-        <div class="row">
-          <label class="field">Universo<input name="universe" value={r.universe} required /></label>
-          <label class="field">Tipo<select name="kind">
-            <option value="comic" selected={r.kind === 'comic'}>Cómics</option><option value="anime" selected={r.kind === 'anime'}>Anime</option><option value="mixed" selected={r.kind === 'mixed'}>Mixta</option>
-          </select></label>
-        </div>
-        <div class="row">
-          <label class="field">Acceso<select name="requires_plan">
-            <option value="free" selected={r.requires_plan === 'free'}>Gratis</option><option value="premium" selected={r.requires_plan === 'premium'}>Premium</option>
-          </select></label>
-          <label class="field">Orden en la lista<input type="number" name="position" value={r.position} /></label>
-        </div>
-        <label class="field">Descripción<textarea name="description">{r.description ?? ''}</textarea></label>
-        <div class="form-actions">
-          <label class="check"><input type="checkbox" name="published" checked={r.published} /> Publicada</label>
-          <button class="btn primary" type="submit">Guardar cambios</button>
-        </div>
-      </form>
-      <div class="danger-zone">
-        <p><b>Borrar ruta</b><small>Los títulos siguen en el catálogo. No se puede deshacer.</small></p>
-        <form method="post" action="/api/admin/routes" data-confirm="Los títulos siguen en el catálogo. No se puede deshacer." data-confirm-title="¿Borrar ruta?" data-confirm-label="Borrar ruta" data-confirm-danger>
-          <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={r.id} />
-          <button class="btn small danger" type="submit">Borrar ruta</button>
-        </form>
-      </div>
-    </section>
+    </div>
   </div>
+
+  <script type="application/json" id="add-data" set:html={JSON.stringify(options).replace(/</g, '\\u003c')}></script>
+  <script define:vars={{ routeId: r.id }}>
+    const all = JSON.parse(document.getElementById('add-data').textContent || '[]');
+    const norm = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const el = (tag, props = {}, ...kids) => { const n = Object.assign(document.createElement(tag), props); n.append(...kids); return n; };
+    const hidden = (name, value) => el('input', { type: 'hidden', name, value });
+
+    document.querySelectorAll('.stage-search').forEach((input) => {
+      const out = input.closest('.stage-add').querySelector('.results');
+      input.addEventListener('input', () => {
+        const v = norm(input.value.trim());
+        if (!v) return out.replaceChildren();
+        const hits = all.filter((m) => norm(`${m.t} ${m.y} ${m.u}`).includes(v)).slice(0, 12);
+        if (!hits.length) return out.replaceChildren(el('li', { className: 'muted', textContent: 'No hay coincidencias. Puede que ya esté en la ruta o que falte crearlo.' }));
+        out.replaceChildren(...hits.map((m) => {
+          const form = el('form', { method: 'post', action: '/api/admin/route-items' },
+            hidden('action', 'item_add'), hidden('route_id', routeId), hidden('section_id', input.dataset.sectionId), hidden('media_id', m.id),
+            el('button', { type: 'submit', className: 'btn small primary', textContent: 'Agregar' }));
+          return el('li', {},
+            el('span', {}, el('b', { textContent: m.t }), ' ', el('span', { className: 'muted', textContent: `${m.y ?? ''} · ${m.u ?? ''} · ${m.k === 'anime' ? 'anime' : 'cómic'}` })),
+            form);
+        }));
+      });
+    });
+  </script>
 </Layout>

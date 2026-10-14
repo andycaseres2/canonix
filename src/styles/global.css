@@ -218,3 +218,19 @@ table.queue { min-width: 0; table-layout: fixed; }
 .create-steps li[data-state="done"]::before { content: "✓"; color: var(--green); }
 .create-steps li[data-state="error"] { color: var(--red); }
 .create-steps li[data-state="error"]::before { content: "✗"; }
+
+/* Route editor: route -> stages -> titles */
+.route-editor { max-width: 860px; }
+.inline-select { width: auto; min-width: 9em; }
+.stage { display: grid; gap: 14px; margin-bottom: 18px; scroll-margin-top: 90px; }
+.stage-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.stage-head form { margin: 0; }
+.stage-n { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: .03em; background: var(--yellow); color: #1C2541; padding: 0 10px; border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--red); }
+.stage-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stage-items li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1.5px solid var(--line); background: var(--paper); }
+.stage-items form { margin: 0; }
+.stage-item-text { flex: 1; min-width: 0; }
+.stage-thumb { width: 28px; aspect-ratio: 2 / 3; object-fit: cover; border: 1.5px solid var(--line); flex: none; }
+.stage-thumb.empty { background: var(--panel); }
+.stage-add { display: grid; gap: 8px; padding-top: 12px; border-top: 2px dashed var(--muted); }
+#nueva-etapa { scroll-margin-top: 90px; margin-bottom: 12px; }

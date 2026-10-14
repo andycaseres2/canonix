@@ -82,9 +82,10 @@ src/pages/             Páginas públicas, /admin y /api
 
 ## Cómo agregar una ruta nueva (DC, anime…)
 
-1. **Admin → Catálogo → Agregar título**: tipo, universo (`dc`, `anime`…), año y link oficial.
-2. En el título, **agrega sus números o episodios por rango**, por ejemplo "Naruto Shippuden", del 1 al 500, en formato Episodio.
-3. **Admin → Rutas → Crear ruta**, agrega los títulos en orden con su sección y márcala como **Publicada**.
+1. **Admin → Catálogo → Nuevo cómic o anime**: tipo, nombre y datos, portada y sus archivos (un archivo por número o episodio), todo en una pantalla.
+2. **Admin → Rutas → Crear ruta** con nombre y descripción.
+3. En la ruta, **crea sus etapas** (título y descripción, por ejemplo "Años 60") y **agrega a cada etapa** sus cómics o animes buscándolos. Ordénalos con ↑ ↓.
+4. Marca la ruta como **Publicada** (y **Premium** si es del plan pago). El universo y el tipo de la ruta se calculan solos.
 
 Si un mismo número aparece en dos títulos (por ejemplo un arco dentro de una serie larga), es la misma unidad, así que marcarlo en uno lo marca en el otro.
 
