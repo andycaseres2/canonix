@@ -16,7 +16,7 @@ export async function postJson<T = any>(url: string, body: unknown): Promise<T> 
 }
 
 /** PUTs the file to the signed URL. XMLHttpRequest because fetch cannot report upload progress. */
-export function putFile(target: UploadTarget, file: File, onProgress: (fraction: number) => void) {
+export function putFile(target: UploadTarget, file: Blob, onProgress: (fraction: number) => void) {
   return new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', target.uploadUrl);

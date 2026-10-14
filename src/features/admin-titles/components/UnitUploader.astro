@@ -36,8 +36,8 @@ const word = kind === 'anime' ? 'episodio' : 'número';
 
 <script>
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
-  import { cbrToCbz, isCbr } from '../scripts/cbr';
-  import { detectNumber, extensionOf, formatBytes, formatList, pickExtensions } from '../../../lib/uploads';
+  import { extractPages, isComicArchive, type Page } from '../scripts/archive';
+  import { detectNumber, extensionOf, formatBytes, formatList, mapLimit, pickExtensions } from '../../../lib/uploads';
 
   type Kind = 'comic' | 'anime';
   type Item = { file: File; number: number | null; status: 'pending' | 'converting' | 'uploading' | 'done' | 'error'; progress: number; message: string };
@@ -90,7 +90,7 @@ const word = kind === 'anime' ? 'episodio' : 'número';
       num.setAttribute('aria-label', `Número de ${it.file.name}`);
       num.addEventListener('change', () => { it.number = num.value === '' ? null : Math.trunc(Number(num.value)); render(); });
       let status: Node;
-      if (it.status === 'converting') status = el('span', { className: 'muted' }, 'Convirtiendo a CBZ…');
+      if (it.status === 'converting') status = el('span', { className: 'muted' }, 'Preparando páginas…');
       else if (it.status === 'uploading') {
         const bar = el('span'); bar.style.width = `${Math.round(it.progress * 100)}%`;
         status = el('div', { className: 'progress' }, bar);
@@ -119,8 +119,12 @@ const word = kind === 'anime' ? 'episodio' : 'número';
   async function uploadOne(mediaId: string, it: Item) {
     const series = seriesInput.value;
     try {
-      // CBR pages are repacked as CBZ first: storage and the reader only handle CBZ
-      if (isCbr(it.file)) { it.status = 'converting'; render(); it.file = await cbrToCbz(it.file); }
+      if (isComicArchive(it.file)) {
+        await uploadPages(mediaId, it, series);
+        it.status = 'done';
+        render();
+        return;
+      }
       it.status = 'uploading'; it.progress = 0; render();
       const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'unit', media_id: mediaId, number: it.number, series, filename: it.file.name, content_type: it.file.type, size: it.file.size });
       await putFile(target, it.file, (f) => { it.progress = f; render(); });
@@ -130,6 +134,38 @@ const word = kind === 'anime' ? 'episodio' : 'número';
       it.status = 'error'; it.message = (e as Error).message;
     }
     render();
+  }
+
+  /** A CBZ/CBR is stored one image per page, so the reader shows page 1 without downloading the whole comic. */
+  async function uploadPages(mediaId: string, it: Item, series: string) {
+    it.status = 'converting'; render();
+    const pages: Page[] = await extractPages(it.file);
+    const source = extensionOf(it.file.name) === 'cbr' ? 'cbr' : 'cbz';
+    const signed = await postJson<{ folder: string; targets: (UploadTarget & { name: string })[] }>('/api/admin/uploads', {
+      kind: 'unit-pages', media_id: mediaId, number: it.number, series, source,
+      pages: pages.map((p) => ({ name: p.name, content_type: p.blob.type, size: p.blob.size })),
+    });
+    it.status = 'uploading'; it.progress = 0; render();
+    const total = pages.reduce((sum, p) => sum + p.blob.size, 0);
+    const sent = new Array<number>(pages.length).fill(0);
+    let last = 0;
+    const report = () => {
+      // Repaint at most every 1% so dozens of parallel pages do not thrash the table
+      const progress = sent.reduce((a, b) => a + b, 0) / total;
+      if (progress - last >= 0.01 || progress === 1) { last = progress; it.progress = progress; render(); }
+    };
+    await mapLimit(pages.map((p, i) => ({ p, i, target: signed.targets[i] })), 4, async ({ p, i, target }) => {
+      for (let attempt = 1; ; attempt++) {
+        try {
+          await putFile(target, p.blob, (f) => { sent[i] = f * p.blob.size; report(); });
+          sent[i] = p.blob.size; report();
+          return;
+        } catch (e) {
+          if (attempt >= 2) throw new Error(`No se pudo subir la página ${i + 1}: ${(e as Error).message}`);
+        }
+      }
+    });
+    await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, folder: signed.folder, pages: pages.map((p) => p.name), source, group: groupInput.value });
   }
 
   const warnLeave = (e: BeforeUnloadEvent) => { e.preventDefault(); };

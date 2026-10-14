@@ -12,3 +12,10 @@ export function comicPages(names: string[]) {
     .filter((n) => !n.split('/').pop()!.startsWith('.') && extension(n) in TYPES)
     .sort((a, b) => a.localeCompare(b, 'en', { numeric: true, sensitivity: 'base' }));
 }
+
+/** Storage names for the pages, in reading order: "001.jpg", "002.png"… (four digits past 999 pages). */
+export function numberPages(names: string[]) {
+  const pages = comicPages(names);
+  const width = Math.max(3, String(pages.length).length);
+  return pages.map((from, i) => ({ from, name: `${String(i + 1).padStart(width, '0')}.${extension(from)}` }));
+}
