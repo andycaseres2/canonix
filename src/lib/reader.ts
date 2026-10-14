@@ -1,0 +1,53 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Profile } from './types';
+
+/** Signed reader links outlive a long episode but not a forgotten tab. */
+export const READ_URL_SECONDS = 3 * 60 * 60;
+
+export type ReaderViewer = Pick<Profile, 'id' | 'plan' | 'role'> | null;
+export type ReaderState = 'ready' | 'login' | 'locked' | 'nofile' | 'error';
+export type ReaderUnit = { id: string; short: string; label: string; file_path: string | null; file_format: string | null; file_size: number | null };
+
+type Row = {
+  id: string; slug: string; title: string; kind: 'comic' | 'anime'; requires_plan: 'free' | 'premium'; cover_url: string | null;
+  media_units: { short: string; position: number; unit_id: string; units: Omit<ReaderUnit, 'id' | 'short'> | null }[];
+};
+
+/** A premium title is locked for viewers who are neither premium nor admin. */
+export const isTitleLocked = (media: { requires_plan: string }, viewer: ReaderViewer) =>
+  media.requires_plan === 'premium' && viewer?.plan !== 'premium' && viewer?.role !== 'admin';
+
+/**
+ * One issue/episode of a title for the reader: its signed file url when the viewer may read it,
+ * and the previous/next units that have a file. Storage RLS (rutas_content_read) has the final say.
+ */
+export async function getReader(sb: SupabaseClient, slug: string, short: string, viewer: ReaderViewer) {
+  const { data, error } = await sb
+    .from('media')
+    .select('id, slug, title, kind, requires_plan, cover_url, media_units(short, position, unit_id, units(label, file_path, file_format, file_size))')
+    .eq('slug', slug)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data) return null;
+  const { media_units, ...media } = data as unknown as Row;
+  const units: ReaderUnit[] = [...(media_units ?? [])]
+    .sort((a, b) => a.position - b.position)
+    .map((mu) => ({ id: mu.unit_id, short: mu.short, label: mu.units?.label ?? mu.short, file_path: mu.units?.file_path ?? null, file_format: mu.units?.file_format ?? null, file_size: mu.units?.file_size ?? null }));
+  const unit = units.find((u) => u.short === short);
+  if (!unit) return null;
+
+  const withFile = units.filter((u) => u.file_path);
+  const at = withFile.indexOf(unit);
+  const base = {
+    media, unit, format: unit.file_format,
+    prev: at > 0 ? withFile[at - 1] : null,
+    next: at >= 0 && at < withFile.length - 1 ? withFile[at + 1] : null,
+  };
+  const result = (state: ReaderState, url: string | null = null) => ({ ...base, state, url });
+
+  if (!viewer) return result('login');
+  if (isTitleLocked(media, viewer)) return result('locked');
+  if (!unit.file_path) return result('nofile');
+  const { data: signed } = await sb.storage.from('content').createSignedUrl(unit.file_path, READ_URL_SECONDS);
+  return signed?.signedUrl ? result('ready', signed.signedUrl) : result('error');
+}

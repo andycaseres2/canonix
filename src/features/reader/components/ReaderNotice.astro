@@ -1,0 +1,16 @@
+---
+// Shown instead of the viewer when the unit cannot be opened.
+import Panel from '../../../components/ui/Panel.astro';
+import type { ReaderState } from '../../../lib/reader';
+interface Props { state: Exclude<ReaderState, 'ready' | 'login'>; slug: string }
+const { state, slug } = Astro.props;
+const text = {
+  locked: 'Este título es parte del plan premium.',
+  nofile: 'Este número todavía no tiene archivo.',
+  error: 'No pudimos abrir el archivo. Vuelve a intentarlo en un momento.',
+}[state];
+---
+<Panel class="reader-notice">
+  <p>{text}</p>
+  <a class="btn" href={`/catalogo/${slug}`}>Volver al título</a>
+</Panel>

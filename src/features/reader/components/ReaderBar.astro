@@ -1,0 +1,36 @@
+---
+// Reader header: back to the title, the unit's name, previous/next units and the "read" toggle.
+import type { ReaderUnit } from '../../../lib/reader';
+interface Props { slug: string; title: string; unit: ReaderUnit; prev: ReaderUnit | null; next: ReaderUnit | null; done: boolean; canMark: boolean }
+const { slug, title, unit, prev, next, done, canMark } = Astro.props;
+---
+<header class="reader-bar">
+  <a class="reader-back" href={`/catalogo/${slug}`}>← {title}</a>
+  <h1 class="reader-title">{unit.label}</h1>
+  <nav class="reader-units" aria-label="Números">
+    {prev ? <a class="btn small" href={`/leer/${slug}/${encodeURIComponent(prev.short)}`} rel="prev">‹ {prev.short}</a> : <span class="btn small" aria-disabled="true">‹</span>}
+    {canMark && <button class="btn small" type="button" id="reader-done" data-unit={unit.id} aria-pressed={done ? 'true' : 'false'}>{done ? '✓ Leído' : 'Marcar leído'}</button>}
+    {next ? <a class="btn small" href={`/leer/${slug}/${encodeURIComponent(next.short)}`} rel="next">{next.short} ›</a> : <span class="btn small" aria-disabled="true">›</span>}
+  </nav>
+</header>
+
+<script>
+  const button = document.getElementById('reader-done') as HTMLButtonElement | null;
+  button?.addEventListener('click', async () => {
+    const done = button.getAttribute('aria-pressed') !== 'true';
+    button.disabled = true;
+    try {
+      const res = await fetch('/api/progress', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(done ? { add: [button.dataset.unit] } : { remove: [button.dataset.unit] }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      button.setAttribute('aria-pressed', String(done));
+      button.textContent = done ? '✓ Leído' : 'Marcar leído';
+    } catch {
+      (window as any).appDialog?.alert({ title: 'No se pudo guardar', message: 'Revisa tu conexión y vuelve a intentarlo.' });
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>

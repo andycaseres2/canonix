@@ -1,0 +1,183 @@
+---
+// In-app viewer: comic pages (CBZ or PDF) one at a time with keyboard, tap and fit controls, or a video player for episodes.
+interface Props { url: string; format: string; storageKey: string; nextHref: string | null; nextLabel: string | null }
+const { url, format, storageKey, nextHref, nextLabel } = Astro.props;
+const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
+---
+{isVideo ? (
+  <div class="reader-video">
+    <video controls playsinline preload="metadata" src={url}></video>
+    {format === 'mkv' && <p class="muted">Si no se reproduce, tu navegador no soporta MKV. Prueba con Chrome.</p>}
+  </div>
+) : (
+  <section class="viewer" id="viewer" data-url={url} data-format={format} data-key={storageKey} data-fit="height" aria-label="Lector">
+    <div class="viewer-status" id="viewer-status" role="status">
+      <p id="viewer-status-text">Descargando…</p>
+      <div class="progress"><span id="viewer-progress"></span></div>
+    </div>
+    <div class="viewer-stage" id="viewer-stage" hidden>
+      <button class="viewer-hit prev" type="button" tabindex="-1" aria-label="Página anterior"></button>
+      <button class="viewer-hit next" type="button" tabindex="-1" aria-label="Página siguiente"></button>
+    </div>
+    <div class="viewer-controls" id="viewer-controls" hidden>
+      <button class="btn small" type="button" data-go="-1" aria-label="Página anterior">‹</button>
+      <span class="viewer-count" id="viewer-count" aria-live="polite"></span>
+      <button class="btn small" type="button" data-go="1" aria-label="Página siguiente">›</button>
+      <button class="btn small" type="button" id="viewer-fit">Ajustar al ancho</button>
+      <button class="btn small" type="button" id="viewer-full">Pantalla completa</button>
+      {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} hidden>Siguiente: {nextLabel} ›</a>}
+    </div>
+  </section>
+)}
+
+<script>
+  // Only the worker's url: pdf.js itself loads on demand, for PDF files
+  import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+  import { comicPages, imageType } from '../pages';
+
+  /** A comic opened in memory: how many pages it has and how to draw one. */
+  type Book = { count: number; draw(index: number, width: number): Promise<HTMLElement> };
+
+  const viewer = document.getElementById('viewer');
+  if (viewer) open(viewer);
+
+  const store = {
+    get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },
+    set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } },
+  };
+
+  async function download(url: string, onProgress: (got: number, total: number) => void) {
+    const res = await fetch(url);
+    if (!res.ok || !res.body) throw new Error(`El servidor respondió ${res.status}.`);
+    const total = Number(res.headers.get('Content-Length')) || 0;
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let got = 0;
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      chunks.push(value);
+      got += value.length;
+      onProgress(got, total);
+    }
+    const bytes = new Uint8Array(got);
+    let at = 0;
+    for (const c of chunks) { bytes.set(c, at); at += c.length; }
+    return bytes;
+  }
+
+  async function openCbz(bytes: Uint8Array): Promise<Book> {
+    const { unzip } = await import('fflate');
+    const files = await new Promise<Record<string, Uint8Array>>((resolve, reject) =>
+      unzip(bytes, { filter: (f) => comicPages([f.name]).length === 1 }, (err, data) => (err ? reject(err) : resolve(data))));
+    const names = comicPages(Object.keys(files));
+    const urls = new Map<number, string>();
+    const urlOf = (i: number) => {
+      if (!urls.has(i)) urls.set(i, URL.createObjectURL(new Blob([files[names[i]] as BlobPart], { type: imageType(names[i]) })));
+      return urls.get(i)!;
+    };
+    return {
+      count: names.length,
+      async draw(i) {
+        const img = new Image();
+        img.src = urlOf(i);
+        await img.decode().catch(() => undefined);
+        // Warm up the next page so turning feels instant
+        if (i + 1 < names.length) new Image().src = urlOf(i + 1);
+        return img;
+      },
+    };
+  }
+
+  async function openPdf(bytes: Uint8Array): Promise<Book> {
+    const pdfjs = await import('pdfjs-dist');
+    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
+    const doc = await pdfjs.getDocument({ data: bytes }).promise;
+    return {
+      count: doc.numPages,
+      async draw(i, width) {
+        const page = await doc.getPage(i + 1);
+        // Render at the stage width (sharp on retina, capped for memory); CSS scales it like an image
+        const base = page.getViewport({ scale: 1 });
+        const scale = Math.min((width * devicePixelRatio) / base.width, 2400 / base.width);
+        const viewport = page.getViewport({ scale });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        await page.render({ canvas, viewport }).promise;
+        return canvas;
+      },
+    };
+  }
+
+  async function open(root: HTMLElement) {
+    const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+    const status = $('viewer-status'), statusText = $('viewer-status-text'), bar = $('viewer-progress');
+    const stage = $('viewer-stage'), controls = $('viewer-controls'), count = $('viewer-count');
+    const fit = $<HTMLButtonElement>('viewer-fit'), full = $<HTMLButtonElement>('viewer-full');
+    const nextLink = document.getElementById('viewer-next');
+    const { url, format, key } = root.dataset as { url: string; format: string; key: string };
+    const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
+
+    let book: Book;
+    try {
+      if (format === 'cbr') throw new Error('Este número está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
+      const bytes = await download(url, (got, total) => {
+        statusText.textContent = total ? `Descargando ${mb(got)} de ${mb(total)} MB…` : `Descargando ${mb(got)} MB…`;
+        if (total) bar.style.width = `${Math.round((got / total) * 100)}%`;
+      });
+      statusText.textContent = 'Abriendo…';
+      book = format === 'pdf' ? await openPdf(bytes) : await openCbz(bytes);
+      if (!book.count) throw new Error('El archivo no tiene páginas.');
+    } catch (e) {
+      statusText.textContent = e instanceof Error && e.message ? e.message : 'No pudimos abrir el archivo.';
+      status.classList.add('failed');
+      return;
+    }
+
+    status.hidden = true;
+    stage.hidden = false;
+    controls.hidden = false;
+
+    let page = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
+    let drawing = 0;
+    const show = async (i: number) => {
+      page = Math.min(Math.max(i, 0), book.count - 1);
+      const ticket = ++drawing;
+      count.textContent = `${page + 1} / ${book.count}`;
+      store.set(key, String(page));
+      if (nextLink) nextLink.hidden = page < book.count - 1;
+      const el = await book.draw(page, stage.clientWidth);
+      if (ticket !== drawing) return; // a later turn already won
+      el.classList.add('viewer-page');
+      el.setAttribute('aria-label', `Página ${page + 1} de ${book.count}`);
+      stage.querySelector('.viewer-page')?.remove();
+      stage.prepend(el);
+      if (root.dataset.fit === 'width') root.scrollIntoView({ block: 'start' });
+    };
+    const go = (delta: number) => show(page + delta);
+
+    controls.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.go))));
+    stage.querySelector('.viewer-hit.prev')!.addEventListener('click', () => go(-1));
+    stage.querySelector('.viewer-hit.next')!.addEventListener('click', () => go(1));
+    addEventListener('keydown', (e) => {
+      if ((e.target as HTMLElement).closest('input, textarea, select') || e.altKey || e.metaKey || e.ctrlKey) return;
+      if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
+    });
+
+    const setFit = (width: boolean) => {
+      root.dataset.fit = width ? 'width' : 'height';
+      fit.textContent = width ? 'Ver página entera' : 'Ajustar al ancho';
+      store.set('reader-fit', root.dataset.fit);
+    };
+    setFit(store.get('reader-fit') === 'width' || matchMedia('(max-width: 640px)').matches);
+    fit.addEventListener('click', () => { setFit(root.dataset.fit !== 'width'); show(page); });
+
+    full.hidden = !document.fullscreenEnabled;
+    full.addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen()));
+    document.addEventListener('fullscreenchange', () => { full.textContent = document.fullscreenElement ? 'Salir de pantalla completa' : 'Pantalla completa'; });
+
+    await show(page);
+  }
+</script>
