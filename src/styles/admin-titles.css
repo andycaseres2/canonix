@@ -23,8 +23,16 @@ table.queue { min-width: 0; table-layout: fixed; }
 .queue .progress { min-width: 120px; }
 .ok-text { color: var(--green); font-weight: 700; }
 .error-text { color: var(--red); font-weight: 700; font-size: .9rem; }
-.file-dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; background: var(--green); border: 1.5px solid var(--line); vertical-align: middle; }
-.chip-admin.has-file { border-color: var(--green); }
+
+/* Units of a title */
+.unit-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); }
+.unit-card { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 6px 10px 10px; background: var(--panel); border: 2px solid var(--line); border-left-width: 6px; box-shadow: 3px 3px 0 var(--line); }
+.unit-card.has-file { border-left-color: var(--green); }
+.unit-num { min-width: 2.2em; padding: 2px 6px; text-align: center; font-family: var(--font-display); font-size: 1.5rem; line-height: 1.2; background: var(--yellow); color: #1C2541; border: 2px solid #1C2541; }
+.unit-info { display: grid; min-width: 0; line-height: 1.3; }
+.unit-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.unit-remove { border: 0; background: none; color: var(--red); font-size: 1.3rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 6px 8px; min-height: 0; }
+.unit-remove:hover { background: color-mix(in srgb, var(--red) 12%, transparent); }
 
 /* "Nuevo cómic o anime" screen */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }

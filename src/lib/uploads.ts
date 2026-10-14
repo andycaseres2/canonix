@@ -62,6 +62,16 @@ export const unitLabel = (media: { title: string; kind: string }, n: number, ser
   return media.kind === 'anime' ? `${name} - Episodio ${n}` : `${name} #${n}`;
 };
 
+export const formatBytes = (n: number) =>
+  n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : n < 1024 ** 3 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`;
+
+/** "CBZ · 32.0 MB" for a unit with a file, "Sin archivo" otherwise. */
+export const unitFileMeta = (unit: { file_path: string | null; file_format: string | null; file_size: number | null } | null) => {
+  if (!unit?.file_path) return 'Sin archivo';
+  const format = unit.file_format?.toUpperCase() ?? 'Archivo';
+  return unit.file_size ? `${format} · ${formatBytes(unit.file_size)}` : format;
+};
+
 export const unitPath = (slug: string, n: number, filename: string, stamp = Date.now()) =>
   `${slug}/${String(n).padStart(5, '0')}-${stamp}.${extensionOf(filename)}`;
 

@@ -1,6 +1,6 @@
 ---
-// Units of a title (`#units-list`): grouped removable chips.
-import UnitChip from './UnitChip.astro';
+// Units of a title (`#units-list`): grouped cards with their file and a remove button.
+import UnitCard from './UnitCard.astro';
 import type { UnitGroup } from '../types';
 interface Props { mediaId: string; unitWord: string; groups: UnitGroup[] }
 const { mediaId, unitWord, groups } = Astro.props;
@@ -10,9 +10,9 @@ const { mediaId, unitWord, groups } = Astro.props;
 {groups.map((g) => (
   <div style="margin-bottom:14px">
     {g.name && <p class="muted" style="margin:0 0 6px;font-weight:700">{g.name}</p>}
-    <div class="chips-admin">
-      {g.units.map((u) => <UnitChip mediaId={mediaId} unit={u} />)}
-    </div>
+    <ul class="unit-cards">
+      {g.units.map((u) => <UnitCard mediaId={mediaId} unit={u} />)}
+    </ul>
   </div>
 ))}
 </div>

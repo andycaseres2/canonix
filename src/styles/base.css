@@ -2,7 +2,8 @@
 *, *::before, *::after { box-sizing: inherit; }
 /* Components set their own display (.btn, .stack, .card…); the hidden attribute must still win */
 [hidden] { display: none !important; }
-html { scroll-padding-top: 80px; }
+/* Sticky header height plus breathing room, so anchors never land under it */
+html { scroll-padding-top: 100px; }
 body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); line-height: 1.5; }
 a { color: inherit; }
 img { max-width: 100%; display: block; }

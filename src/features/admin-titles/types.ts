@@ -35,7 +35,7 @@ export type TitleUnit = {
   short: string;
   group_name: string | null;
   position: number;
-  units: { label: string; file_path: string | null; file_format: string | null } | null;
+  units: { label: string; file_path: string | null; file_format: string | null; file_size: number | null } | null;
 };
 
 /** Consecutive units that share a group name. */

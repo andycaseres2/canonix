@@ -3,7 +3,7 @@ import { POST as uploads } from '../pages/api/admin/uploads';
 import { POST as episodes } from '../pages/api/admin/episodes';
 import type { MockDb, Row } from '../test/mock/db';
 import { ADMIN, as, fixture } from '../test/mock/fixture';
-import { detectNumber, unitLabel } from './uploads';
+import { detectNumber, unitFileMeta, unitLabel } from './uploads';
 
 const ORIGIN = 'http://x';
 
@@ -38,6 +38,19 @@ describe('detectNumber', () => {
     ['2.cbz', 2],
   ])('%s -> %s', (name, n) => {
     expect(detectNumber(name)).toBe(n);
+  });
+});
+
+describe('unitFileMeta', () => {
+  it('shows the format and size of a unit file', () => {
+    expect(unitFileMeta({ file_path: 'ff/00001.cbz', file_format: 'cbz', file_size: 33_554_432 })).toBe('CBZ · 32.0 MB');
+    expect(unitFileMeta({ file_path: 'ff/00002.pdf', file_format: 'pdf', file_size: 512_000 })).toBe('PDF · 500 KB');
+    expect(unitFileMeta({ file_path: 'ff/00003.cbz', file_format: 'cbz', file_size: null })).toBe('CBZ');
+  });
+
+  it('says when a unit has no file', () => {
+    expect(unitFileMeta({ file_path: null, file_format: null, file_size: null })).toBe('Sin archivo');
+    expect(unitFileMeta(null)).toBe('Sin archivo');
   });
 });
 

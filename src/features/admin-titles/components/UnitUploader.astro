@@ -35,8 +35,8 @@ const word = kind === 'anime' ? 'episodio' : 'número';
 </div>
 
 <script>
-  import { appDialog, formatBytes, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
-  import { UNIT_FORMATS, detectNumber, extensionOf, formatList } from '../../../lib/uploads';
+  import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
+  import { UNIT_FORMATS, detectNumber, extensionOf, formatBytes, formatList } from '../../../lib/uploads';
 
   type Kind = 'comic' | 'anime';
   type Item = { file: File; number: number | null; status: 'pending' | 'uploading' | 'done' | 'error'; progress: number; message: string };
@@ -157,7 +157,7 @@ const word = kind === 'anime' ? 'episodio' : 'número';
 
   startBtn?.addEventListener('click', async () => {
     const { done, failed } = await api.uploadAll(box.dataset.mediaId!);
-    if (!failed) return reloadWith('ok', `Se subieron ${done} archivo${done === 1 ? '' : 's'}.`, '#subir');
+    if (!failed) return reloadWith('ok', `Se subieron ${done} archivo${done === 1 ? '' : 's'}.`, '#units-head');
     await appDialog().alert({ title: 'Algunos archivos fallaron', message: `Se subieron ${done}. Fallaron ${failed}: revisa el motivo en la lista y vuelve a intentarlo.` });
   });
   clearBtn.addEventListener('click', () => { items = []; render(); });

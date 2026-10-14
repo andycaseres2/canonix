@@ -12,7 +12,7 @@ const { supabase } = Astro.locals;
 const { data } = await supabase.from('media').select('*').eq('id', Astro.params.id!).maybeSingle();
 if (!data) return Astro.redirect('/admin/media?error=' + encodeURIComponent('Título no encontrado'));
 const m = data as TitleRecord;
-const { data: muData } = await supabase.from('media_units').select('unit_id, short, group_name, position, units(label, file_path, file_format)').eq('media_id', m.id).order('position');
+const { data: muData } = await supabase.from('media_units').select('unit_id, short, group_name, position, units(label, file_path, file_format, file_size)').eq('media_id', m.id).order('position');
 // The units join is to-one at runtime, though the generated types infer an array
 const mu = (muData ?? []) as unknown as TitleUnit[];
 // Consecutive units with the same group name form one group

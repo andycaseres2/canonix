@@ -33,9 +33,6 @@ export function putFile(target: UploadTarget, file: File, onProgress: (fraction:
   });
 }
 
-export const formatBytes = (n: number) =>
-  n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : n < 1024 ** 3 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`;
-
 /** Reloads the page showing a flash message, like the form endpoints do. */
 export function reloadWith(kind: 'ok' | 'error', message: string, hash = '') {
   const u = new URL(location.href);

@@ -1,0 +1,20 @@
+---
+// One unit of a title: number, full name, file format and size, and a remove (×) form.
+import { unitFileMeta } from '../../../lib/uploads';
+import type { TitleUnit } from '../types';
+interface Props { mediaId: string; unit: TitleUnit }
+const { mediaId, unit: u } = Astro.props;
+const label = u.units?.label ?? u.short;
+const hasFile = Boolean(u.units?.file_path);
+---
+<li class={`unit-card${hasFile ? ' has-file' : ''}`}>
+  <span class="unit-num">{u.short}</span>
+  <span class="unit-info">
+    <b class="unit-name" title={label}>{label}</b>
+    <small class={hasFile ? 'muted' : 'error-text'}>{unitFileMeta(u.units)}</small>
+  </span>
+  <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units" data-confirm="Se quita de este título. El archivo no se borra." data-confirm-title={`¿Quitar ${label}?`} data-confirm-label="Quitar" data-confirm-danger>
+    <input type="hidden" name="action" value="remove" /><input type="hidden" name="media_id" value={mediaId} /><input type="hidden" name="unit_id" value={u.unit_id} />
+    <button class="unit-remove" type="submit" aria-label={`Quitar ${label}`}>×</button>
+  </form>
+</li>
