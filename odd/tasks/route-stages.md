@@ -18,7 +18,7 @@ Branch: `feat/route-stages` (stacked on `feat/uploads-and-dialogs`) · Delivery:
 | T1 | S2, S4 | inline | done | b54de78 |
 | T2 | S1, S3 | inline | done | 4c072df |
 | T3 | S2 | inline | done | 4c072df |
-| T4 | S5 | inline | pending | |
+| T4 | S5 | inline | done | 2af6b3c |
 
 T1: schema + migration + mock + data layer + public page. T2: route endpoints (create/update with derived universe/kind). T3: admin route editor (stages and items).
 Route evidence: no Writer trigger (sequential units sharing schema and endpoints); parent writes inline.
