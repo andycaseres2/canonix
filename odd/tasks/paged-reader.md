@@ -17,7 +17,7 @@ Branch: `feat/paged-reader` (stacked on `feat/reader`) · Delivery: work-unit co
 |----|-------|-------|--------|--------|
 | T1 | S2, S4 | inline | done | 3bbf365 |
 | T2 | S2, S4, S5 | inline | done | 55e16c4 |
-| T3 | S2, S5 | inline | pending | |
+| T3 | S2, S5 | inline | done | 927ed05 |
 | T4 | S1, S2, S3, S4 | inline | pending | |
 | T5 | all | delegated verifier | pending | |
 
@@ -33,3 +33,4 @@ Route evidence: no Writer trigger (sequential units sharing schema, endpoints an
 - L5 (2026-10-14, user, verbatim): "necesito que esto funcione de verdad de forma profesional porfavor tu sabes como hacerlo de forma profesional entonces dale"
 - L6: T1 evidence: RED (2 mock tests) then GREEN; own check caught that the folder path itself matched file_path, tightened to single-file units only. PG17 (01+03 re-applied over existing data): anon none; free user reads only listed pages of the free paged unit (not extra.jpg, not the folder key); premium also reads the premium paged unit; admin everything. vitest 127/127.
 - L7: T2 evidence: 12 RED endpoint tests then GREEN (sign pages into folder; reject anime, empty, >2000, non-image, path-like name, >50 MB, duplicate; register only when all pages exist; missing page → "Faltan 1 página…" with no unit created; foreign folder refused; single→pages→pages→single replacement deletes previous storage; remove_file deletes every page). Existing single-file tests unchanged and passing. vitest 140/140, astro check 0 errors.
+- L8: T3 evidence: numberPages RED then GREEN (order, lower-case extension, 4-digit padding past 999). Headless Chrome harness: user's real FF 003 CBR → 25 pages 001–025.jpg image/jpeg 29.1 MB in 467 ms; CBZ → 25 pages in 157 ms; RAR renamed .cbz → 25 pages via fallback; non-comic file → "El archivo no tiene imágenes."; no console errors. Old cbr.ts (CBR→CBZ) removed. vitest 142/142, astro check 0 errors. Not verified: the PUT of pages to real Supabase Storage.
