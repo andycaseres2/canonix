@@ -1,0 +1,208 @@
+---
+import Layout from '../../../layouts/Layout.astro';
+import AdminNav from '../../../components/AdminNav.astro';
+import UnitUploader from '../../../components/UnitUploader.astro';
+---
+<Layout title="Nuevo cómic o anime · Admin">
+  <p><a href="/admin/media">← Catálogo</a></p>
+  <h1>Nuevo cómic o anime</h1>
+  <AdminNav />
+
+  <form id="create" class="create-flow" novalidate>
+    <section class="create-step">
+      <h2><span class="step-n">1</span> Tipo y nombre</h2>
+      <div class="panel stack">
+        <fieldset class="kind-pick">
+          <legend class="sr-only">Tipo</legend>
+          <label><input type="radio" name="kind" value="comic" checked /> <span>Cómic o manga</span></label>
+          <label><input type="radio" name="kind" value="anime" /> <span>Anime</span></label>
+        </fieldset>
+        <label class="field">Nombre<input name="title" maxlength="200" required placeholder="Ej: Batman: Year One, Naruto" autocomplete="off" /></label>
+        <div class="row">
+          <label class="field">Universo <small>marvel, dc, manga, anime…</small><input name="universe" maxlength="40" /></label>
+          <label class="field">Año <small>2000 o 2000–2009</small><input name="year_label" maxlength="20" /></label>
+        </div>
+        <label class="field">Créditos <small>autor, estudio</small><input name="credits" maxlength="200" /></label>
+        <label class="field">Descripción<textarea name="description" maxlength="4000"></textarea></label>
+        <details>
+          <summary class="details-sum">Más datos (dónde leerlo o verlo)</summary>
+          <div class="stack" style="margin-top:12px">
+            <label class="field">Cómo buscarlo <small>nombre exacto en la plataforma</small><input name="search_hint" maxlength="200" /></label>
+            <div class="row">
+              <label class="field">Dónde leer/ver<input name="where_label" maxlength="80" placeholder="Marvel Unlimited, Crunchyroll…" /></label>
+              <label class="field">Link oficial<input name="where_url" type="url" placeholder="https://" /></label>
+            </div>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section class="create-step">
+      <h2><span class="step-n">2</span> Portada <small class="muted">opcional</small></h2>
+      <div class="panel cover-editor">
+        <div class="cover-preview" id="new-cover-preview"><span class="muted">Sin portada</span></div>
+        <div class="stack">
+          <label class="btn file-pick">
+            Elegir imagen
+            <input id="new-cover" type="file" accept="image/*" />
+          </label>
+          <small class="muted">JPG, PNG o WEBP de hasta 5 MB. Mejor en vertical (2:3).</small>
+          <button class="btn small" type="button" id="new-cover-clear" hidden>Quitar imagen</button>
+        </div>
+      </div>
+    </section>
+  </form>
+
+  <section class="create-step">
+    <h2><span class="step-n">3</span> <span class="unit-title">Números</span> <small class="muted">opcional, puedes subirlos después</small></h2>
+    <UnitUploader kind="comic" />
+  </section>
+
+  <div class="create-bar">
+    <p id="create-summary" class="muted"></p>
+    <button class="btn primary" type="submit" form="create" id="create-go">Crear cómic</button>
+  </div>
+
+  <dialog id="create-progress" class="app-dialog" aria-labelledby="create-progress-title">
+    <div class="app-dialog-body">
+      <h2 id="create-progress-title" class="app-dialog-title">Creando…</h2>
+      <ol id="create-steps" class="create-steps"></ol>
+      <p class="muted" id="create-note">No cierres esta página hasta que termine.</p>
+    </div>
+  </dialog>
+</Layout>
+
+<script>
+  import { appDialog, postJson, putFile, type UploadTarget } from '../../../scripts/admin-upload';
+
+  type Queue = {
+    ready(): boolean; hasProblems(): boolean; count(): number;
+    setKind(k: 'comic' | 'anime'): void; series: HTMLInputElement;
+    uploadAll(mediaId: string): Promise<{ done: number; failed: number }>;
+  };
+
+  const form = document.getElementById('create') as HTMLFormElement;
+  const uploader = document.getElementById('subir') as HTMLElement & { unitQueue: Queue };
+  const queue = uploader.unitQueue;
+  const titleInput = form.elements.namedItem('title') as HTMLInputElement;
+  const coverInput = document.getElementById('new-cover') as HTMLInputElement;
+  const coverPreview = document.getElementById('new-cover-preview')!;
+  const coverClear = document.getElementById('new-cover-clear')!;
+  const summary = document.getElementById('create-summary')!;
+  const go = document.getElementById('create-go') as HTMLButtonElement;
+  const progress = document.getElementById('create-progress') as HTMLDialogElement;
+  const stepsList = document.getElementById('create-steps')!;
+  let cover: File | null = null;
+  let seriesTouched = false;
+
+  const kind = () => (form.elements.namedItem('kind') as RadioNodeList).value as 'comic' | 'anime';
+  const kindWord = () => (kind() === 'anime' ? 'anime' : 'cómic');
+
+  function refresh() {
+    const n = queue.count();
+    const units = kind() === 'anime' ? 'episodio' : 'número';
+    go.textContent = `Crear ${kindWord()}`;
+    document.querySelector('.unit-title')!.textContent = kind() === 'anime' ? 'Episodios' : 'Números';
+    const parts = [titleInput.value.trim() ? `«${titleInput.value.trim()}»` : 'Falta el nombre'];
+    parts.push(cover ? 'con portada' : 'sin portada');
+    parts.push(n ? `${n} ${units}${n === 1 ? '' : 's'}` : `sin ${units}s por ahora`);
+    summary.textContent = parts.join(' · ');
+  }
+
+  form.addEventListener('change', (e) => {
+    if ((e.target as HTMLInputElement).name === 'kind') queue.setKind(kind());
+    refresh();
+  });
+  titleInput.addEventListener('input', () => {
+    if (!seriesTouched) queue.series.value = titleInput.value; // the series follows the name until edited
+    refresh();
+  });
+  queue.series.addEventListener('input', () => { seriesTouched = true; });
+  uploader.addEventListener('queuechange', refresh);
+
+  coverInput.addEventListener('change', async () => {
+    const file = coverInput.files?.[0];
+    coverInput.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return appDialog().alert({ title: 'No es una imagen', message: 'La portada debe ser JPG, PNG, WEBP u otra imagen.' });
+    if (file.size > 5 * 1024 * 1024) return appDialog().alert({ title: 'Imagen muy pesada', message: 'La portada pesa más de 5 MB.' });
+    cover = file;
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.alt = 'Vista previa de la portada';
+    coverPreview.replaceChildren(img);
+    coverClear.hidden = false;
+    refresh();
+  });
+  coverClear.addEventListener('click', () => {
+    cover = null;
+    const empty = document.createElement('span'); empty.className = 'muted'; empty.textContent = 'Sin portada';
+    coverPreview.replaceChildren(empty);
+    coverClear.hidden = true;
+    refresh();
+  });
+
+  function step(text: string) {
+    const li = document.createElement('li');
+    li.textContent = text;
+    li.dataset.state = 'running';
+    stepsList.append(li);
+    return (state: 'done' | 'error', note = '') => { li.dataset.state = state; if (note) li.textContent = `${text}: ${note}`; };
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!titleInput.value.trim()) {
+      await appDialog().alert({ title: 'Falta el nombre', message: `Ponle un nombre al ${kindWord()} antes de crearlo.` });
+      return titleInput.focus();
+    }
+    if (queue.hasProblems()) {
+      return appDialog().alert({ title: 'Revisa los archivos', message: 'Hay archivos con formato no válido, sin número o con números repetidos. Corrígelos o quítalos de la lista.' });
+    }
+    const data = Object.fromEntries(new FormData(form));
+    go.disabled = true;
+    stepsList.replaceChildren();
+    progress.showModal();
+    progress.addEventListener('cancel', (ev) => ev.preventDefault()); // keep it open while working
+
+    const created = step(`Crear «${String(data.title).trim()}»`);
+    let media: { id: string; slug: string };
+    try {
+      media = await postJson('/api/admin/titles', data);
+      created('done');
+    } catch (err) {
+      created('error', (err as Error).message);
+      go.disabled = false;
+      progress.close();
+      return appDialog().alert({ title: 'No se pudo crear', message: (err as Error).message });
+    }
+
+    const problems: string[] = [];
+    if (cover) {
+      const s = step('Subir la portada');
+      try {
+        const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'cover', media_id: media.id, filename: cover.name, content_type: cover.type, size: cover.size });
+        await putFile(target, cover, () => {});
+        await postJson('/api/admin/covers', { action: 'complete', media_id: media.id, path: target.path });
+        s('done');
+      } catch (err) {
+        s('error', (err as Error).message);
+        problems.push('la portada');
+      }
+    }
+    const n = queue.count();
+    if (n) {
+      const s = step(`Subir ${n} archivo${n === 1 ? '' : 's'}`);
+      const { failed } = await queue.uploadAll(media.id);
+      s(failed ? 'error' : 'done', failed ? `fallaron ${failed}` : '');
+      if (failed) problems.push(`${failed} archivo${failed === 1 ? '' : 's'}`);
+    }
+
+    const to = new URL(`/admin/media/${media.id}`, location.origin);
+    if (problems.length) to.searchParams.set('error', `Se creó el ${kindWord()}, pero falló la subida de ${problems.join(' y ')}. Vuelve a intentarlo desde aquí.`);
+    else to.searchParams.set('ok', `${kindWord()[0].toUpperCase()}${kindWord().slice(1)} creado${n || cover ? ' con todo subido' : ''}.`);
+    location.assign(to.toString());
+  });
+
+  refresh();
+</script>

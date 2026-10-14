@@ -89,7 +89,7 @@ const sections = [...new Set((items ?? []).map((i: any) => i.section).filter(Boo
         sec.addEventListener('input', () => sessionStorage.setItem('add-section', sec.value));
         if (location.hash === '#agregar') q.focus();
       </script>
-      <p class="muted">¿No está el título? <a href="/admin/media#nuevo">Créalo en el catálogo</a>.</p>
+      <p class="muted">¿No está el título? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>
     </section>
 
     <section>

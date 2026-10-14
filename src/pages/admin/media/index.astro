@@ -26,29 +26,11 @@ const { data: media } = await supabase.from('media').select('id, slug, kind, uni
       </table></div>
     </section>
     <section id="nuevo">
-      <h2 style="margin-top:0">Agregar título</h2>
-      <form class="panel stack" method="post" action="/api/admin/media">
-        <input type="hidden" name="action" value="create" />
-        <label class="field">Título<input name="title" required /></label>
-        <div class="row">
-          <label class="field">Tipo<select name="kind"><option value="comic">Cómic</option><option value="anime">Anime</option></select></label>
-          <label class="field">Universo <small>marvel, dc, anime…</small><input name="universe" required /></label>
-        </div>
-        <div class="row">
-          <label class="field">Año <small>2000 o 2000–2009</small><input name="year_label" /></label>
-          <label class="field">Créditos <small>autor, estudio</small><input name="credits" /></label>
-        </div>
-        <label class="field">Cómo buscarlo <small>nombre exacto en la plataforma</small><input name="search_hint" /></label>
-        <div class="row">
-          <label class="field">Dónde leer/ver<input name="where_label" placeholder="Marvel Unlimited, Crunchyroll…" /></label>
-          <label class="field">Link oficial<input name="where_url" type="url" placeholder="https://" /></label>
-        </div>
-        <label class="field">Descripción<textarea name="description"></textarea></label>
-        <div class="form-actions">
-          <span class="hint">Después agregas sus números o episodios.</span>
-          <button class="btn primary" type="submit">Crear título</button>
-        </div>
-      </form>
+      <h2 style="margin-top:0">Nuevo cómic o anime</h2>
+      <div class="panel stack">
+        <p style="margin:0">Crea el cómic, manga o anime en una sola pantalla: nombre y datos, portada y sus números o episodios.</p>
+        <a class="btn primary" href="/admin/media/nuevo">Nuevo cómic o anime</a>
+      </div>
     </section>
   </div>
   <script>
