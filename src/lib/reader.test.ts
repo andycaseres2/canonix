@@ -50,6 +50,33 @@ describe('getReader', () => {
   });
 });
 
+describe('getReader (paged comics)', () => {
+  const paged = () => {
+    const db = withFiles();
+    Object.assign(db.tables.units.find((u) => u.id === 'u1')!, { file_path: 'asm/00001-1/', pages: ['001.jpg', '002.png'], file_format: 'cbr' });
+    Object.assign(db.tables.units.find((u) => u.id === 'u4')!, { file_path: 'naruto/00001-1/', pages: ['001.jpg'], file_format: 'cbz' });
+    return db;
+  };
+
+  it('signs every page, in order, for a reader of a free title', async () => {
+    const r = await read(paged(), READER, 'asm', '1');
+    expect(r).toMatchObject({ state: 'ready', url: null, next: { short: '2' } });
+    expect(r!.pages).toHaveLength(2);
+    expect(r!.pages![0]).toMatch(/\/object\/sign\/content\/asm\/00001-1\/001\.jpg\?token=/);
+    expect(r!.pages![1]).toMatch(/\/object\/sign\/content\/asm\/00001-1\/002\.png\?token=/);
+  });
+
+  it('gives no pages to a free user on a premium title, nor to anonymous visitors', async () => {
+    expect(await read(paged(), READER, 'naruto', '1')).toMatchObject({ state: 'locked', pages: null });
+    expect(await read(paged(), null, 'asm', '1')).toMatchObject({ state: 'login', pages: null });
+    expect((await read(paged(), PREMIUM, 'naruto', '1'))!.pages).toHaveLength(1);
+  });
+
+  it('keeps single-file units working with a signed url and no pages', async () => {
+    expect(await read(paged(), READER, 'asm', '2')).toMatchObject({ state: 'ready', format: 'pdf', pages: null });
+  });
+});
+
 describe('getTitleUnits', () => {
   it('lists a title\'s units in order with their file format and size', async () => {
     const units = await getTitleUnits(as(withFiles(), READER), 'm1');

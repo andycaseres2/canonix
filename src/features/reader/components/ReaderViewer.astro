@@ -1,18 +1,19 @@
 ---
-// In-app viewer: comic pages (CBZ or PDF) one at a time with keyboard, tap and fit controls, or a video player for episodes.
-interface Props { url: string; format: string; storageKey: string; nextHref: string | null; nextLabel: string | null }
-const { url, format, storageKey, nextHref, nextLabel } = Astro.props;
+// In-app viewer: comic pages one at a time with keyboard, tap and fit controls, or a video player for episodes.
+// Comics stored by pages load only the pages being read; PDFs load by ranges; older single CBZ files are downloaded whole.
+interface Props { url: string | null; pages: string[] | null; format: string; storageKey: string; nextHref: string | null; nextLabel: string | null }
+const { url, pages, format, storageKey, nextHref, nextLabel } = Astro.props;
 const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
 ---
 {isVideo ? (
   <div class="reader-video">
-    <video controls playsinline preload="metadata" src={url}></video>
+    <video controls playsinline preload="metadata" src={url ?? undefined}></video>
     {format === 'mkv' && <p class="muted">Si no se reproduce, tu navegador no soporta MKV. Prueba con Chrome.</p>}
   </div>
 ) : (
-  <section class="viewer" id="viewer" data-url={url} data-format={format} data-key={storageKey} data-fit="height" aria-label="Lector">
+  <section class="viewer" id="viewer" data-url={url ?? undefined} data-pages={pages ? JSON.stringify(pages) : undefined} data-format={format} data-key={storageKey} data-fit="height" aria-label="Lector">
     <div class="viewer-status" id="viewer-status" role="status">
-      <p id="viewer-status-text">Descargando…</p>
+      <p id="viewer-status-text">Cargando…</p>
       <div class="progress"><span id="viewer-progress"></span></div>
     </div>
     <div class="viewer-stage" id="viewer-stage" hidden>
@@ -37,9 +38,6 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
 
   /** A comic opened in memory: how many pages it has and how to draw one. */
   type Book = { count: number; draw(index: number, width: number): Promise<HTMLElement> };
-
-  const viewer = document.getElementById('viewer');
-  if (viewer) open(viewer);
 
   const store = {
     get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -89,10 +87,38 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     };
   }
 
-  async function openPdf(bytes: Uint8Array): Promise<Book> {
+  /** Pages stored as images: each one is fetched when shown, the next two are preloaded, far ones are let go. */
+  function openPaged(urls: string[]): Book {
+    const loaded = new Map<number, HTMLImageElement>();
+    const load = (i: number) => {
+      if (!loaded.has(i)) {
+        const img = new Image();
+        img.decoding = 'async';
+        img.src = urls[i];
+        loaded.set(i, img);
+      }
+      return loaded.get(i)!;
+    };
+    return {
+      count: urls.length,
+      async draw(i) {
+        const img = load(i);
+        await img.decode().catch(() => { if (!img.naturalWidth) throw new Error('page'); });
+        [i + 1, i + 2].filter((j) => j < urls.length).forEach(load);
+        // Keep decoded images only around the current page; the browser cache still has the bytes
+        for (const j of loaded.keys()) if (j < i - 2 || j > i + 3) loaded.delete(j);
+        return img;
+      },
+    };
+  }
+
+  /** PDFs load by HTTP ranges: pdf.js asks only for the parts of the file the shown pages need. */
+  async function openPdf(url: string, onProgress: (got: number, total: number) => void): Promise<Book> {
     const pdfjs = await import('pdfjs-dist');
     pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-    const doc = await pdfjs.getDocument({ data: bytes }).promise;
+    const task = pdfjs.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 1 << 20 });
+    task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => onProgress(loaded, total);
+    const doc = await task.promise;
     return {
       count: doc.numPages,
       async draw(i, width) {
@@ -118,16 +144,22 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     const nextLink = document.getElementById('viewer-next');
     const { url, format, key } = root.dataset as { url: string; format: string; key: string };
     const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
+    const progress = (verb: string) => (got: number, total: number) => {
+      statusText.textContent = total ? `${verb} ${mb(got)} de ${mb(total)} MB…` : `${verb} ${mb(got)} MB…`;
+      if (total) bar.style.width = `${Math.round((got / total) * 100)}%`;
+    };
 
     let book: Book;
     try {
-      if (format === 'cbr') throw new Error('Este número está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
-      const bytes = await download(url, (got, total) => {
-        statusText.textContent = total ? `Descargando ${mb(got)} de ${mb(total)} MB…` : `Descargando ${mb(got)} MB…`;
-        if (total) bar.style.width = `${Math.round((got / total) * 100)}%`;
-      });
-      statusText.textContent = 'Abriendo…';
-      book = format === 'pdf' ? await openPdf(bytes) : await openCbz(bytes);
+      if (root.dataset.pages) book = openPaged(JSON.parse(root.dataset.pages) as string[]);
+      else if (format === 'pdf') book = await openPdf(url, progress('Cargando'));
+      else if (format === 'cbr') throw new Error('Este número está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
+      else {
+        // Older issues stored as one CBZ: the whole archive is needed before any page
+        const bytes = await download(url, progress('Descargando'));
+        statusText.textContent = 'Abriendo…';
+        book = await openCbz(bytes);
+      }
       if (!book.count) throw new Error('El archivo no tiene páginas.');
     } catch (e) {
       statusText.textContent = e instanceof Error && e.message ? e.message : 'No pudimos abrir el archivo.';
@@ -185,4 +217,8 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
 
     await show(page);
   }
+
+  // Last, so every helper above is initialized: paged comics open without awaiting anything first
+  const viewer = document.getElementById('viewer');
+  if (viewer) open(viewer);
 </script>

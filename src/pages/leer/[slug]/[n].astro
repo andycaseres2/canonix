@@ -17,6 +17,6 @@ const nextHref = r.next ? `/leer/${r.media.slug}/${encodeURIComponent(r.next.sho
 <Layout title={`${r.unit.label} · Leer`}>
   <ReaderBar slug={r.media.slug} title={r.media.title} unit={r.unit} prev={r.prev} next={r.next} done={!!progress} canMark={r.state === 'ready'} />
   {r.state === 'ready'
-    ? <ReaderViewer url={r.url!} format={r.format ?? ''} storageKey={`reader-page:${r.unit.id}`} nextHref={nextHref} nextLabel={r.next?.label ?? null} />
+    ? <ReaderViewer url={r.url} pages={r.pages} format={r.format ?? ''} storageKey={`reader-page:${r.unit.id}`} nextHref={nextHref} nextLabel={r.next?.label ?? null} />
     : <ReaderNotice state={r.state} slug={r.media.slug} />}
 </Layout>
