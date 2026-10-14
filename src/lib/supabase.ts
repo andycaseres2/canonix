@@ -4,8 +4,7 @@ import type { AstroCookies } from 'astro';
 import { USE_MOCK } from './config';
 import { createMockClient, createMockServiceClient } from './mock/client';
 import { getDemoDb } from './mock/seed';
-
-const MOCK_SESSION_COOKIE = 'rutas-mock-session';
+import { MOCK_SESSION_COOKIE } from './session';
 
 export function createSupabase(request: Request, cookies: AstroCookies): SupabaseClient {
   if (USE_MOCK) {

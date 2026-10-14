@@ -1,10 +1,13 @@
 import { defineMiddleware } from 'astro:middleware';
 import { createSupabase } from './lib/supabase';
+import { hasSessionCookie } from './lib/session';
 import type { Profile } from './lib/types';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const supabase = createSupabase(context.request, context.cookies);
-  const { data: { user } } = await supabase.auth.getUser();
+  const user = hasSessionCookie(context.request.headers.get('Cookie'))
+    ? (await supabase.auth.getUser()).data.user
+    : null;
   let profile: Profile | null = null;
   if (user) {
     const { data } = await supabase.from('profiles').select('*').eq('id', user.id).maybeSingle();
