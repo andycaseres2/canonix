@@ -19,7 +19,8 @@ describe('POST /api/admin/units', () => {
   it.each<Record<string, string>>([
     { action: 'add_range', prefix: 'FF', from: '2', to: '3', format: 'issue' },
     { action: 'add_one', label: 'Spider-Man Annual #1', short: 'A1' },
-  ])('no longer creates units without a file ($action)', async (fields) => {
+    { action: 'clear' },
+  ])('ignores the removed action $action', async (fields) => {
     const before = fixture();
     const { db, ok, error } = await post({ media_id: 'm1', ...fields });
     expect({ ok, error }).toEqual({ ok: null, error: null });
@@ -32,11 +33,5 @@ describe('POST /api/admin/units', () => {
     const { db } = await post({ media_id: 'm1', action: 'remove', unit_id: unit.unit_id });
     expect(db.tables.media_units.some((r) => r.media_id === 'm1' && r.unit_id === unit.unit_id)).toBe(false);
     expect(db.tables.units.some((u) => u.id === unit.unit_id)).toBe(true);
-  });
-
-  it('clear unlinks every unit from the title', async () => {
-    const { db, ok } = await post({ media_id: 'm1', action: 'clear' });
-    expect(ok).toBe('Se quitaron todos.');
-    expect(db.tables.media_units.some((r) => r.media_id === 'm1')).toBe(false);
   });
 });
