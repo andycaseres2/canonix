@@ -75,6 +75,10 @@ create table if not exists public.units (
   id uuid primary key default gen_random_uuid(),
   label text unique not null
 );
+-- Archivo del número o episodio en Storage (bucket "content"), si ya se subió
+alter table public.units add column if not exists file_path text;
+alter table public.units add column if not exists file_format text;
+alter table public.units add column if not exists file_size bigint;
 
 create table if not exists public.media_units (
   media_id uuid not null references public.media(id) on delete cascade,

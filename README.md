@@ -49,6 +49,7 @@ El CI (`.github/workflows/ci.yml`) corre ambos en cada push a `main` y en cada P
 2. En **SQL Editor**, ejecuta en orden:
    - `supabase/01_schema.sql` (tablas, seguridad y funciones)
    - `supabase/02_seed_marvel.sql` (la ruta Marvel)
+   - `supabase/03_storage.sql` (buckets para portadas y archivos, y quién puede subir)
 3. **Variables de entorno:** copia `.env.example` a `.env` y llena los datos desde *Project Settings → API*.
 4. **Corre el proyecto:**
    ```bash

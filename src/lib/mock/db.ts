@@ -49,7 +49,7 @@ const DEFAULTS: Record<TableName, () => Row> = {
     id: uuid(), universe: null, credits: null, year_label: null, year_start: null, description: null, search_hint: null,
     cover_url: null, where_label: null, where_url: null, created_at: now(),
   }),
-  units: () => ({ id: uuid() }),
+  units: () => ({ id: uuid(), file_path: null, file_format: null, file_size: null }),
   media_units: () => ({ group_name: null }),
   routes: () => ({ id: uuid(), kind: 'comic', description: null, published: false, requires_plan: 'free', position: 0, created_at: now() }),
   route_items: () => ({ id: uuid(), section: null, note: null }),
@@ -57,10 +57,13 @@ const DEFAULTS: Record<TableName, () => Row> = {
   user_routes: () => ({ started_at: now() }),
 };
 
+import { MockStorage } from './storage';
+
 export class MockError extends Error {}
 
 export class MockDb {
   users: MockUser[] = [];
+  storage = new MockStorage();
   tables: Record<TableName, Row[]> = {
     profiles: [], media: [], units: [], media_units: [], routes: [], route_items: [], progress: [], user_routes: [],
   };

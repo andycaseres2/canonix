@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { MockDb, MockError, Policies, type MockUser, type TableName } from './db';
 import { Query } from './query';
+import { BUCKETS, objectUrl, type BucketName } from './storage';
 
 /** Where the mock keeps the signed-in user id (a cookie in the app, memory in tests). */
 export type SessionStore = { get(): string | null; set(userId: string): void; clear(): void };
@@ -34,8 +35,32 @@ export function createMockClient(db: MockDb, session: SessionStore) {
   };
   const rls = () => new Policies(db, currentUser()?.id ?? null);
 
+  const denied = { message: 'new row violates row-level security policy for table "objects"' };
+  const storage = {
+    from: (bucket: BucketName) => {
+      if (!BUCKETS[bucket]) throw new Error(`Bucket ${bucket} not found`);
+      return {
+        async createSignedUploadUrl(path: string) {
+          if (!rls().isAdmin) return { data: null, error: denied };
+          const token = db.storage.issueUploadToken(bucket, path);
+          return { data: { signedUrl: `/api/mock-storage/upload?token=${token}`, token, path }, error: null };
+        },
+        getPublicUrl: (path: string) => ({ data: { publicUrl: objectUrl(bucket, path) } }),
+        async createSignedUrl(path: string, seconds: number) {
+          if (!rls().isAdmin) return { data: null, error: denied };
+          return { data: { signedUrl: `${objectUrl(bucket, path)}&token=${db.storage.issueReadToken(bucket, path, seconds)}` }, error: null };
+        },
+        async remove(paths: string[]) {
+          if (!rls().isAdmin) return { data: [], error: null };
+          return { data: db.storage.remove(bucket, paths).map((name) => ({ name })), error: null };
+        },
+      };
+    },
+  };
+
   return {
     from: (table: TableName) => new Query(db, table, rls()),
+    storage,
 
     async rpc(name: string) {
       if (name === 'route_unit_map') return { data: routeUnitMap(db, rls()), error: null };
