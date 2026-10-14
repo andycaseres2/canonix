@@ -25,12 +25,17 @@ describe('getRouteUnitMap', () => {
     expect(calls.length).toBeLessThanOrEqual(2);
   });
 
-  it('returns title counts and unit ids for published routes, premium ones included', async () => {
+  it('returns title counts for every published route but hides premium unit ids from free users', async () => {
     const { sb } = spy(as(fixture(), READER));
     const map = await getRouteUnitMap(sb);
     expect(map.map((r) => r.route.slug)).toEqual(['free', 'paid']);
     expect(map[0]).toMatchObject({ count: 2 });
     expect([...map[0].unitIds].sort()).toEqual(['u1', 'u2', 'u3']);
+    expect(map[1]).toMatchObject({ count: 1, unitCount: 1, unitIds: [] });
+  });
+
+  it('gives premium users the unit ids of premium routes', async () => {
+    const map = await getRouteUnitMap(as(fixture(), PREMIUM));
     expect(map[1]).toMatchObject({ count: 1, unitIds: ['u4'] });
   });
 });

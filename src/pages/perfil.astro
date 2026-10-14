@@ -20,14 +20,14 @@ const thisWeek = (recent ?? []).filter((r: any) => new Date(r.completed_at).getT
 
   <h2>Rutas</h2>
   <div class="grid">
-    {routes.map(({ route, unitIds }) => {
+    {routes.map(({ route, unitIds, unitCount }) => {
       const d = unitIds.filter((id) => done.has(id)).length;
       const pct = unitIds.length ? Math.round((d / unitIds.length) * 100) : 0;
       return (
         <a class="card" href={`/rutas/${route.slug}`}>
           <span class="t">{route.name}</span>
           <div class="bar"><span style={`width:${pct}%`}></span></div>
-          <span><b>{pct}%</b> <span class="muted">· {d} de {unitIds.length}</span></span>
+          <span><b>{pct}%</b> <span class="muted">· {d} de {unitCount}</span></span>
         </a>
       );
     })}

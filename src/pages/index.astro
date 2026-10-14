@@ -20,7 +20,7 @@ const { count: animes } = await supabase.from('media').select('id', { count: 'ex
   <h2>Rutas</h2>
   {routes.length === 0 && <p class="muted">Todavía no hay rutas publicadas.</p>}
   <div class="grid">
-    {routes.map(({ route, unitIds, count }) => {
+    {routes.map(({ route, unitIds, count, unitCount }) => {
       const d = unitIds.filter((id) => done.has(id)).length;
       const pct = unitIds.length ? Math.round((d / unitIds.length) * 100) : 0;
       return (
@@ -28,7 +28,7 @@ const { count: animes } = await supabase.from('media').select('id', { count: 'ex
           <span><span class={`badge ${route.kind === 'anime' ? 'anime' : 'comic'}`}>{route.universe}</span></span>
           <span class="t">{route.name}</span>
           <span class="muted">{route.description}</span>
-          <span class="muted">{count} títulos · {unitIds.length} {route.kind === 'anime' ? 'episodios' : 'números'}</span>
+          <span class="muted">{count} títulos · {unitCount} {route.kind === 'anime' ? 'episodios' : 'números'}</span>
           {user && <><div class="bar"><span style={`width:${pct}%`}></span></div><b>{pct}% completado</b></>}
         </a>
       );

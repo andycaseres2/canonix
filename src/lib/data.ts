@@ -92,11 +92,12 @@ export async function getRouteUnitMap(sb: SupabaseClient) {
   const byRoute = new Map(((map ?? []) as RouteUnitRow[]).map((r) => [r.route_id, r]));
   return (routes ?? []).map((route) => {
     const row = byRoute.get(route.id);
-    return { route, unitIds: row?.unit_ids ?? [], count: Number(row?.item_count ?? 0) };
+    return { route, unitIds: row?.unit_ids ?? [], count: Number(row?.item_count ?? 0), unitCount: Number(row?.unit_count ?? 0) };
   });
 }
 
-type RouteUnitRow = { route_id: string; item_count: number; unit_ids: string[] };
+/** unit_ids is empty for routes the viewer cannot read; unit_count is always the real total. */
+type RouteUnitRow = { route_id: string; item_count: number; unit_count: number; unit_ids: string[] };
 
 export function slugify(s: string) {
   return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');

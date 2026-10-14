@@ -16,10 +16,13 @@ export const yearStart = (label: string | null) => {
 };
 /**
  * Unit labels are global: two titles with the same label share progress.
- * A label like "5", "E1" or "#12" would silently merge unrelated titles.
+ * A label like "5", "E1", "#12" or "Vol 1" would silently merge unrelated titles.
  */
+const NUMBER_ONLY = /^[#\s\d.,\-–]+$/;
+const GENERIC_WORD_AND_NUMBER = /^(vol|volumen|volume|cap|capitulo|capítulo|chapter|ch|ep|episodio|episode|issue|numero|número|no|n|parte|part|tomo)\.?\s*#?\s*\d+$/i;
+
 export const isGenericLabel = (label: string) => {
   const v = label.trim();
   const letters = v.match(/\p{L}/gu)?.length ?? 0;
-  return letters < 3 && v.length < 6;
+  return NUMBER_ONLY.test(v) || GENERIC_WORD_AND_NUMBER.test(v) || (letters < 3 && v.length < 6);
 };

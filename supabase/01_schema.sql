@@ -180,17 +180,22 @@ create policy progress_delete on public.progress for delete using (user_id = aut
 
 -- ---------- Resumen de rutas publicadas ----------
 -- Títulos e ids de números por ruta en una sola llamada (evita una consulta por ruta).
--- Es security definer para dar el conteo de las rutas premium sin exponer sus ítems.
-create or replace function public.route_unit_map()
-returns table (route_id uuid, item_count bigint, unit_ids uuid[])
+-- Es security definer para dar el conteo de las rutas premium; los ids de sus números
+-- solo salen si el usuario puede leer la ruta (si no, revelarían qué títulos tiene).
+drop function if exists public.route_unit_map();
+create function public.route_unit_map()
+returns table (route_id uuid, item_count bigint, unit_count bigint, unit_ids uuid[])
 language sql stable security definer set search_path = public as $$
   select r.id,
     (select count(*) from public.route_items ri where ri.route_id = r.id),
-    coalesce((
+    (select count(distinct mu.unit_id)
+      from public.route_items ri join public.media_units mu on mu.media_id = ri.media_id
+      where ri.route_id = r.id),
+    case when public.can_read_route(r.id) then coalesce((
       select array_agg(distinct mu.unit_id)
       from public.route_items ri join public.media_units mu on mu.media_id = ri.media_id
       where ri.route_id = r.id
-    ), '{}')
+    ), '{}') else '{}'::uuid[] end
   from public.routes r
   where r.published;
 $$;
