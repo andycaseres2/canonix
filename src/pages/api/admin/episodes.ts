@@ -33,7 +33,8 @@ async function attach(sb: SupabaseClient, media: Media, number: number, body: an
     });
     if (linkError) return jsonError(500, linkError.message);
   }
-  if (previous.file_path && previous.file_path !== stored.file_path) await removeStored(sb, previous);
+  // The new file is in place; failing to delete the old one must not fail the upload
+  if (previous.file_path && previous.file_path !== stored.file_path) await removeStored(sb, previous).catch((e) => console.error('[episodes] old files left in storage', previous.file_path, e));
   return Response.json({ ok: true, unit_id: unit!.id, label });
 }
 
@@ -52,7 +53,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     if (!unit) return jsonError(404, 'Número no encontrado.');
     const { error } = await sb.from('units').update({ file_path: null, file_format: null, file_size: null, pages: null }).eq('id', unit.id);
     if (error) return jsonError(500, error.message);
-    await removeStored(sb, unit);
+    await removeStored(sb, unit).catch((e) => console.error('[episodes.remove_file] files left in storage', unit.file_path, e));
     return Response.json({ ok: true });
   }
   if (action !== 'complete') return jsonError(400, 'Acción desconocida.');

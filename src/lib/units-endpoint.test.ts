@@ -65,6 +65,14 @@ describe('POST /api/admin/units', () => {
     expect(db.storage.read('content', 'ff/00001-1.cbz')).not.toBeNull();
   });
 
+  it.each([['', 'Número inválido.'], ['not-a-uuid', 'Ese número no está en este título.']])('remove with unit id %j answers %j and touches nothing', async (unit_id, message) => {
+    const db = fixture();
+    const before = [db.tables.media_units.length, db.tables.units.length];
+    const { error } = await post({ media_id: 'm1', action: 'remove', unit_id }, db);
+    expect(error).toBe(message);
+    expect([db.tables.media_units.length, db.tables.units.length]).toEqual(before);
+  });
+
   it('remove ignores a unit that is not in the title', async () => {
     const db = fixture();
     const { error } = await post({ media_id: 'm1', action: 'remove', unit_id: 'u3' }, db);

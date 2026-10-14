@@ -16,16 +16,27 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   if (action === 'remove') {
     const unitId = str(f, 'unit_id', 40);
-    const { data: unlinked, error } = await sb.from('media_units').delete().eq('media_id', mediaId).eq('unit_id', unitId!).select('unit_id');
-    if (error) return redirect(back(to, { error: error.message }));
-    if (!unlinked?.length) return redirect(back(to, { error: 'Ese número no está en este título.' }));
+    if (!unitId) return redirect(back(to, { error: 'Número inválido.' }));
+    const { data: unlinked, error } = await sb.from('media_units').delete().eq('media_id', mediaId).eq('unit_id', unitId).select('unit_id');
+    // A malformed id makes Postgres fail the uuid cast: same answer as a unit that is not here
+    if (error || !unlinked?.length) return redirect(back(to, { error: 'Ese número no está en este título.' }));
 
-    const { count } = await sb.from('media_units').select('unit_id', { count: 'exact', head: true }).eq('unit_id', unitId!);
-    if (count) return redirect(back(to, { ok: 'Se quitó de este título. Sigue en otros títulos con su archivo.' }));
+    // Deleting the unit would also cascade away its links to other titles: only when the count is certain to be 0
+    const { count, error: countError } = await sb.from('media_units').select('unit_id', { count: 'exact', head: true }).eq('unit_id', unitId);
+    if (countError || count === null) return redirect(back(to, { error: 'Se quitó de este título, pero no se pudo comprobar si está en otros: el número y su archivo se conservan.' }));
+    if (count > 0) return redirect(back(to, { ok: 'Se quitó de este título. Sigue en otros títulos con su archivo.' }));
 
     // Database first: if deleting the files then fails, nothing points at them and the unit is already gone
-    const { data: unit } = await sb.from('units').delete().eq('id', unitId!).select('file_path, pages').maybeSingle();
-    if (unit) await removeStored(sb, unit);
+    const { data: unit, error: deleteError } = await sb.from('units').delete().eq('id', unitId).select('file_path, pages').maybeSingle();
+    if (deleteError) return redirect(back(to, { error: `Se quitó de este título, pero no se pudo borrar el número: ${deleteError.message}` }));
+    if (unit) {
+      try {
+        await removeStored(sb, unit);
+      } catch (e) {
+        console.error('[units.remove] files left in storage', unit.file_path, e);
+        return redirect(back(to, { ok: 'Número borrado. Algunos archivos no se pudieron borrar del almacenamiento.' }));
+      }
+    }
     return redirect(back(to, { ok: 'Número borrado.' }));
   }
   return redirect(to);
