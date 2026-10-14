@@ -80,6 +80,77 @@ const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
 
     <section>
       <div class="section-head">
+        <h2>Portada</h2>
+      </div>
+      <div class="panel cover-editor" id="portada" data-media-id={m.id}>
+        <div class="cover-preview">
+          {m.cover_url ? <img src={m.cover_url} alt={`Portada de ${m.title}`} /> : <span class="muted">Sin portada</span>}
+        </div>
+        <div class="stack">
+          <label class="btn primary file-pick">
+            {m.cover_url ? 'Cambiar portada' : 'Subir portada'}
+            <input id="cover-file" type="file" accept="image/*" />
+          </label>
+          <div class="progress" id="cover-progress" hidden><span></span></div>
+          <small class="muted">JPG, PNG o WEBP de hasta 5 MB. Mejor en vertical (2:3).</small>
+          <details class="cover-link">
+            <summary>O usa un link a una imagen</summary>
+            <form id="cover-link-form" class="row" style="margin-top:8px">
+              <input name="url" type="url" placeholder="https://" required aria-label="Link de la portada" />
+              <button class="btn small" type="submit">Usar link</button>
+            </form>
+          </details>
+          {m.cover_url && <button class="btn small danger" type="button" id="cover-remove">Quitar portada</button>}
+        </div>
+      </div>
+      <script>
+        import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../../../scripts/admin-upload';
+        const box = document.getElementById('portada')!;
+        const mediaId = box.dataset.mediaId!;
+        const input = document.getElementById('cover-file') as HTMLInputElement;
+        const progress = document.getElementById('cover-progress')!;
+        const bar = progress.querySelector('span')!;
+        const fail = (e: unknown) => appDialog().alert({ title: 'No se pudo', message: (e as Error).message });
+
+        input.addEventListener('change', async () => {
+          const file = input.files?.[0];
+          input.value = '';
+          if (!file) return;
+          if (!file.type.startsWith('image/')) return fail(new Error('La portada debe ser una imagen (JPG, PNG, WEBP…).'));
+          if (file.size > 5 * 1024 * 1024) return fail(new Error('La portada pesa más de 5 MB.'));
+          progress.hidden = false;
+          bar.style.width = '0%';
+          try {
+            const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'cover', media_id: mediaId, filename: file.name, content_type: file.type, size: file.size });
+            await putFile(target, file, (f) => { bar.style.width = `${Math.round(f * 100)}%`; });
+            await postJson('/api/admin/covers', { action: 'complete', media_id: mediaId, path: target.path });
+            reloadWith('ok', 'Portada actualizada.', '#portada');
+          } catch (e) {
+            progress.hidden = true;
+            fail(e);
+          }
+        });
+
+        document.getElementById('cover-link-form')!.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          const url = new FormData(e.target as HTMLFormElement).get('url');
+          try {
+            await postJson('/api/admin/covers', { action: 'link', media_id: mediaId, url });
+            reloadWith('ok', 'Portada actualizada.', '#portada');
+          } catch (err) { fail(err); }
+        });
+
+        document.getElementById('cover-remove')?.addEventListener('click', async () => {
+          const yes = await appDialog().confirm({ title: '¿Quitar portada?', message: 'El título se queda sin imagen. Puedes subir otra cuando quieras.', confirmLabel: 'Quitar portada', danger: true });
+          if (!yes) return;
+          try {
+            await postJson('/api/admin/covers', { action: 'remove', media_id: mediaId });
+            reloadWith('ok', 'Portada quitada.', '#portada');
+          } catch (err) { fail(err); }
+        });
+      </script>
+
+      <div class="section-head">
         <h2>Datos</h2>
         <a class="btn small" href={`/catalogo/${m.slug}`}>Ver página pública ↗</a>
       </div>
@@ -100,7 +171,6 @@ const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
           <label class="field">Dónde leer/ver<input name="where_label" value={m.where_label ?? ''} /></label>
           <label class="field">Link oficial<input name="where_url" type="url" value={m.where_url ?? ''} /></label>
         </div>
-        <label class="field">Portada <small>link a imagen, opcional</small><input name="cover_url" type="url" value={m.cover_url ?? ''} /></label>
         <label class="field">Descripción<textarea name="description">{m.description ?? ''}</textarea></label>
         <div class="form-actions">
           <button class="btn primary" type="submit">Guardar cambios</button>

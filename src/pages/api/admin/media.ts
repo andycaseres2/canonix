@@ -1,6 +1,7 @@
 import type { APIRoute } from 'astro';
 import { back, slugify } from '../../../lib/data';
 import { str, url, yearStart } from '../../../lib/form';
+import { coverStoragePath } from '../../../lib/uploads';
 
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const sb = locals.supabase;
@@ -13,7 +14,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return {
       title: str(f, 'title', 200)!, kind, universe: str(f, 'universe', 40)?.toLowerCase() ?? null,
       credits: str(f, 'credits', 200), year_label, year_start: yearStart(year_label), description: str(f, 'description', 4000),
-      search_hint: str(f, 'search_hint', 200), where_label: str(f, 'where_label', 80), where_url: url(f, 'where_url'), cover_url: url(f, 'cover_url'),
+      search_hint: str(f, 'search_hint', 200), where_label: str(f, 'where_label', 80), where_url: url(f, 'where_url'),
     };
   };
 
@@ -38,7 +39,10 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     return redirect(back(`/admin/media/${id}`, error ? { error: error.message } : { ok: 'Guardado.' }));
   }
   if (action === 'delete') {
+    const { data: m } = await sb.from('media').select('cover_url').eq('id', id).maybeSingle();
     const { error } = await sb.from('media').delete().eq('id', id);
+    const cover = coverStoragePath(m?.cover_url ?? null);
+    if (!error && cover) await sb.storage.from('covers').remove([cover]);
     return redirect(back(error ? `/admin/media/${id}` : '/admin/media', error ? { error: error.message } : { ok: 'Título borrado.' }));
   }
   return redirect('/admin/media');

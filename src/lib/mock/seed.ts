@@ -113,11 +113,13 @@ export function seedDemoDb() {
 }
 
 /** Bump when the mock tables change, so a running dev server reseeds instead of using a stale shape. */
-const SEED_VERSION = 2;
+const SEED_VERSION = 3;
 
 /** One database per server process; survives Astro dev reloads, resets on restart. */
 export function getDemoDb(): MockDb {
   const g = globalThis as typeof globalThis & { __rutasMockDb?: { version: number; db: MockDb } };
-  if (g.__rutasMockDb?.version !== SEED_VERSION) g.__rutasMockDb = { version: SEED_VERSION, db: seedDemoDb() };
+  // Reseed when the seed changed or db.ts was hot-reloaded (a new MockDb class means a possibly new shape)
+  const cached = g.__rutasMockDb;
+  if (cached?.version !== SEED_VERSION || !(cached.db instanceof MockDb)) g.__rutasMockDb = { version: SEED_VERSION, db: seedDemoDb() };
   return g.__rutasMockDb.db;
 }

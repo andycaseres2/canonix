@@ -11,10 +11,15 @@ const { data: inRoutes } = await supabase.from('route_items').select('routes(slu
 const routes = (inRoutes ?? []).map((r: any) => r.routes).filter((r: any) => r?.published);
 ---
 <Layout title={m.title} description={m.description ?? undefined}>
-  <p><span class={`badge ${m.kind}`}>{m.kind === 'anime' ? 'Anime' : 'Cómic'}</span> <span class="muted">{m.universe}</span></p>
-  <h1>{m.title}</h1>
-  <p class="lead">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</p>
-  {m.description && <p style="max-width:65ch">{m.description}</p>}
-  {routes.length > 0 && <p class="muted">Está en: {routes.map((r: any, i: number) => <>{i > 0 && ', '}<a href={`/rutas/${r.slug}`}>{r.name}</a></>)}</p>}
+  <div class={`title-head${m.cover_url ? ' with-cover' : ''}`}>
+    {m.cover_url && <img class="title-cover" src={m.cover_url} alt={`Portada de ${m.title}`} />}
+    <div>
+      <p><span class={`badge ${m.kind}`}>{m.kind === 'anime' ? 'Anime' : 'Cómic'}</span> <span class="muted">{m.universe}</span></p>
+      <h1>{m.title}</h1>
+      <p class="lead">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</p>
+      {m.description && <p style="max-width:65ch">{m.description}</p>}
+      {routes.length > 0 && <p class="muted">Está en: {routes.map((r: any, i: number) => <>{i > 0 && ', '}<a href={`/rutas/${r.slug}`}>{r.name}</a></>)}</p>}
+    </div>
+  </div>
   <Tracker items={[item]} done={[...done]} logged={!!user} openFirst showHero={false} />
 </Layout>

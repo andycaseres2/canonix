@@ -50,6 +50,10 @@ export function createMockClient(db: MockDb, session: SessionStore) {
           if (!rls().isAdmin) return { data: null, error: denied };
           return { data: { signedUrl: `${objectUrl(bucket, path)}&token=${db.storage.issueReadToken(bucket, path, seconds)}` }, error: null };
         },
+        async list(dir: string, opts: { search?: string; limit?: number } = {}) {
+          if (!rls().isAdmin) return { data: [], error: null };
+          return { data: db.storage.list(bucket, dir, opts.search ?? '', opts.limit ?? 100), error: null };
+        },
         async remove(paths: string[]) {
           if (!rls().isAdmin) return { data: [], error: null };
           return { data: db.storage.remove(bucket, paths).map((name) => ({ name })), error: null };

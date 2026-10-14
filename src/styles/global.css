@@ -158,3 +158,20 @@ td select { padding-right: 32px; background-position: right 9px center; min-widt
 .route-start { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: -8px 0 24px; }
 .route-start form { margin: 0; }
 .route-started { margin: 0; }
+
+/* Covers */
+.cover-editor { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: start; margin-bottom: 24px; }
+.cover-preview { aspect-ratio: 2 / 3; border: 2px solid var(--line); background: var(--paper); background-image: radial-gradient(var(--dot) 1px, transparent 1.2px); background-size: 8px 8px; display: grid; place-items: center; overflow: hidden; text-align: center; font-size: .85rem; }
+.cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.cover-link summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
+.file-pick { position: relative; overflow: hidden; cursor: pointer; }
+.file-pick input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; min-height: 0; }
+.file-pick:focus-within { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.progress { height: 12px; border: 2px solid var(--line); background: var(--paper); }
+.progress > span { display: block; height: 100%; width: 0; background: var(--red); transition: width .15s; }
+.card.with-cover { display: grid; grid-template-columns: 76px 1fr; gap: 14px; align-items: start; }
+.card-thumb { width: 76px; aspect-ratio: 2 / 3; object-fit: cover; border: 2px solid var(--line); background: var(--paper); }
+.card-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.title-head { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 640px) { .title-head.with-cover { grid-template-columns: 180px 1fr; } }
+.title-cover { width: 100%; max-width: 180px; aspect-ratio: 2 / 3; object-fit: cover; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }

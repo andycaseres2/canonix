@@ -4,7 +4,7 @@
  */
 
 export type BucketName = 'covers' | 'content';
-type StoredFile = { bytes: Uint8Array; contentType: string; size: number };
+type StoredFile = { bytes: Uint8Array<ArrayBuffer>; contentType: string; size: number };
 type Token = { bucket: BucketName; path: string; expires: number };
 
 export const BUCKETS: Record<BucketName, { public: boolean; maxBytes: number | null; mime: RegExp | null }> = {
@@ -31,7 +31,7 @@ export class MockStorage {
   }
 
   /** Stores the body for a signed upload. Returns an error message, or null on success. */
-  acceptUpload(token: string, bytes: Uint8Array, contentType: string): string | null {
+  acceptUpload(token: string, bytes: Uint8Array<ArrayBuffer>, contentType: string): string | null {
     const t = this.uploadTokens.get(token);
     if (!t) return 'Invalid upload token';
     this.uploadTokens.delete(token); // single use
@@ -57,6 +57,16 @@ export class MockStorage {
 
   read(bucket: string, path: string) {
     return this.files.get(this.key(bucket, path)) ?? null;
+  }
+
+  /** Files directly inside a folder whose name contains `search`, like Storage's list(). */
+  list(bucket: string, dir: string, search: string, limit: number) {
+    const prefix = `${bucket}/${dir ? `${dir}/` : ''}`;
+    return [...this.files.entries()]
+      .map(([key, f]) => ({ name: key.slice(prefix.length), f, key }))
+      .filter(({ key, name }) => key.startsWith(prefix) && !name.includes('/') && name.includes(search))
+      .slice(0, limit)
+      .map(({ name, f }) => ({ name, metadata: { size: f.size, mimetype: f.contentType } }));
   }
 
   remove(bucket: string, paths: string[]) {

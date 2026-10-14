@@ -2,7 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 const { supabase } = Astro.locals;
 const tipo = Astro.url.searchParams.get('tipo');
-let q = supabase.from('media').select('slug, kind, universe, title, credits, year_label, year_start, media_units(count)').order('year_start', { ascending: true }).order('title');
+let q = supabase.from('media').select('slug, kind, universe, title, credits, year_label, year_start, cover_url, media_units(count)').order('year_start', { ascending: true }).order('title');
 if (tipo === 'comic' || tipo === 'anime') q = q.eq('kind', tipo);
 const { data: media } = await q;
 const tabs = [['', 'Todo'], ['comic', 'Cómics'], ['anime', 'Anime']];
@@ -16,11 +16,14 @@ const tabs = [['', 'Todo'], ['comic', 'Cómics'], ['anime', 'Anime']];
   <label class="field" style="max-width:420px;margin-bottom:20px">Buscar<input id="q" type="search" placeholder="Spider-Man, Naruto, X-Men…" autocomplete="off" /></label>
   <div class="grid" id="list">
     {(media ?? []).map((m: any) => (
-      <a class="card" href={`/catalogo/${m.slug}`} data-s={`${m.title} ${m.credits ?? ''} ${m.universe ?? ''}`.toLowerCase()}>
-        <span><span class={`badge ${m.kind}`}>{m.kind === 'anime' ? 'Anime' : 'Cómic'}</span> <span class="muted">{m.universe}</span></span>
-        <span class="t">{m.title}</span>
-        <span class="muted">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</span>
-        <span class="muted">{m.media_units?.[0]?.count ?? 0} {m.kind === 'anime' ? 'episodios' : 'números'}</span>
+      <a class={`card${m.cover_url ? ' with-cover' : ''}`} href={`/catalogo/${m.slug}`} data-s={`${m.title} ${m.credits ?? ''} ${m.universe ?? ''}`.toLowerCase()}>
+        {m.cover_url && <img class="card-thumb" src={m.cover_url} alt="" loading="lazy" />}
+        <span class="card-body">
+          <span><span class={`badge ${m.kind}`}>{m.kind === 'anime' ? 'Anime' : 'Cómic'}</span> <span class="muted">{m.universe}</span></span>
+          <span class="t">{m.title}</span>
+          <span class="muted">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</span>
+          <span class="muted">{m.media_units?.[0]?.count ?? 0} {m.kind === 'anime' ? 'episodios' : 'números'}</span>
+        </span>
       </a>
     ))}
   </div>
