@@ -14,7 +14,7 @@ Branch: `feat/smooth-ui` (stacked on `feat/route-stages`) · Delivery: ask-on-ri
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
 | T1 | S1 | inline | done | f5fbf97 |
-| T2 | S2, S3 | inline | pending | |
+| T2 | S2, S3 | inline | done | 00ca11d |
 
 Route evidence: no Writer trigger; parent writes inline.
 
