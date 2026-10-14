@@ -25,8 +25,8 @@ describe('mock query builder', () => {
 
   it('embeds forward relations, aliased fk columns, reverse arrays and counts', async () => {
     const sb = as(fixture(), null);
-    const { data: items } = await sb.from('route_items').select('section, media:media_id(slug, media_units(short, units(label)))').eq('route_id', 'r1').order('position');
-    expect(items![0]).toEqual({ section: 'A', media: { slug: 'ff', media_units: [{ short: '1', units: { label: 'FF #1' } }] } });
+    const { data: items } = await sb.from('route_items').select('route_sections(title), media:media_id(slug, media_units(short, units(label)))').eq('route_id', 'r1').order('position');
+    expect(items![0]).toEqual({ route_sections: { title: 'A' }, media: { slug: 'ff', media_units: [{ short: '1', units: { label: 'FF #1' } }] } });
     const { data: media } = await sb.from('media').select('slug, media_units(count)').eq('slug', 'asm').single();
     expect(media).toEqual({ slug: 'asm', media_units: [{ count: 2 }] });
   });
@@ -80,7 +80,8 @@ describe('mock row level security', () => {
 
   it('free route items stay public and draft route items stay admin only', async () => {
     const db = fixture();
-    db.tables.route_items.push({ id: 'i4', route_id: 'r2', media_id: 'm1', section: null, position: 1 });
+    db.tables.route_sections.push({ id: 's2', route_id: 'r2', title: 'B', description: null, position: 1 });
+    db.tables.route_items.push({ id: 'i4', route_id: 'r2', section_id: 's2', media_id: 'm1', position: 1 });
     expect((await as(db, null).from('route_items').select('id').eq('route_id', 'r1')).data).toHaveLength(2);
     expect((await as(db, READER).from('route_items').select('id').eq('route_id', 'r2')).data).toEqual([]);
     expect((await as(db, ADMIN).from('route_items').select('id').eq('route_id', 'r2')).data).toEqual([{ id: 'i4' }]);

@@ -90,8 +90,16 @@ export function seedDemoDb() {
   for (const { items, ...r } of [...marvel.routes, ...EXTRA_ROUTES]) {
     const route = db.withDefaults('routes', r);
     t.routes.push(route);
-    for (const [slug, section, position] of items) {
-      t.route_items.push(db.withDefaults('route_items', { route_id: route.id, media_id: mediaIds.get(slug), section, position }));
+    // One stage per distinct section, in order of first appearance
+    const stages = new Map<string, string>();
+    for (const [slug, section, position] of [...items].sort((a, b) => a[2] - b[2])) {
+      const title = section ?? 'General';
+      if (!stages.has(title)) {
+        const stage = db.withDefaults('route_sections', { route_id: route.id, title, position: stages.size + 1 });
+        t.route_sections.push(stage);
+        stages.set(title, stage.id);
+      }
+      t.route_items.push(db.withDefaults('route_items', { route_id: route.id, section_id: stages.get(title), media_id: mediaIds.get(slug), position }));
     }
   }
 
@@ -113,7 +121,7 @@ export function seedDemoDb() {
 }
 
 /** Bump when the mock tables change, so a running dev server reseeds instead of using a stale shape. */
-const SEED_VERSION = 3;
+const SEED_VERSION = 4;
 
 /** One database per server process; survives Astro dev reloads, resets on restart. */
 export function getDemoDb(): MockDb {

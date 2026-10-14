@@ -5,7 +5,7 @@
  */
 
 export type Row = Record<string, any>;
-export type TableName = 'profiles' | 'media' | 'units' | 'media_units' | 'routes' | 'route_items' | 'progress' | 'user_routes';
+export type TableName = 'profiles' | 'media' | 'units' | 'media_units' | 'routes' | 'route_sections' | 'route_items' | 'progress' | 'user_routes';
 export type MockUser = {
   id: string;
   email: string;
@@ -21,7 +21,9 @@ export const FOREIGN_KEYS: ForeignKey[] = [
   { table: 'profiles', column: 'id', ref: 'users' },
   { table: 'media_units', column: 'media_id', ref: 'media' },
   { table: 'media_units', column: 'unit_id', ref: 'units' },
+  { table: 'route_sections', column: 'route_id', ref: 'routes' },
   { table: 'route_items', column: 'route_id', ref: 'routes' },
+  { table: 'route_items', column: 'section_id', ref: 'route_sections' },
   { table: 'route_items', column: 'media_id', ref: 'media' },
   { table: 'progress', column: 'user_id', ref: 'users' },
   { table: 'progress', column: 'unit_id', ref: 'units' },
@@ -35,6 +37,7 @@ const UNIQUE_KEYS: Record<TableName, string[][]> = {
   units: [['id'], ['label']],
   media_units: [['media_id', 'unit_id']],
   routes: [['id'], ['slug']],
+  route_sections: [['id']],
   route_items: [['id'], ['route_id', 'media_id']],
   progress: [['user_id', 'unit_id']],
   user_routes: [['user_id', 'route_id']],
@@ -52,7 +55,8 @@ const DEFAULTS: Record<TableName, () => Row> = {
   units: () => ({ id: uuid(), file_path: null, file_format: null, file_size: null }),
   media_units: () => ({ group_name: null }),
   routes: () => ({ id: uuid(), kind: 'comic', description: null, published: false, requires_plan: 'free', position: 0, created_at: now() }),
-  route_items: () => ({ id: uuid(), section: null, note: null }),
+  route_sections: () => ({ id: uuid(), description: null }),
+  route_items: () => ({ id: uuid(), note: null }),
   progress: () => ({ completed_at: now() }),
   user_routes: () => ({ started_at: now() }),
 };
@@ -65,7 +69,7 @@ export class MockDb {
   users: MockUser[] = [];
   storage = new MockStorage();
   tables: Record<TableName, Row[]> = {
-    profiles: [], media: [], units: [], media_units: [], routes: [], route_items: [], progress: [], user_routes: [],
+    profiles: [], media: [], units: [], media_units: [], routes: [], route_sections: [], route_items: [], progress: [], user_routes: [],
   };
 
   /** Creates an auth user plus its profile, like the on_auth_user_created trigger. */
@@ -138,6 +142,7 @@ export class Policies {
       case 'routes': return row.published === true || this.isAdmin;
       case 'progress':
       case 'user_routes': return row.user_id === this.uid || this.isAdmin;
+      case 'route_sections':
       case 'route_items': return this.canReadRoute(row.route_id);
       default: return true;
     }

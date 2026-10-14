@@ -104,16 +104,45 @@ create table if not exists public.routes (
   created_at timestamptz not null default now()
 );
 
+-- Etapas de una ruta ("Años 60", "Extra: Spider-Man"...), con título y descripción
+create table if not exists public.route_sections (
+  id uuid primary key default gen_random_uuid(),
+  route_id uuid not null references public.routes(id) on delete cascade,
+  title text not null,
+  description text,
+  position int not null
+);
+create index if not exists route_sections_pos on public.route_sections(route_id, position);
+
 create table if not exists public.route_items (
   id uuid primary key default gen_random_uuid(),
   route_id uuid not null references public.routes(id) on delete cascade,
+  section_id uuid references public.route_sections(id) on delete cascade,
   media_id uuid not null references public.media(id) on delete cascade,
-  section text,                  -- "Años 60", "Extra: Spider-Man"...
   note text,
-  position int not null,
+  position int not null,       -- orden dentro de la ruta; se lee por etapa y luego por posición
   unique (route_id, media_id)
 );
 create index if not exists route_items_pos on public.route_items(route_id, position);
+
+-- Migración: antes la etapa era un texto en cada ítem (columna "section").
+-- Crea una etapa por cada texto distinto, en el orden en que aparecían, y luego quita la columna.
+alter table public.route_items add column if not exists section_id uuid references public.route_sections(id) on delete cascade;
+do $$
+begin
+  if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'route_items' and column_name = 'section') then
+    insert into public.route_sections (route_id, title, position)
+      select route_id, coalesce(section, 'General'), row_number() over (partition by route_id order by min(position))
+      from public.route_items
+      group by route_id, coalesce(section, 'General');
+    update public.route_items ri set section_id = rs.id
+      from public.route_sections rs
+      where rs.route_id = ri.route_id and rs.title = coalesce(ri.section, 'General') and ri.section_id is null;
+    alter table public.route_items drop column section;
+  end if;
+end $$;
+alter table public.route_items alter column section_id set not null;
+create index if not exists route_items_section on public.route_items(section_id, position);
 
 -- ---------- Progreso por usuario ----------
 create table if not exists public.progress (
@@ -138,6 +167,7 @@ alter table public.media enable row level security;
 alter table public.units enable row level security;
 alter table public.media_units enable row level security;
 alter table public.routes enable row level security;
+alter table public.route_sections enable row level security;
 alter table public.route_items enable row level security;
 alter table public.progress enable row level security;
 alter table public.user_routes enable row level security;
@@ -182,6 +212,12 @@ drop policy if exists route_items_read on public.route_items;
 create policy route_items_read on public.route_items for select using (public.can_read_route(route_id));
 drop policy if exists route_items_admin on public.route_items;
 create policy route_items_admin on public.route_items for all using (public.is_admin()) with check (public.is_admin());
+
+-- Etapas: mismo candado que los ítems
+drop policy if exists route_sections_read on public.route_sections;
+create policy route_sections_read on public.route_sections for select using (public.can_read_route(route_id));
+drop policy if exists route_sections_admin on public.route_sections;
+create policy route_sections_admin on public.route_sections for all using (public.is_admin()) with check (public.is_admin());
 
 -- Progreso: cada quien el suyo; el admin puede leer todo (para estadísticas)
 drop policy if exists progress_select on public.progress;

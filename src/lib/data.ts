@@ -10,13 +10,16 @@ type MediaRow = {
   media_units: { short: string; group_name: string | null; position: number; unit_id: string; units: { label: string } | null }[];
 };
 
-export function toTrackerItem(m: MediaRow, section: string | null = null): TrackerItem {
+type Stage = { id: string; title: string; description: string | null };
+
+export function toTrackerItem(m: MediaRow, stage: Stage | null = null): TrackerItem {
   const units = [...(m.media_units ?? [])]
     .sort((a, b) => a.position - b.position)
     .map((u) => ({ id: u.unit_id, label: u.units?.label ?? u.short, short: u.short, group: u.group_name }));
   return {
     slug: m.slug, kind: m.kind, title: m.title, credits: m.credits, year: m.year_label, hint: m.search_hint,
-    whereLabel: m.where_label, whereUrl: m.where_url, section, units,
+    whereLabel: m.where_label, whereUrl: m.where_url, units,
+    sectionId: stage?.id ?? null, section: stage?.title ?? null, sectionDescription: stage?.description ?? null,
   };
 }
 
@@ -60,15 +63,18 @@ export async function getRoute(sb: SupabaseClient, slug: string, viewer: Viewer)
   const { data: route } = await sb.from('routes').select('*').eq('slug', slug).maybeSingle();
   if (!route) return null;
   if (isLocked(route, viewer)) return { route, items: [] as TrackerItem[], locked: true };
-  const { data: rows, error } = await sb
-    .from('route_items')
-    .select(`section, position, media:media_id(${MEDIA_FIELDS})`)
-    .eq('route_id', route.id)
-    .order('position');
-  if (error) throw error;
-  const items = (rows ?? [])
-    .filter((r: any) => r.media)
-    .map((r: any) => toTrackerItem(r.media as MediaRow, r.section));
+  const [stages, rows] = await Promise.all([
+    sb.from('route_sections').select('id, title, description, position').eq('route_id', route.id).order('position'),
+    sb.from('route_items').select(`section_id, position, media:media_id(${MEDIA_FIELDS})`).eq('route_id', route.id).order('position'),
+  ]);
+  if (stages.error) throw stages.error;
+  if (rows.error) throw rows.error;
+  // Stage order first, then the item's position inside the route
+  const stageIndex = new Map((stages.data ?? []).map((s, i) => [s.id as string, { i, stage: s as Stage }]));
+  const items = (rows.data ?? [])
+    .filter((r: any) => r.media && stageIndex.has(r.section_id))
+    .sort((a: any, b: any) => stageIndex.get(a.section_id)!.i - stageIndex.get(b.section_id)!.i || a.position - b.position)
+    .map((r: any) => toTrackerItem(r.media as MediaRow, stageIndex.get(r.section_id)!.stage));
   return { route, items, locked: false };
 }
 

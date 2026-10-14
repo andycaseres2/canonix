@@ -18,6 +18,9 @@ export type TrackerItem = {
   hint: string | null;
   whereLabel: string | null;
   whereUrl: string | null;
+  /** Stage of the route the item belongs to (null outside a route) */
+  sectionId: string | null;
   section: string | null;
+  sectionDescription: string | null;
   units: TrackerUnit[];
 };

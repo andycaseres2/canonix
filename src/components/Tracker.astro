@@ -37,6 +37,7 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
 .tracker .chip.on { background: var(--red); border-color: var(--red); color: #fff; }
 .tracker .chip.wide.on::after { content: "  \2713"; }
 .tracker .chip:disabled { cursor: not-allowed; }
+.tracker .section-desc { margin: -4px 0 14px; color: var(--muted); max-width: 65ch; white-space: pre-line; }
 .tracker .section { font-family: var(--font-display); font-size: 1.8rem; margin: 30px 0 10px; padding-bottom: 4px; border-bottom: 4px solid var(--line); }
 .tracker .login-note { border: 2px dashed var(--line); padding: 12px 14px; margin-bottom: 18px; font-weight: 700; }
 .tracker .saving { font-size: .85rem; color: var(--muted); min-height: 1.3em; text-align: center; margin-top: 12px; }
@@ -44,7 +45,7 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
 
 <script>
   type Unit = { id: string; label: string; short: string; group: string | null };
-  type Item = { slug: string; title: string; credits: string | null; year: string | null; hint: string | null; whereLabel: string | null; whereUrl: string | null; section: string | null; units: Unit[] };
+  type Item = { slug: string; title: string; credits: string | null; year: string | null; hint: string | null; whereLabel: string | null; whereUrl: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
 
   const root = document.getElementById('tracker')!;
   const data = JSON.parse(document.getElementById('tracker-data')!.textContent || '{}') as {
@@ -129,7 +130,12 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
     }
     let sec: string | null | undefined, n = 0, openOl = false;
     items.forEach((it) => {
-      if (it.section !== sec) { if (openOl) h += '</ol>'; if (it.section) h += `<h2 class="section">${esc(it.section)}</h2>`; h += '<ol>'; openOl = true; sec = it.section; }
+      if (it.sectionId !== sec) {
+        if (openOl) h += '</ol>';
+        if (it.section) h += `<h2 class="section">${esc(it.section)}</h2>`;
+        if (it.sectionDescription) h += `<p class="section-desc">${esc(it.sectionDescription)}</p>`;
+        h += '<ol>'; openOl = true; sec = it.sectionId;
+      }
       if (!openOl) { h += '<ol>'; openOl = true; }
       n++; h += row(n, it);
     });

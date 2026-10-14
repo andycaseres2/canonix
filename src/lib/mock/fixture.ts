@@ -34,10 +34,14 @@ export function fixture() {
     { id: 'r2', slug: 'draft', name: 'Draft', universe: 'dc', published: false, requires_plan: 'free', position: 2 },
     { id: 'r3', slug: 'paid', name: 'Paid', universe: 'anime', published: true, requires_plan: 'premium', position: 3 },
   );
+  t.route_sections.push(
+    { id: 's1', route_id: 'r1', title: 'A', description: 'Primera etapa', position: 1 },
+    { id: 's3', route_id: 'r3', title: 'Naruto', description: null, position: 1 },
+  );
   t.route_items.push(
-    { id: 'i1', route_id: 'r1', media_id: 'm2', section: 'A', position: 1 },
-    { id: 'i2', route_id: 'r1', media_id: 'm1', section: 'A', position: 2 },
-    { id: 'i3', route_id: 'r3', media_id: 'm3', section: null, position: 1 },
+    { id: 'i1', route_id: 'r1', section_id: 's1', media_id: 'm2', position: 1 },
+    { id: 'i2', route_id: 'r1', section_id: 's1', media_id: 'm1', position: 2 },
+    { id: 'i3', route_id: 'r3', section_id: 's3', media_id: 'm3', position: 1 },
   );
   return db;
 }
