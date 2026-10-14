@@ -37,7 +37,7 @@ Branch: `refactor/components` (stacked on `feat/smooth-ui`) · Delivery: ask-on-
 |----|-------|-------|--------|--------|
 | T1 | S1–S3 | delegated (foundation: ui/, shell/, AdminNav, Layout, styles split) | done | 75a100d |
 | T2 | S1–S3 | delegated, parallel (admin-routes) | done | 4e461c6 |
-| T3 | S1–S3 | delegated, parallel (admin-titles) | done |  |
+| T3 | S1–S3 | delegated, parallel (admin-titles) | done | c897b44 (shared with T4: a failed pathspec folded T3 into that commit) |
 | T4 | S1–S3 | delegated, parallel (public pages, progress, auth, admin home, users) | done | c897b44 |
 
 Route evidence: Writer trigger (a) parallel units T2–T4 with disjoint edit surfaces after the shared foundation T1, and (b) the long-session context backstop. The parent owns git, the pixel diff and the end-to-end checks.
