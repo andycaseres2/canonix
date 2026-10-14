@@ -2,6 +2,7 @@
 import '../styles/global.css';
 import AppDialog from '../components/shell/AppDialog.astro';
 import FormSwap from '../components/shell/FormSwap.astro';
+import ListFilter from '../components/shell/ListFilter.astro';
 import SiteHeader from '../components/shell/SiteHeader.astro';
 import DemoBanner from '../components/shell/DemoBanner.astro';
 import FlashMessages from '../components/shell/FlashMessages.astro';
@@ -37,5 +38,6 @@ const error = Astro.url.searchParams.get('error');
   </main>
   <AppDialog />
   <FormSwap />
+  <ListFilter />
 </body>
 </html>

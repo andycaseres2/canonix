@@ -10,7 +10,7 @@ const { mediaId } = Astro.props;
 <Panel as="form" data-swap="#units-head, #units-list" class="stack" method="post" action="/api/admin/units">
   <input type="hidden" name="action" value="add_one" /><input type="hidden" name="media_id" value={mediaId} />
   <div class="row">
-    <label class="field">Nombre completo <small>único, con el título: "Giant-Size X-Men #1", no solo "1"</small><input name="label" required /></label>
+    <Field label="Nombre completo"><Fragment slot="hint">único, con el título: "Giant-Size X-Men #1", no solo "1"</Fragment><input name="label" required /></Field>
     <Field label="Texto del botón"><input name="short" placeholder="Especial" /></Field>
   </div>
   <FormActions>

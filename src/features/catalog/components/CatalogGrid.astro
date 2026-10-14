@@ -1,6 +1,5 @@
 ---
-// Catalog card grid (`#list`) with its empty state. The script filters the cards by their `data-s`
-// text as the user types in CatalogSearch (`#q`); it sits after the grid to keep the original DOM order.
+// Catalog card grid (`#list`) with its empty state. CatalogSearch filters the cards by their `data-s` (shell/ListFilter).
 import CardGrid from '../../../components/ui/CardGrid.astro';
 import CatalogCard from './CatalogCard.astro';
 import type { CatalogMedia } from '../types';
@@ -11,10 +10,3 @@ const { media } = Astro.props;
   {media.map((m) => <CatalogCard media={m} />)}
 </CardGrid>
 {media.length === 0 && <p class="muted">No hay títulos todavía.</p>}
-<script>
-  const input = document.getElementById('q') as HTMLInputElement;
-  input.addEventListener('input', () => {
-    const v = input.value.trim().toLowerCase();
-    document.querySelectorAll<HTMLElement>('#list > a').forEach((a) => { a.hidden = !!v && !(a.dataset.s ?? '').includes(v); });
-  });
-</script>

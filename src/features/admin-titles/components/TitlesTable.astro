@@ -1,5 +1,5 @@
 ---
-// Titles list with a client-side text filter; each row links to the title's admin page.
+// Titles list with a text filter on `#rows tr` (shell/ListFilter); each row links to the title's admin page.
 import Field from '../../../components/ui/Field.astro';
 import Badge from '../../../components/ui/Badge.astro';
 import type { TitleListItem } from '../types';
@@ -8,7 +8,7 @@ const { titles } = Astro.props;
 ---
 <section>
   <h2 style="margin-top:0">Títulos ({titles.length})</h2>
-  <Field label="Filtrar" style="margin-bottom:12px"><input id="f" type="search" autocomplete="off" /></Field>
+  <Field label="Filtrar" style="margin-bottom:12px"><input id="f" data-filter="#rows tr" type="search" autocomplete="off" /></Field>
   <div class="table-wrap"><table style="min-width:0">
     <thead><tr><th>Título</th><th>Tipo</th><th>Año</th><th>Unid.</th></tr></thead>
     <tbody id="rows">
@@ -23,11 +23,3 @@ const { titles } = Astro.props;
     </tbody>
   </table></div>
 </section>
-
-<script>
-  const f = document.getElementById('f') as HTMLInputElement;
-  f.addEventListener('input', () => {
-    const v = f.value.trim().toLowerCase();
-    document.querySelectorAll<HTMLElement>('#rows tr').forEach((r) => { r.hidden = !!v && !(r.dataset.s ?? '').includes(v); });
-  });
-</script>

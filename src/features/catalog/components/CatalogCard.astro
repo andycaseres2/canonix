@@ -1,7 +1,7 @@
 ---
 // Catalog title card: optional cover, kind badge, universe, title, year / credits and unit count.
 // `data-s` holds the lowercase text CatalogSearch matches against.
-import KindBadge from './KindBadge.astro';
+import KindBadge from '../../../components/ui/KindBadge.astro';
 import type { CatalogMedia } from '../types';
 interface Props { media: CatalogMedia }
 const { media: m } = Astro.props;

@@ -93,3 +93,9 @@ td select { padding-right: 32px; background-position: right 9px center; min-widt
 .toast.ok { box-shadow: 4px 4px 0 var(--green); }
 .toast.error { box-shadow: 4px 4px 0 var(--red); }
 form[aria-busy="true"] { opacity: .7; }
+
+/* Numbered steps (ui/NumberedStep) */
+.create-step { max-width: 760px; }
+.create-step h2 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.create-step h2 small { font-family: var(--font-body); font-size: .9rem; letter-spacing: 0; }
+.step-n { display: inline-grid; place-items: center; width: 1.4em; height: 1.4em; background: var(--yellow); color: #1C2541; border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--red); font-size: .9em; }

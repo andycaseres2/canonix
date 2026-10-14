@@ -2,4 +2,4 @@
 // Search box (`#f`); UsersTable owns the script that filters its rows with it.
 import Field from '../../../components/ui/Field.astro';
 ---
-<Field label="Buscar" style="max-width:420px;margin-bottom:14px"><input id="f" type="search" autocomplete="off" /></Field>
+<Field label="Buscar" style="max-width:420px;margin-bottom:14px"><input id="f" data-filter="#rows tr" type="search" autocomplete="off" /></Field>

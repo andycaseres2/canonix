@@ -2,7 +2,7 @@
 // New-title screen: the `form#create` steps, the unit uploader, the create bar and progress dialog, plus the
 // script that creates the title, uploads its cover and files, and then opens the title's admin page.
 import Panel from '../../../components/ui/Panel.astro';
-import CreateStep from './CreateStep.astro';
+import NumberedStep from '../../../components/ui/NumberedStep.astro';
 import KindPicker from './KindPicker.astro';
 import TitleBasicsFields from './TitleBasicsFields.astro';
 import CoverPicker from './CoverPicker.astro';
@@ -11,24 +11,24 @@ import CreateBar from './CreateBar.astro';
 import CreateProgressDialog from './CreateProgressDialog.astro';
 ---
 <form id="create" class="create-flow" novalidate>
-  <CreateStep n={1}>
+  <NumberedStep n={1}>
     <Fragment slot="title">Tipo y nombre</Fragment>
     <Panel class="stack">
       <KindPicker />
       <TitleBasicsFields />
     </Panel>
-  </CreateStep>
+  </NumberedStep>
 
-  <CreateStep n={2}>
+  <NumberedStep n={2}>
     <Fragment slot="title">Portada <small class="muted">opcional</small></Fragment>
     <CoverPicker />
-  </CreateStep>
+  </NumberedStep>
 </form>
 
-<CreateStep n={3}>
+<NumberedStep n={3}>
   <Fragment slot="title"><span class="unit-title">Números</span> <small class="muted">opcional, puedes subirlos después</small></Fragment>
   <UnitUploader kind="comic" />
-</CreateStep>
+</NumberedStep>
 
 <CreateBar />
 

@@ -1,0 +1,17 @@
+---
+/**
+ * One filter for every searchable list: an <input data-filter="<selector>"> hides the elements
+ * matching the selector whose data-s text does not contain what was typed.
+ * Delegated, so it keeps working after in-place updates replace the list.
+ */
+---
+<script>
+  import { isFilteredOut } from './list-filter';
+
+  document.addEventListener('input', (e) => {
+    const input = e.target as HTMLInputElement;
+    const selector = input.dataset?.filter;
+    if (!selector) return;
+    document.querySelectorAll<HTMLElement>(selector).forEach((el) => { el.hidden = isFilteredOut(el.dataset.s, input.value); });
+  });
+</script>

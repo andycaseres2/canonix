@@ -1,7 +1,7 @@
 ---
 // Title page header: optional cover, kind badge, universe, title, year / credits, description
 // and the published routes that include it ("Está en").
-import KindBadge from './KindBadge.astro';
+import KindBadge from '../../../components/ui/KindBadge.astro';
 import type { RouteLink, TitleInfo } from '../types';
 interface Props { media: TitleInfo & { description: string | null }; routes: RouteLink[] }
 const { media: m, routes } = Astro.props;

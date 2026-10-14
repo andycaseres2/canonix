@@ -29,10 +29,6 @@ table.queue { min-width: 0; table-layout: fixed; }
 /* "Nuevo cómic o anime" screen */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .create-flow { display: grid; gap: 8px; }
-.create-step { max-width: 760px; }
-.create-step h2 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.create-step h2 small { font-family: var(--font-body); font-size: .9rem; letter-spacing: 0; }
-.step-n { display: inline-grid; place-items: center; width: 1.4em; height: 1.4em; background: var(--yellow); color: #1C2541; border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--red); font-size: .9em; }
 .kind-pick { display: flex; flex-wrap: wrap; gap: 10px; border: 0; padding: 0; margin: 0; }
 .kind-pick label { flex: 1 1 160px; }
 .kind-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
