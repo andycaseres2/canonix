@@ -1,5 +1,5 @@
 ---
-// One unit of a title: number, full name, file format and size, and a remove (×) form.
+// One unit of a title: number, full name, file format and size, and a delete (×) form.
 import { unitFileMeta } from '../../../lib/uploads';
 import type { TitleUnit } from '../types';
 interface Props { mediaId: string; unit: TitleUnit }
@@ -13,8 +13,8 @@ const hasFile = Boolean(u.units?.file_path);
     <b class="unit-name" title={label}>{label}</b>
     <small class={hasFile ? 'muted' : 'error-text'}>{unitFileMeta(u.units)}</small>
   </span>
-  <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units" data-confirm="Se quita de este título. El archivo no se borra." data-confirm-title={`¿Quitar ${label}?`} data-confirm-label="Quitar" data-confirm-danger>
+  <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units" data-confirm="Se borra con su archivo y el progreso de los lectores. No se puede deshacer. Si también está en otro título, solo se quita de este." data-confirm-title={`¿Borrar ${label}?`} data-confirm-label="Borrar" data-confirm-danger>
     <input type="hidden" name="action" value="remove" /><input type="hidden" name="media_id" value={mediaId} /><input type="hidden" name="unit_id" value={u.unit_id} />
-    <button class="unit-remove" type="submit" aria-label={`Quitar ${label}`}>×</button>
+    <button class="unit-remove" type="submit" aria-label={`Borrar ${label}`}>×</button>
   </form>
 </li>
