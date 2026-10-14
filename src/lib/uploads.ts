@@ -115,7 +115,10 @@ export async function listFolder(sb: SupabaseClient, bucket: string, folder: str
 export async function removeStored(sb: SupabaseClient, unit: { file_path: string | null; pages?: string[] | null }) {
   if (!unit.file_path) return;
   const paths = unit.pages ? unit.pages.map((p) => `${unit.file_path}${p}`) : [unit.file_path];
-  for (let i = 0; i < paths.length; i += 1000) await sb.storage.from('content').remove(paths.slice(i, i + 1000));
+  for (let i = 0; i < paths.length; i += 1000) {
+    const { error } = await sb.storage.from('content').remove(paths.slice(i, i + 1000));
+    if (error) throw error;
+  }
 }
 
 /** Runs `fn` over `items` with at most `limit` running at once, keeping the order of results. */

@@ -8,11 +8,9 @@ export type Read = (key: string, max: number) => string | null;
 /** Title fields shared by the create form, the edit form and the "Nuevo cómic o anime" screen. Covers are managed apart. */
 export function mediaFields(read: Read, kind: unknown) {
   const year_label = read('year_label', 20);
-  const https = (v: string | null) => (v && /^https:\/\//i.test(v) ? v : null);
   return {
     title: read('title', 200), kind: kind === 'anime' ? 'anime' : 'comic', universe: read('universe', 40)?.toLowerCase() ?? null,
     credits: read('credits', 200), year_label, year_start: yearStart(year_label), description: read('description', 4000),
-    search_hint: read('search_hint', 200), where_label: read('where_label', 80), where_url: https(read('where_url', 1000)),
     requires_plan: read('requires_plan', 10) === 'premium' ? 'premium' : 'free',
   };
 }

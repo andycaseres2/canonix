@@ -5,7 +5,6 @@ import UnitsUploadSection from '../../../features/admin-titles/components/UnitsU
 import UnitsList from '../../../features/admin-titles/components/UnitsList.astro';
 import CoverEditor from '../../../features/admin-titles/components/CoverEditor.astro';
 import TitleDataForm from '../../../features/admin-titles/components/TitleDataForm.astro';
-import DeleteTitleZone from '../../../features/admin-titles/components/DeleteTitleZone.astro';
 import type { TitleRecord, TitleUnit, UnitGroup } from '../../../features/admin-titles/types';
 const { supabase } = Astro.locals;
 const { data } = await supabase.from('media').select('*').eq('id', Astro.params.id!).maybeSingle();
@@ -40,7 +39,6 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
     <section>
       <CoverEditor mediaId={m.id} title={m.title} coverUrl={m.cover_url} />
       <TitleDataForm title={m} />
-      <DeleteTitleZone mediaId={m.id} />
     </section>
   </div>
 </Layout>

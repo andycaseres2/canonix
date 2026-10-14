@@ -55,6 +55,18 @@ describe('getRoute', () => {
     expect(data?.items.map((i) => i.slug)).toEqual(['naruto']);
   });
 
+  it('tells which units have a file and which titles are premium, without storage paths', async () => {
+    const db = fixture();
+    Object.assign(db.tables.units.find((u) => u.id === 'u1')!, { file_path: 'asm/00001-1/', pages: ['001.jpg'] });
+    const data = await getRoute(as(db, READER), 'free', { plan: 'free', role: 'user' });
+    const asm = data!.items.find((i) => i.slug === 'asm')!;
+    expect(asm.units.map((u) => [u.short, u.file])).toEqual([['1', true], ['2', false]]);
+    expect(JSON.stringify(data!.items)).not.toContain('asm/00001-1/');
+    expect(asm.premium).toBe(false);
+    const paid = await getRoute(as(db, PREMIUM), 'paid', { plan: 'premium', role: 'user' });
+    expect(paid!.items[0]).toMatchObject({ slug: 'naruto', premium: true });
+  });
+
   it('returns null for a missing route', async () => {
     expect(await getRoute(as(fixture(), READER), 'nope', null)).toBeNull();
   });

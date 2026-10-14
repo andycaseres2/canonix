@@ -22,9 +22,6 @@ export type TitleRecord = {
   universe: string | null;
   year_label: string | null;
   credits: string | null;
-  search_hint: string | null;
-  where_label: string | null;
-  where_url: string | null;
   description: string | null;
   cover_url: string | null;
   requires_plan: 'free' | 'premium';
