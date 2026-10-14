@@ -16,7 +16,7 @@ App para seguir rutas de lectura de cómics (Marvel, DC…) y guías de anime, c
 - **Listo para cobrar después:** cada usuario tiene `plan` (free/premium). Cada título tiene **Acceso** gratis o premium: sus archivos los abre cualquier usuario con cuenta o solo los premium. Cada ruta también tiene `requires_plan` y una ruta premium solo la ven usuarios premium y admins.
 - **Ruta Marvel esencial precargada:** 62 títulos y 1.476 números.
 
-Los archivos se guardan en el bucket privado `content` de Supabase Storage y se abren con links firmados de 3 horas. Los CBR se convierten a CBZ en el navegador del admin antes de subirlos, así que en Storage solo hay CBZ, PDF y video.
+Los archivos se guardan en el bucket privado `content` de Supabase Storage y se abren con links firmados de 3 horas. Los cómics CBZ o CBR se abren en el navegador del admin y se suben como **una imagen por página** (sin recomprimir), así el lector muestra la primera página al instante y solo baja lo que se lee. Los PDF se leen por partes (rangos HTTP) y los videos en streaming. Los números subidos antes como un único CBZ se siguen abriendo; si los vuelves a subir, pasan a páginas.
 
 ## Tests
 
@@ -83,6 +83,6 @@ Si un mismo número aparece en dos títulos (por ejemplo un arco dentro de una s
 
 - **RLS activado** en todas las tablas: el catálogo es de lectura pública y solo los admins escriben. Cada usuario solo ve y modifica su propio progreso.
 - **Candado premium en la base:** los ítems de una ruta premium o en borrador solo se pueden leer si eres premium o admin (`can_read_route`), así que no se filtran por la API pública de Supabase. Los conteos de las tarjetas salen de la función `route_unit_map()`.
-- **Archivos según el plan, en la base:** la política `rutas_content_read` de Storage solo deja firmar un archivo de `content` a usuarios con cuenta cuyo plan alcanza para el título (`can_read_unit_file`), o a admins. La página del lector chequea lo mismo, pero la base tiene la última palabra.
+- **Archivos según el plan, en la base:** la política `rutas_content_read` de Storage solo deja firmar un archivo de `content` (o una de las páginas listadas de un cómic) a usuarios con cuenta cuyo plan alcanza para el título (`can_read_unit_file`), o a admins. La página del lector chequea lo mismo, pero la base tiene la última palabra.
 - **Rol y plan protegidos:** un usuario no puede cambiarse el rol ni el plan, porque hay un trigger en la base que lo impide.
 - **`SUPABASE_SERVICE_ROLE_KEY`** solo se usa en el servidor, para bloquear o borrar usuarios desde el panel.
