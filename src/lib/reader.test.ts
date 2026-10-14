@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MockDb } from '../test/mock/db';
 import { ADMIN, PREMIUM, READER, as, fixture } from '../test/mock/fixture';
-import { getReader } from './reader';
+import { getReader, getTitleUnits } from './reader';
 
 /** Spider-Man (free) #1 and #2 and Naruto (premium) episode 1 get files; FF #1 has none. */
 function withFiles() {
@@ -47,5 +47,18 @@ describe('getReader', () => {
     const db = withFiles();
     db.tables.units.find((u) => u.id === 'u2')!.file_path = null;
     expect(await read(db, READER, 'asm', '1')).toMatchObject({ next: null });
+  });
+});
+
+describe('getTitleUnits', () => {
+  it('lists a title\'s units in order with their file format and size', async () => {
+    const units = await getTitleUnits(as(withFiles(), READER), 'm1');
+    expect(units.map((u) => [u.short, u.label, u.file_format, u.file_size])).toEqual([['1', 'ASM #1', 'cbz', 1000], ['2', 'ASM #2', 'pdf', 1000]]);
+    expect(units[0]).not.toHaveProperty('file_path');
+    expect(units[0]).toMatchObject({ id: 'u1', has_file: true, group: null });
+  });
+
+  it('marks units without a file', async () => {
+    expect(await getTitleUnits(as(withFiles(), null), 'm2')).toMatchObject([{ short: '1', has_file: false, file_format: null }]);
   });
 });

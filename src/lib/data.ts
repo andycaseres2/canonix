@@ -81,11 +81,11 @@ export async function getRoute(sb: SupabaseClient, slug: string, viewer: Viewer)
 export async function getMedia(sb: SupabaseClient, slug: string) {
   const { data, error } = await sb
     .from('media')
-    .select(`${MEDIA_FIELDS}, description, cover_url, universe`)
+    .select(`${MEDIA_FIELDS}, description, cover_url, universe, requires_plan`)
     .eq('slug', slug)
     .maybeSingle();
   if (error) throw error;
-  return data as unknown as (MediaRow & { description: string | null; cover_url: string | null; universe: string | null }) | null;
+  return data as unknown as (MediaRow & { description: string | null; cover_url: string | null; universe: string | null; requires_plan: 'free' | 'premium' }) | null;
 }
 
 /**

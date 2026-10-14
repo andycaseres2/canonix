@@ -1,0 +1,88 @@
+---
+// Title page list of issues/episodes: number, name, file format and size, a read toggle and the "Leer"/"Ver" link.
+import ProgressBar from '../../../components/ui/ProgressBar.astro';
+import { fileMeta } from '../../../lib/uploads';
+import type { TitleUnitView } from '../../../lib/reader';
+interface Props { slug: string; kind: 'comic' | 'anime'; units: TitleUnitView[]; done: string[]; logged: boolean; locked: boolean }
+const { slug, kind, units, done, logged, locked } = Astro.props;
+const doneSet = new Set(done);
+const read = units.filter((u) => doneSet.has(u.id)).length;
+const pct = units.length ? Math.round((read / units.length) * 100) : 0;
+const word = kind === 'anime' ? 'Episodios' : 'Números';
+const open = kind === 'anime' ? 'Ver' : 'Leer';
+// Consecutive units with the same group name share a heading
+const groups: { name: string | null; units: TitleUnitView[] }[] = [];
+units.forEach((u) => {
+  const last = groups[groups.length - 1];
+  if (!last || last.name !== u.group) groups.push({ name: u.group, units: [u] });
+  else last.units.push(u);
+});
+---
+<section class="episodes" id="episodes" data-total={units.length}>
+  <div class="episodes-head">
+    <h2>{word} ({units.length})</h2>
+    {logged && units.length > 0 && (
+      <div class="episodes-progress">
+        <ProgressBar pct={pct} />
+        <span class="muted"><b id="episodes-read">{read}</b> de {units.length} {kind === 'anime' ? 'vistos' : 'leídos'}</span>
+      </div>
+    )}
+  </div>
+  {locked && <p class="panel episodes-locked">Este título es parte del plan premium. Con premium puedes {kind === 'anime' ? 'ver sus episodios' : 'leer sus números'} aquí.</p>}
+  {!logged && units.some((u) => u.has_file) && <p class="muted"><a href={`/login?next=/catalogo/${slug}`}>Entra</a> para {kind === 'anime' ? 'verlos' : 'leerlos'} y guardar tu progreso.</p>}
+  {units.length === 0 && <p class="muted">Todavía no tiene {word.toLowerCase()}.</p>}
+  {groups.map((g) => (
+    <>
+      {g.name && <h3 class="episodes-group">{g.name}</h3>}
+      <ol class="episode-list">
+        {g.units.map((u) => (
+          <li class={`episode${doneSet.has(u.id) ? ' done' : ''}`}>
+            <span class="unit-num">{u.short}</span>
+            <span class="episode-info">
+              <b class="episode-name">{u.label}</b>
+              <small class="muted">{u.has_file ? fileMeta(u.file_format, u.file_size) : 'Sin archivo todavía'}</small>
+            </span>
+            {logged && (
+              <button class="episode-check" type="button" data-unit={u.id} aria-pressed={doneSet.has(u.id) ? 'true' : 'false'} aria-label={`${u.label}: ${kind === 'anime' ? 'visto' : 'leído'}`} title={kind === 'anime' ? 'Visto' : 'Leído'}>✓</button>
+            )}
+            {u.has_file && !locked
+              ? <a class="btn small primary episode-open" href={`/leer/${slug}/${encodeURIComponent(u.short)}`}>{open}</a>
+              : <span class="btn small episode-open" aria-disabled="true">{locked && u.has_file ? 'Premium' : open}</span>}
+          </li>
+        ))}
+      </ol>
+    </>
+  ))}
+</section>
+
+<script>
+  const list = document.getElementById('episodes');
+  const counter = document.getElementById('episodes-read');
+  const bar = list?.querySelector<HTMLElement>('.bar > span');
+  const total = Number(list?.dataset.total) || 0;
+  const refresh = () => {
+    const read = list!.querySelectorAll('.episode-check[aria-pressed="true"]').length;
+    if (counter) counter.textContent = String(read);
+    if (bar && total) bar.style.width = `${Math.round((read / total) * 100)}%`;
+  };
+  list?.addEventListener('click', async (e) => {
+    const button = (e.target as HTMLElement).closest<HTMLButtonElement>('.episode-check');
+    if (!button || button.disabled) return;
+    const done = button.getAttribute('aria-pressed') !== 'true';
+    const set = (on: boolean) => { button.setAttribute('aria-pressed', String(on)); button.closest('.episode')!.classList.toggle('done', on); refresh(); };
+    set(done);
+    button.disabled = true;
+    try {
+      const res = await fetch('/api/progress', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(done ? { add: [button.dataset.unit] } : { remove: [button.dataset.unit] }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+    } catch {
+      set(!done);
+      (window as any).appDialog?.alert({ title: 'No se pudo guardar', message: 'Revisa tu conexión y vuelve a intentarlo.' });
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>

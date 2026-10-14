@@ -51,3 +51,19 @@ export async function getReader(sb: SupabaseClient, slug: string, short: string,
   const { data: signed } = await sb.storage.from('content').createSignedUrl(unit.file_path, READ_URL_SECONDS);
   return signed?.signedUrl ? result('ready', signed.signedUrl) : result('error');
 }
+
+export type TitleUnitView = { id: string; short: string; label: string; group: string | null; has_file: boolean; file_format: string | null; file_size: number | null };
+
+/** A title's units in order, for its public page: what each one is and whether it has a file (never the storage path). */
+export async function getTitleUnits(sb: SupabaseClient, mediaId: string): Promise<TitleUnitView[]> {
+  const { data, error } = await sb
+    .from('media_units')
+    .select('short, group_name, position, unit_id, units(label, file_path, file_format, file_size)')
+    .eq('media_id', mediaId)
+    .order('position');
+  if (error) throw error;
+  return ((data ?? []) as unknown as (Row['media_units'][number] & { group_name: string | null })[]).map((mu) => ({
+    id: mu.unit_id, short: mu.short, label: mu.units?.label ?? mu.short, group: mu.group_name,
+    has_file: Boolean(mu.units?.file_path), file_format: mu.units?.file_format ?? null, file_size: mu.units?.file_size ?? null,
+  }));
+}

@@ -1,18 +1,22 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import TitleHero from '../../features/catalog/components/TitleHero.astro';
-import Tracker from '../../features/routes/components/Tracker.astro';
-import { getDoneUnitIds, getMedia, toTrackerItem } from '../../lib/data';
+import EpisodeList from '../../features/catalog/components/EpisodeList.astro';
+import { getDoneUnitIds, getMedia } from '../../lib/data';
+import { getTitleUnits, isTitleLocked } from '../../lib/reader';
 import type { RouteLink } from '../../features/catalog/types';
-const { supabase, user } = Astro.locals;
+const { supabase, user, profile } = Astro.locals;
 const m = await getMedia(supabase, Astro.params.slug!);
 if (!m) return new Response('Título no encontrado', { status: 404 });
-const item = toTrackerItem(m);
-const done = await getDoneUnitIds(supabase, user?.id);
-const { data: inRoutes } = await supabase.from('route_items').select('routes(slug, name, published)').eq('media_id', m.id);
+const [units, done, { data: inRoutes }] = await Promise.all([
+  getTitleUnits(supabase, m.id),
+  getDoneUnitIds(supabase, user?.id),
+  supabase.from('route_items').select('routes(slug, name, published)').eq('media_id', m.id),
+]);
 const routes: RouteLink[] = (inRoutes ?? []).map((r: any) => r.routes).filter((r: any) => r?.published);
+const viewer = user && profile ? { id: user.id, plan: profile.plan, role: profile.role } : null;
 ---
 <Layout title={m.title} description={m.description ?? undefined}>
   <TitleHero media={m} routes={routes} />
-  <Tracker items={[item]} done={[...done]} logged={!!user} openFirst showHero={false} />
+  <EpisodeList slug={m.slug} kind={m.kind} units={units} done={[...done]} logged={!!user} locked={!!user && isTitleLocked(m, viewer)} />
 </Layout>

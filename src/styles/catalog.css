@@ -5,3 +5,22 @@
 .title-head { display: grid; gap: 20px; align-items: start; }
 @media (min-width: 640px) { .title-head.with-cover { grid-template-columns: 180px 1fr; } }
 .title-cover { width: 100%; max-width: 180px; aspect-ratio: 2 / 3; object-fit: cover; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
+
+/* Title page: issues/episodes list */
+.badge.premium { color: var(--ink); background: var(--yellow); border-color: var(--line); }
+.episodes { margin-top: 32px; }
+.episodes-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; margin-bottom: 14px; }
+.episodes-head h2 { margin: 0; }
+.episodes-progress { display: flex; align-items: center; gap: 10px; }
+.episodes-progress .bar { width: 160px; }
+.episodes-locked { margin: 0 0 16px; }
+.episodes-group { margin: 20px 0 8px; }
+.episode-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); }
+.episode { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px; background: var(--panel); border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--line); }
+.episode.done { border-left: 6px solid var(--green); }
+.episode-info { display: grid; min-width: 0; line-height: 1.3; }
+.episode-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
+.episode-check { width: 34px; height: 34px; min-height: 0; padding: 0; display: grid; place-items: center; font-weight: 700; color: transparent; background: var(--paper); border: 2px solid var(--line); cursor: pointer; }
+.episode-check:hover { color: var(--muted); }
+.episode-check[aria-pressed="true"] { color: #fff; background: var(--green); }
+.episode-open[aria-disabled="true"] { opacity: .45; pointer-events: none; }

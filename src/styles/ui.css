@@ -107,3 +107,5 @@ form[aria-busy="true"] { opacity: .7; }
 .password-toggle:hover { color: var(--red); }
 .password-toggle .eye-closed, .password-toggle[aria-pressed="true"] .eye-open { display: none; }
 .password-toggle[aria-pressed="true"] .eye-closed { display: block; }
+/* Issue/episode number tile (admin unit cards and the title page list) */
+.unit-num { min-width: 2.2em; padding: 2px 6px; text-align: center; font-family: var(--font-display); font-size: 1.5rem; line-height: 1.2; background: var(--yellow); color: #1C2541; border: 2px solid #1C2541; }

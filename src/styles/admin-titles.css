@@ -28,7 +28,6 @@ table.queue { min-width: 0; table-layout: fixed; }
 .unit-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(min(220px, 100%), 1fr)); }
 .unit-card { min-width: 0; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 10px 6px 10px 10px; background: var(--panel); border: 2px solid var(--line); border-left-width: 6px; box-shadow: 3px 3px 0 var(--line); }
 .unit-card.has-file { border-left-color: var(--green); }
-.unit-num { min-width: 2.2em; padding: 2px 6px; text-align: center; font-family: var(--font-display); font-size: 1.5rem; line-height: 1.2; background: var(--yellow); color: #1C2541; border: 2px solid #1C2541; }
 .unit-info { display: grid; min-width: 0; line-height: 1.3; }
 .unit-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; overflow-wrap: anywhere; }
 .unit-remove { border: 0; background: none; color: var(--red); font-size: 1.3rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 6px 8px; min-height: 0; }
