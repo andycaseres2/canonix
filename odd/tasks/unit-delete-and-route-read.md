@@ -1,0 +1,25 @@
+# Unit delete and route read
+
+Objective: removing an issue/episode in the admin deletes it with its stored files (no orphans), and route pages link each title to the reader.
+Branch: `feat/unit-delete-and-route-read` (from `main` ed58bf6) · Delivery: work-unit commits; push/PR are the user's call · Test runner: vitest (`pnpm exec vitest run`), `pnpm exec astro check`.
+
+## Specs
+
+- S1: "La ✕ de cada número en el admin deja archivos huérfanos: desvincula el número, pero el archivo o las páginas quedan en Storage ocupando espacio. Debería borrarlos, con confirmación." (proposal accepted with "si dale arranca con esos dos").
+- S2: "Las páginas de rutas no tienen "Leer": siguen con los chips viejos. El lector solo se abre desde la página del título." (same acceptance).
+- S3 (assumption): a unit still linked to another title is only unlinked from this one and keeps its files; a unit left with no title is deleted with its file or pages (its progress rows go with it by `on delete cascade`). The confirm dialog says which will happen.
+- S4 (assumption): on a route, each title with files shows "Leer #N" ("Ver ep. N" for anime) pointing to the first unit with a file the user has not marked, or the first one when all are read; a premium title shows "Premium" instead for viewers without premium. No storage path reaches the page.
+
+## Tasks
+
+| ID | Specs | Route | Status | Commit |
+|----|-------|-------|--------|--------|
+| T1 | S1, S3 | inline | pending | |
+| T2 | S2, S4 | inline | pending | |
+| T3 | all | delegated verifier | pending | |
+
+Route evidence: no Writer trigger (two small sequential units); parent writes inline. T1 deletes stored data (high risk item 1) → T3 independent verifier.
+
+## Log
+
+- L1 (2026-10-14, user, verbatim): "si dale arranca con esos dos" — answering "¿Arranco con esos dos?" after the list where S1 and S2 were items 1 and 2 of "Huecos del producto".
