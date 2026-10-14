@@ -18,5 +18,5 @@ const [done, started] = locked
   {!locked && route.published && <RouteStart routeId={route.id} slug={route.slug} loggedIn={!!user} startedAt={started.get(route.id)} />}
   {locked
     ? <LockedNotice />
-    : <Tracker items={items} done={[...done]} logged={!!user} />}
+    : <Tracker items={items} done={[...done]} logged={!!user} premium={profile?.plan === 'premium' || profile?.role === 'admin'} />}
 </Layout>

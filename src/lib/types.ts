@@ -7,7 +7,7 @@ export type Profile = {
   created_at: string;
 };
 
-export type TrackerUnit = { id: string; label: string; short: string; group: string | null };
+export type TrackerUnit = { id: string; label: string; short: string; group: string | null; file: boolean };
 
 export type TrackerItem = {
   slug: string;
@@ -18,6 +18,8 @@ export type TrackerItem = {
   hint: string | null;
   whereLabel: string | null;
   whereUrl: string | null;
+  /** The title's files need premium */
+  premium: boolean;
   /** Stage of the route the item belongs to (null outside a route) */
   sectionId: string | null;
   section: string | null;

@@ -1,8 +1,9 @@
 ---
 import type { TrackerItem } from '../../../lib/types';
-interface Props { items: TrackerItem[]; done: string[]; logged: boolean; openFirst?: boolean; showHero?: boolean }
-const { items, done, logged, openFirst = false, showHero = true } = Astro.props;
-const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).replace(/</g, '\\u003c');
+// `premium`: the viewer can open premium titles (premium plan or admin)
+interface Props { items: TrackerItem[]; done: string[]; logged: boolean; premium?: boolean; openFirst?: boolean; showHero?: boolean }
+const { items, done, logged, premium = false, openFirst = false, showHero = true } = Astro.props;
+const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHero }).replace(/</g, '\\u003c');
 ---
 <div id="tracker" class="tracker" aria-live="polite"></div>
 <script type="application/json" id="tracker-data" set:html={payload}></script>
@@ -17,6 +18,8 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
 .tracker .d { display: block; color: var(--muted); font-size: .9rem; }
 .tracker .yr { color: var(--red); font-weight: 700; margin-right: 6px; }
 .tracker .where { display: inline-block; margin-top: 6px; font-size: .85rem; font-weight: 700; }
+.tracker .read-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
+.tracker .locked-tag { font-size: .8rem; font-weight: 700; padding: 2px 8px; background: var(--yellow); color: #1C2541; border: 1.5px solid #1C2541; }
 .tracker .mini { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .85rem; font-weight: 700; color: var(--muted); }
 .tracker .minibar { flex: 0 0 100px; height: 7px; border: 1.5px solid var(--line); background: var(--paper); }
 .tracker .minibar > span { display: block; height: 100%; background: var(--red); }
@@ -44,12 +47,12 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
 </style>
 
 <script>
-  type Unit = { id: string; label: string; short: string; group: string | null };
-  type Item = { slug: string; title: string; credits: string | null; year: string | null; hint: string | null; whereLabel: string | null; whereUrl: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
+  type Unit = { id: string; label: string; short: string; group: string | null; file: boolean };
+  type Item = { slug: string; kind: 'comic' | 'anime'; premium: boolean; title: string; credits: string | null; year: string | null; hint: string | null; whereLabel: string | null; whereUrl: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
 
   const root = document.getElementById('tracker')!;
   const data = JSON.parse(document.getElementById('tracker-data')!.textContent || '{}') as {
-    items: Item[]; done: string[]; logged: boolean; openFirst: boolean; showHero: boolean;
+    items: Item[]; done: string[]; logged: boolean; premium: boolean; openFirst: boolean; showHero: boolean;
   };
   const done = new Set<string>(data.done);
   const open = new Set<string>(data.openFirst && data.items[0] ? [data.items[0].slug] : []);
@@ -59,6 +62,15 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
   const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]!));
   const count = (it: Item) => it.units.filter((u) => done.has(u.id)).length;
   const isDone = (it: Item) => it.units.length > 0 && count(it) === it.units.length;
+  /** The unit to open next: the first one with a file not marked yet, or the first with a file when all are read. */
+  const toRead = (it: Item) => it.units.find((u) => u.file && !done.has(u.id)) ?? it.units.find((u) => u.file);
+  /** "Leer #3" link to the reader, or the premium tag when the viewer cannot open the title. */
+  function readLink(it: Item, unit = toRead(it)) {
+    if (!unit) return '';
+    if (it.premium && !data.premium) return '<span class="locked-tag">Premium</span>';
+    const verb = it.kind === 'anime' ? 'Ver ep.' : 'Leer #';
+    return `<a class="btn small primary" href="/leer/${esc(it.slug)}/${encodeURIComponent(unit.short)}">${verb}${esc(unit.short)} ›</a>`;
+  }
 
   function setUnits(ids: string[], on: boolean) {
     ids.forEach((id) => {
@@ -93,7 +105,8 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
     h += `<span class="d">${it.year ? `<b class="yr">${esc(it.year)}</b>` : ''}${esc(it.credits)}</span>`;
     if (it.hint) h += `<span class="d">Busca: <b>${esc(it.hint)}</b></span>`;
     if (multi) h += `<span class="mini"><span class="minibar"><span style="width:${(c / tot) * 100}%"></span></span>${c} de ${tot}</span>`;
-    if (it.whereUrl) h += `<a class="where" href="${esc(it.whereUrl)}" target="_blank" rel="noopener">Dónde leer: ${esc(it.whereLabel || 'enlace')} ↗</a>`;
+    const read = readLink(it);
+    if (read || it.whereUrl) h += `<span class="read-row">${read}${it.whereUrl ? `<a class="where" href="${esc(it.whereUrl)}" target="_blank" rel="noopener">Dónde leer: ${esc(it.whereLabel || 'enlace')} ↗</a>` : ''}</span>`;
     h += `</span><input type="checkbox" data-all="${esc(it.slug)}"${all ? ' checked' : ''}${dis} aria-label="Marcar ${esc(it.title)} completo"></div>`;
     if (multi) {
       h += `<button class="toggle" data-open="${esc(it.slug)}" aria-expanded="${isOpen}">${isOpen ? 'Ocultar' : 'Ver'} números</button>`;
@@ -124,7 +137,7 @@ const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).rep
       if (next) {
         const nu = next.units.find((u) => !done.has(u.id));
         h += `<p class="lbl">Te toca</p><p class="big">${esc(nu?.label ?? next.title)}</p><p>${esc(next.title)}${next.year ? `, ${esc(next.year)}` : ''}${next.units.length > 1 ? `. Vas en ${count(next)} de ${next.units.length}` : ''}</p>`;
-        h += `<button class="btn small" data-jump="${esc(next.slug)}">Ir a este</button>`;
+        h += `<span class="read-row">${nu?.file ? readLink(next, nu) : ''}<button class="btn small" data-jump="${esc(next.slug)}">Ir a este</button></span>`;
       } else h += '<p class="big">¡Ruta completa!</p>';
       h += `<div class="bar"><span style="width:${items.length ? (doneItems / items.length) * 100 : 0}%"></span></div><p><b>${doneItems} de ${items.length} terminados</b></p></section>`;
     }
