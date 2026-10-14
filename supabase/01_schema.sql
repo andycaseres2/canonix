@@ -139,7 +139,7 @@ create policy profiles_update on public.profiles for update using (id = auth.uid
 do $$
 declare t text;
 begin
-  foreach t in array array['media','units','media_units','route_items'] loop
+  foreach t in array array['media','units','media_units'] loop
     execute format('drop policy if exists %1$s_read on public.%1$s', t);
     execute format('create policy %1$s_read on public.%1$s for select using (true)', t);
     execute format('drop policy if exists %1$s_admin on public.%1$s', t);
@@ -152,6 +152,23 @@ drop policy if exists routes_read on public.routes;
 create policy routes_read on public.routes for select using (published or public.is_admin());
 drop policy if exists routes_admin on public.routes;
 create policy routes_admin on public.routes for all using (public.is_admin()) with check (public.is_admin());
+
+-- ¿Puede el usuario actual ver el contenido de la ruta? Publicada y dentro de su plan, o admin.
+create or replace function public.can_read_route(rid uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.is_admin() or exists (
+    select 1 from public.routes r
+    where r.id = rid and r.published
+      and (r.requires_plan = 'free'
+        or exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'premium'))
+  );
+$$;
+
+-- Ítems de ruta: el candado premium vive aquí, no solo en la página
+drop policy if exists route_items_read on public.route_items;
+create policy route_items_read on public.route_items for select using (public.can_read_route(route_id));
+drop policy if exists route_items_admin on public.route_items;
+create policy route_items_admin on public.route_items for all using (public.is_admin()) with check (public.is_admin());
 
 -- Progreso: cada quien el suyo; el admin puede leer todo (para estadísticas)
 drop policy if exists progress_select on public.progress;

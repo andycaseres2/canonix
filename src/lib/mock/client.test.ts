@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createMockClient, createMockServiceClient } from './client';
-import { ADMIN, READER, as, fixture, memorySession } from './fixture';
+import { ADMIN, PREMIUM, READER, as, fixture, memorySession } from './fixture';
 
 describe('mock query builder', () => {
   it('filters, orders and limits rows', async () => {
@@ -67,6 +67,23 @@ describe('mock row level security', () => {
     const db = fixture();
     expect((await as(db, READER).from('routes').select('slug')).data!.map((r) => r.slug)).toEqual(['free', 'paid']);
     expect((await as(db, ADMIN).from('routes').select('slug')).data).toHaveLength(3);
+  });
+
+  it('only premium users and admins can read the items of a premium route', async () => {
+    const db = fixture();
+    const items = async (uid: string | null) => (await as(db, uid).from('route_items').select('id').eq('route_id', 'r3')).data;
+    expect(await items(null)).toEqual([]);
+    expect(await items(READER)).toEqual([]);
+    expect(await items(PREMIUM)).toEqual([{ id: 'i3' }]);
+    expect(await items(ADMIN)).toEqual([{ id: 'i3' }]);
+  });
+
+  it('free route items stay public and draft route items stay admin only', async () => {
+    const db = fixture();
+    db.tables.route_items.push({ id: 'i4', route_id: 'r2', media_id: 'm1', section: null, position: 1 });
+    expect((await as(db, null).from('route_items').select('id').eq('route_id', 'r1')).data).toHaveLength(2);
+    expect((await as(db, READER).from('route_items').select('id').eq('route_id', 'r2')).data).toEqual([]);
+    expect((await as(db, ADMIN).from('route_items').select('id').eq('route_id', 'r2')).data).toEqual([{ id: 'i4' }]);
   });
 
   it('blocks catalog writes for non admins', async () => {

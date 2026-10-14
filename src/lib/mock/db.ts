@@ -130,8 +130,17 @@ export class Policies {
       case 'profiles': return row.id === this.uid || this.isAdmin;
       case 'routes': return row.published === true || this.isAdmin;
       case 'progress': return row.user_id === this.uid || this.isAdmin;
+      case 'route_items': return this.canReadRoute(row.route_id);
       default: return true;
     }
+  }
+
+  /** public.can_read_route(): published and within the viewer's plan, or admin. */
+  canReadRoute(routeId: string) {
+    if (this.isAdmin) return true;
+    const route = this.db.tables.routes.find((r) => r.id === routeId);
+    if (!route?.published) return false;
+    return route.requires_plan === 'free' || this.db.profile(this.uid)?.plan === 'premium';
   }
 
   canInsert(table: TableName, row: Row): boolean {

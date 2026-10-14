@@ -62,5 +62,6 @@ Si un mismo número aparece en dos títulos (por ejemplo un arco dentro de una s
 ## Seguridad
 
 - **RLS activado** en todas las tablas: el catálogo es de lectura pública y solo los admins escriben. Cada usuario solo ve y modifica su propio progreso.
+- **Candado premium en la base:** los ítems de una ruta premium o en borrador solo se pueden leer si eres premium o admin (`can_read_route`), así que no se filtran por la API pública de Supabase. Los conteos de las tarjetas salen de la función `route_unit_map()`.
 - **Rol y plan protegidos:** un usuario no puede cambiarse el rol ni el plan, porque hay un trigger en la base que lo impide.
 - **`SUPABASE_SERVICE_ROLE_KEY`** solo se usa en el servidor, para bloquear o borrar usuarios desde el panel.
