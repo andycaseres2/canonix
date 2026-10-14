@@ -22,15 +22,17 @@ describe('POST /api/admin/titles', () => {
     expect(status).toBe(200);
     expect(body.slug).toBe('saga-de-prueba-2002-2007');
     expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({
-      title: 'Saga de prueba', kind: 'anime', universe: 'anime', year_start: 2002, where_url: 'https://www.crunchyroll.com', cover_url: null,
+      title: 'Saga de prueba', kind: 'anime', universe: 'anime', year_start: 2002, cover_url: null,
     });
+    // "Cómo buscarlo", "Dónde leer/ver" and "Link oficial" are no longer part of a title
+    expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({ search_hint: null, where_label: null, where_url: null });
   });
 
-  it('requires a name, defaults the kind to comic and drops non-https links', async () => {
+  it('requires a name and defaults the kind to comic', async () => {
     const db = fixture();
     expect((await json(db, { title: '   ' })).status).toBe(400);
-    const { body } = await json(db, { title: 'Otro', kind: 'video', where_url: 'http://inseguro.com' });
-    expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({ kind: 'comic', where_url: null });
+    const { body } = await json(db, { title: 'Otro', kind: 'video' });
+    expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({ kind: 'comic' });
   });
 
   it('stores the access plan, free unless premium is chosen', async () => {

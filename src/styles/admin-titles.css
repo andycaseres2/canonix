@@ -42,7 +42,6 @@ table.queue { min-width: 0; table-layout: fixed; }
 .kind-pick span { display: block; text-align: center; font-weight: 700; padding: 12px 16px; border: 2px solid var(--line); background: var(--panel); cursor: pointer; }
 .kind-pick input:checked + span { background: var(--ink); color: var(--paper); box-shadow: 4px 4px 0 var(--red); }
 .kind-pick input:focus-visible + span { outline: 3px solid var(--yellow); outline-offset: 2px; }
-.details-sum { cursor: pointer; font-weight: 700; }
 .create-bar { position: sticky; bottom: 0; z-index: 5; max-width: 760px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 28px 0 24px; padding: 14px 16px; background: var(--panel); border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
 .create-bar p { margin: 0; }
 @media (max-width: 520px) { .create-bar .btn { flex: 1 1 100%; } }

@@ -24,11 +24,6 @@ const { title: m } = Astro.props;
     <Field label="Año"><input name="year_label" value={m.year_label ?? ''} /></Field>
     <Field label="Créditos"><input name="credits" value={m.credits ?? ''} /></Field>
   </div>
-  <Field label="Cómo buscarlo"><input name="search_hint" value={m.search_hint ?? ''} /></Field>
-  <div class="row">
-    <Field label="Dónde leer/ver"><input name="where_label" value={m.where_label ?? ''} /></Field>
-    <Field label="Link oficial"><input name="where_url" type="url" value={m.where_url ?? ''} /></Field>
-  </div>
   <Field label="Descripción"><textarea name="description">{m.description ?? ''}</textarea></Field>
   <FormActions>
     <button class="btn primary" type="submit">Guardar cambios</button>

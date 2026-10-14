@@ -15,9 +15,6 @@ export type TrackerItem = {
   title: string;
   credits: string | null;
   year: string | null;
-  hint: string | null;
-  whereLabel: string | null;
-  whereUrl: string | null;
   /** The title's files need premium */
   premium: boolean;
   /** Stage of the route the item belongs to (null outside a route) */

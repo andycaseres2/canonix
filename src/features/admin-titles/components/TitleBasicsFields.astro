@@ -1,5 +1,5 @@
 ---
-// Name and metadata fields of a new title, with the "where to read/watch" fields folded in a details block.
+// Name and metadata fields of a new title.
 import Field from '../../../components/ui/Field.astro';
 ---
 <Field label="Nombre"><input name="title" maxlength="200" required placeholder="Ej: Batman: Year One, Naruto" autocomplete="off" /></Field>
@@ -12,13 +12,3 @@ import Field from '../../../components/ui/Field.astro';
   <Field label="Acceso" hint="quién puede leer o ver sus archivos"><select name="requires_plan"><option value="free">Gratis</option><option value="premium">Premium</option></select></Field>
 </div>
 <Field label="Descripción"><textarea name="description" maxlength="4000"></textarea></Field>
-<details>
-  <summary class="details-sum">Más datos (dónde leerlo o verlo)</summary>
-  <div class="stack" style="margin-top:12px">
-    <Field label="Cómo buscarlo" hint="nombre exacto en la plataforma"><input name="search_hint" maxlength="200" /></Field>
-    <div class="row">
-      <Field label="Dónde leer/ver"><input name="where_label" maxlength="80" placeholder="Marvel Unlimited, Crunchyroll…" /></Field>
-      <Field label="Link oficial"><input name="where_url" type="url" placeholder="https://" /></Field>
-    </div>
-  </div>
-</details>

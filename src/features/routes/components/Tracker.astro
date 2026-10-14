@@ -17,7 +17,6 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
 .tracker .t { display: block; font-weight: 700; }
 .tracker .d { display: block; color: var(--muted); font-size: .9rem; }
 .tracker .yr { color: var(--red); font-weight: 700; margin-right: 6px; }
-.tracker .where { display: inline-block; margin-top: 6px; font-size: .85rem; font-weight: 700; }
 .tracker .read-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
 .tracker .locked-tag { font-size: .8rem; font-weight: 700; padding: 2px 8px; background: var(--yellow); color: #1C2541; border: 1.5px solid #1C2541; }
 .tracker .mini { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: .85rem; font-weight: 700; color: var(--muted); }
@@ -48,7 +47,7 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
 
 <script>
   type Unit = { id: string; label: string; short: string; group: string | null; file: boolean };
-  type Item = { slug: string; kind: 'comic' | 'anime'; premium: boolean; title: string; credits: string | null; year: string | null; hint: string | null; whereLabel: string | null; whereUrl: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
+  type Item = { slug: string; kind: 'comic' | 'anime'; premium: boolean; title: string; credits: string | null; year: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
 
   const root = document.getElementById('tracker')!;
   const data = JSON.parse(document.getElementById('tracker-data')!.textContent || '{}') as {
@@ -103,10 +102,9 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
     let h = `<li class="comic${all ? ' is-done' : ''}" id="c-${esc(it.slug)}"><div class="item"><span class="num">${n}</span><span class="txt">`;
     h += `<a class="t" href="/catalogo/${esc(it.slug)}">${esc(it.title)}</a>`;
     h += `<span class="d">${it.year ? `<b class="yr">${esc(it.year)}</b>` : ''}${esc(it.credits)}</span>`;
-    if (it.hint) h += `<span class="d">Busca: <b>${esc(it.hint)}</b></span>`;
     if (multi) h += `<span class="mini"><span class="minibar"><span style="width:${(c / tot) * 100}%"></span></span>${c} de ${tot}</span>`;
     const read = readLink(it);
-    if (read || it.whereUrl) h += `<span class="read-row">${read}${it.whereUrl ? `<a class="where" href="${esc(it.whereUrl)}" target="_blank" rel="noopener">Dónde leer: ${esc(it.whereLabel || 'enlace')} ↗</a>` : ''}</span>`;
+    if (read) h += `<span class="read-row">${read}</span>`;
     h += `</span><input type="checkbox" data-all="${esc(it.slug)}"${all ? ' checked' : ''}${dis} aria-label="Marcar ${esc(it.title)} completo"></div>`;
     if (multi) {
       h += `<button class="toggle" data-open="${esc(it.slug)}" aria-expanded="${isOpen}">${isOpen ? 'Ocultar' : 'Ver'} números</button>`;

@@ -2,11 +2,11 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Profile, TrackerItem } from './types';
 
 const MEDIA_FIELDS =
-  'id, slug, kind, title, credits, year_label, search_hint, where_label, where_url, requires_plan, media_units(short, group_name, position, unit_id, units(label, file_path))';
+  'id, slug, kind, title, credits, year_label, requires_plan, media_units(short, group_name, position, unit_id, units(label, file_path))';
 
 type MediaRow = {
   id: string; slug: string; kind: 'comic' | 'anime'; title: string; credits: string | null; year_label: string | null;
-  search_hint: string | null; where_label: string | null; where_url: string | null; requires_plan: 'free' | 'premium';
+  requires_plan: 'free' | 'premium';
   media_units: { short: string; group_name: string | null; position: number; unit_id: string; units: { label: string; file_path: string | null } | null }[];
 };
 
@@ -18,8 +18,8 @@ export function toTrackerItem(m: MediaRow, stage: Stage | null = null): TrackerI
     // Only whether a unit has a file reaches the page, never its storage path
     .map((u) => ({ id: u.unit_id, label: u.units?.label ?? u.short, short: u.short, group: u.group_name, file: Boolean(u.units?.file_path) }));
   return {
-    slug: m.slug, kind: m.kind, title: m.title, credits: m.credits, year: m.year_label, hint: m.search_hint,
-    whereLabel: m.where_label, whereUrl: m.where_url, premium: m.requires_plan === 'premium', units,
+    slug: m.slug, kind: m.kind, title: m.title, credits: m.credits, year: m.year_label,
+    premium: m.requires_plan === 'premium', units,
     sectionId: stage?.id ?? null, section: stage?.title ?? null, sectionDescription: stage?.description ?? null,
   };
 }
