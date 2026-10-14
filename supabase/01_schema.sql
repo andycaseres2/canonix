@@ -126,18 +126,30 @@ create table if not exists public.route_items (
 create index if not exists route_items_pos on public.route_items(route_id, position);
 
 -- Migración: antes la etapa era un texto en cada ítem (columna "section").
--- Crea una etapa por cada texto distinto, en el orden en que aparecían, y luego quita la columna.
+-- Crea una etapa por cada tramo seguido con el mismo texto (así el orden de lectura no cambia
+-- aunque un texto se repita más adelante) y luego quita la columna.
 alter table public.route_items add column if not exists section_id uuid references public.route_sections(id) on delete cascade;
 do $$
 begin
   if exists (select 1 from information_schema.columns where table_schema = 'public' and table_name = 'route_items' and column_name = 'section') then
-    insert into public.route_sections (route_id, title, position)
-      select route_id, coalesce(section, 'General'), row_number() over (partition by route_id order by min(position))
+    with runs as (
+      select id, route_id, coalesce(section, 'General') as title, position,
+        row_number() over (partition by route_id order by position)
+          - row_number() over (partition by route_id, coalesce(section, 'General') order by position) as run
       from public.route_items
-      group by route_id, coalesce(section, 'General');
-    update public.route_items ri set section_id = rs.id
-      from public.route_sections rs
-      where rs.route_id = ri.route_id and rs.title = coalesce(ri.section, 'General') and ri.section_id is null;
+    ), stages as (
+      select route_id, title, run, row_number() over (partition by route_id order by min(position)) as stage_pos
+      from runs group by route_id, title, run
+    ), created as (
+      insert into public.route_sections (route_id, title, position)
+      select route_id, title, stage_pos from stages
+      returning id, route_id, position
+    )
+    update public.route_items ri set section_id = c.id
+      from runs r
+      join stages s on s.route_id = r.route_id and s.title = r.title and s.run = r.run
+      join created c on c.route_id = s.route_id and c.position = s.stage_pos
+      where ri.id = r.id;
     alter table public.route_items drop column section;
   end if;
 end $$;
