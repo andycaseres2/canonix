@@ -50,7 +50,10 @@ const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
           </select></label>
         </div>
         <label class="field">Grupo <small>opcional: "Temporada 1", "Arco Chunin"…</small><input name="group" /></label>
-        <button class="btn primary" type="submit">Agregar</button>
+        <div class="form-actions">
+          <span class="hint">Se agregan al final, en orden.</span>
+          <button class="btn primary" type="submit">Agregar rango</button>
+        </div>
       </form>
 
       <h3>Agregar uno suelto</h3>
@@ -60,18 +63,26 @@ const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
           <label class="field">Nombre completo <small>único, con el título: "Giant-Size X-Men #1", no solo "1"</small><input name="label" required /></label>
           <label class="field">Texto del botón<input name="short" placeholder="Especial" /></label>
         </div>
-        <button class="btn" type="submit">Agregar</button>
+        <div class="form-actions">
+          <button class="btn" type="submit">Agregar</button>
+        </div>
       </form>
       {(mu?.length ?? 0) > 0 && (
-        <form method="post" action="/api/admin/units" style="margin-top:16px" onsubmit="return confirm('¿Quitar todos los números/episodios de este título?')">
-          <input type="hidden" name="action" value="clear" /><input type="hidden" name="media_id" value={m.id} />
-          <button class="btn small danger" type="submit">Quitar todos</button>
-        </form>
+        <div class="danger-zone">
+          <p><b>Quitar todos los {unitWord}</b><small>El título queda vacío. Los {unitWord} siguen en las demás series que los incluyan.</small></p>
+          <form method="post" action="/api/admin/units" onsubmit="return confirm('¿Quitar todos los números/episodios de este título?')">
+            <input type="hidden" name="action" value="clear" /><input type="hidden" name="media_id" value={m.id} />
+            <button class="btn small danger" type="submit">Quitar todos</button>
+          </form>
+        </div>
       )}
     </section>
 
     <section>
-      <h2 style="margin-top:0">Datos</h2>
+      <div class="section-head">
+        <h2>Datos</h2>
+        <a class="btn small" href={`/catalogo/${m.slug}`}>Ver página pública ↗</a>
+      </div>
       <form class="panel stack" method="post" action="/api/admin/media">
         <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={m.id} />
         <label class="field">Título<input name="title" value={m.title} required /></label>
@@ -91,13 +102,17 @@ const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
         </div>
         <label class="field">Portada <small>link a imagen, opcional</small><input name="cover_url" type="url" value={m.cover_url ?? ''} /></label>
         <label class="field">Descripción<textarea name="description">{m.description ?? ''}</textarea></label>
-        <button class="btn primary" type="submit">Guardar</button>
+        <div class="form-actions">
+          <button class="btn primary" type="submit">Guardar cambios</button>
+        </div>
       </form>
-      <p><a href={`/catalogo/${m.slug}`}>Ver página pública ↗</a></p>
-      <form method="post" action="/api/admin/media" onsubmit="return confirm('¿Borrar este título? También sale de las rutas.')">
-        <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={m.id} />
-        <button class="btn small danger" type="submit">Borrar título</button>
-      </form>
+      <div class="danger-zone">
+        <p><b>Borrar título</b><small>También sale de todas las rutas. No se puede deshacer.</small></p>
+        <form method="post" action="/api/admin/media" onsubmit="return confirm('¿Borrar este título? También sale de las rutas.')">
+          <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={m.id} />
+          <button class="btn small danger" type="submit">Borrar título</button>
+        </form>
+      </div>
     </section>
   </div>
 </Layout>

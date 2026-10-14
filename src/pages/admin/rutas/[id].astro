@@ -64,7 +64,9 @@ const sections = [...new Set((items ?? []).map((i: any) => i.section).filter(Boo
         <label class="field">Un título por línea <small>si hay dos con el mismo nombre, agrega el año ("Thor 1983") o usa su slug</small>
           <textarea name="titles" rows="7" placeholder={'Civil War\nHouse of M\nThor 1983'} required></textarea></label>
         <label class="field">Sección <small>opcional, se aplica a todos</small><input name="section" list="sections" /></label>
-        <button class="btn primary" type="submit">Agregar todos al final</button>
+        <div class="form-actions">
+          <button class="btn primary" type="submit">Agregar todos al final</button>
+        </div>
       </form>
       <script type="application/json" id="add-data" set:html={JSON.stringify(options.map((m) => ({ id: m.id, t: m.title, y: m.year_label, u: m.universe, k: m.kind }))).replace(/</g, '\\u003c')}></script>
       <script define:vars={{ routeId: r.id }}>
@@ -91,7 +93,10 @@ const sections = [...new Set((items ?? []).map((i: any) => i.section).filter(Boo
     </section>
 
     <section>
-      <h2 style="margin-top:0">Datos</h2>
+      <div class="section-head">
+        <h2>Datos</h2>
+        <a class="btn small" href={`/rutas/${r.slug}`}>Ver ruta ↗</a>
+      </div>
       <form class="panel stack" method="post" action="/api/admin/routes">
         <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={r.id} />
         <label class="field">Nombre<input name="name" value={r.name} required /></label>
@@ -109,14 +114,18 @@ const sections = [...new Set((items ?? []).map((i: any) => i.section).filter(Boo
           <label class="field">Orden en la lista<input type="number" name="position" value={r.position} /></label>
         </div>
         <label class="field">Descripción<textarea name="description">{r.description ?? ''}</textarea></label>
-        <label class="check"><input type="checkbox" name="published" checked={r.published} /> Publicada</label>
-        <button class="btn primary" type="submit">Guardar</button>
+        <div class="form-actions">
+          <label class="check"><input type="checkbox" name="published" checked={r.published} /> Publicada</label>
+          <button class="btn primary" type="submit">Guardar cambios</button>
+        </div>
       </form>
-      <p><a href={`/rutas/${r.slug}`}>Ver ruta ↗</a></p>
-      <form method="post" action="/api/admin/routes" onsubmit="return confirm('¿Borrar esta ruta? Los títulos siguen en el catálogo.')">
-        <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={r.id} />
-        <button class="btn small danger" type="submit">Borrar ruta</button>
-      </form>
+      <div class="danger-zone">
+        <p><b>Borrar ruta</b><small>Los títulos siguen en el catálogo. No se puede deshacer.</small></p>
+        <form method="post" action="/api/admin/routes" onsubmit="return confirm('¿Borrar esta ruta? Los títulos siguen en el catálogo.')">
+          <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={r.id} />
+          <button class="btn small danger" type="submit">Borrar ruta</button>
+        </form>
+      </div>
     </section>
   </div>
 </Layout>

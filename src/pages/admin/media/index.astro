@@ -44,7 +44,10 @@ const { data: media } = await supabase.from('media').select('id, slug, kind, uni
           <label class="field">Link oficial<input name="where_url" type="url" placeholder="https://" /></label>
         </div>
         <label class="field">Descripción<textarea name="description"></textarea></label>
-        <button class="btn primary" type="submit">Crear y agregar números/episodios</button>
+        <div class="form-actions">
+          <span class="hint">Después agregas sus números o episodios.</span>
+          <button class="btn primary" type="submit">Crear título</button>
+        </div>
       </form>
     </section>
   </div>

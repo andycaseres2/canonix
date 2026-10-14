@@ -38,20 +38,22 @@ const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
                 <button class="btn small" type="submit">OK</button>
               </form>
             </td>
-            <td style="white-space:nowrap">
+            <td>
+              <div class="actions">
               {service && !me && (
                 <>
-                  <form method="post" action="/api/admin/users" style="display:inline">
+                  <form method="post" action="/api/admin/users">
                     <input type="hidden" name="action" value={banned.has(p.id) ? 'unban' : 'ban'} /><input type="hidden" name="id" value={p.id} />
                     <button class="btn small" type="submit">{banned.has(p.id) ? 'Desbloquear' : 'Bloquear'}</button>
                   </form>
-                  <form method="post" action="/api/admin/users" style="display:inline" onsubmit="return confirm('¿Borrar este usuario y todo su progreso? No se puede deshacer.')">
+                  <form method="post" action="/api/admin/users" onsubmit="return confirm('¿Borrar este usuario y todo su progreso? No se puede deshacer.')">
                     <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={p.id} />
                     <button class="btn small danger" type="submit">Borrar</button>
                   </form>
                 </>
               )}
-              {banned.has(p.id) && <small class="muted"> Bloqueado</small>}
+              {banned.has(p.id) && <small class="muted">Bloqueado</small>}
+              </div>
             </td>
           </tr>
         );

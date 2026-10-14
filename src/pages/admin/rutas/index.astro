@@ -33,7 +33,10 @@ const { data: routes } = await supabase.from('routes').select('id, slug, name, u
           <label class="field">Tipo<select name="kind"><option value="comic">Cómics</option><option value="anime">Anime</option><option value="mixed">Mixta</option></select></label>
         </div>
         <label class="field">Descripción<textarea name="description"></textarea></label>
-        <button class="btn primary" type="submit">Crear (queda en borrador)</button>
+        <div class="form-actions">
+          <span class="hint">Se crea como borrador.</span>
+          <button class="btn primary" type="submit">Crear ruta</button>
+        </div>
       </form>
     </section>
   </div>
