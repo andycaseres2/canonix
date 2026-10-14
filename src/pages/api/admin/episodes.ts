@@ -31,7 +31,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const file = ownPath.test(path) && UNIT_FORMATS[media.kind as 'comic' | 'anime'][ext] ? await findFile(sb, 'content', path) : null;
   if (!file) return jsonError(400, 'No encontramos el archivo subido.');
 
-  const label = unitLabel(media, number);
+  const label = unitLabel(media, number, body.data.series);
   let { data: unit } = await sb.from('units').select('id, file_path').eq('label', label).maybeSingle();
   if (!unit) {
     const created = await sb.from('units').insert({ label }).select('id, file_path').single();

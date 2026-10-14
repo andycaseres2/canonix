@@ -14,12 +14,12 @@ async function json(handler: any, db: MockDb, body: unknown) {
 }
 
 /** Sign, upload and register one file the way the admin page does. */
-async function uploadUnit(db: MockDb, media_id: string, number: number, filename: string, group: string | null = null) {
-  const signed = await json(uploads, db, { kind: 'unit', media_id, number, filename, content_type: '', size: 4 });
+async function uploadUnit(db: MockDb, media_id: string, number: number, filename: string, group: string | null = null, series?: string) {
+  const signed = await json(uploads, db, { kind: 'unit', media_id, number, filename, content_type: '', size: 4, series });
   if (signed.status !== 200) return signed;
   const token = new URL(signed.body.uploadUrl, ORIGIN).searchParams.get('token')!;
   expect(db.storage.acceptUpload(token, new Uint8Array(4), signed.body.headers['Content-Type'])).toBeNull();
-  return json(episodes, db, { action: 'complete', media_id, number, path: signed.body.path, group });
+  return json(episodes, db, { action: 'complete', media_id, number, path: signed.body.path, group, series });
 }
 
 const unitsOf = (db: MockDb, mediaId: string) =>
@@ -42,6 +42,11 @@ describe('detectNumber', () => {
 });
 
 describe('unitLabel', () => {
+  it('uses the series name when given, otherwise the title', () => {
+    expect(unitLabel({ title: 'Batman: Year One', kind: 'comic' }, 404, 'Batman')).toBe('Batman #404');
+    expect(unitLabel({ title: 'Batman: Year One', kind: 'comic' }, 404, '   ')).toBe('Batman: Year One #404');
+  });
+
   it('uses #n for comics and Episodio n for anime', () => {
     expect(unitLabel({ title: 'Spider-Man', kind: 'comic' }, 5)).toBe('Spider-Man #5');
     expect(unitLabel({ title: 'Naruto', kind: 'anime' }, 3)).toBe('Naruto - Episodio 3');
@@ -89,6 +94,18 @@ describe('POST /api/admin/episodes', () => {
     expect((await uploadUnit(db, 'm1', 1, 'asm 1.cbz')).status).toBe(200);
     expect(unitsOf(db, 'm1')).toHaveLength(2);
     expect(db.tables.units.find((u) => u.id === 'u1')!.file_format).toBe('cbz');
+  });
+
+  it('with a series name the file joins the existing unit of that series', async () => {
+    const db = fixture();
+    db.tables.units.find((u) => u.id === 'u3')!.label = 'Batman #404';
+    db.tables.media_units.push({ media_id: 'm1', unit_id: 'u3', short: '404', group_name: null, position: 3 });
+    const signed = await json(uploads, db, { kind: 'unit', media_id: 'm1', number: 404, filename: 'b 404.cbz', content_type: '', size: 4, series: 'Batman' });
+    expect(signed.body.label).toBe('Batman #404');
+    expect(signed.body.replaces).toBe(false);
+    expect((await uploadUnit(db, 'm1', 404, 'b 404.cbz', null, 'Batman')).status).toBe(200);
+    expect(unitsOf(db, 'm1').filter((r) => r.short === '404')).toHaveLength(1);
+    expect(db.tables.units.find((u) => u.id === 'u3')!.file_format).toBe('cbz');
   });
 
   it('a second upload for the same number replaces the file and deletes the old one', async () => {

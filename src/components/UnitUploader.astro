@@ -1,51 +1,62 @@
 ---
 import { UNIT_FORMATS, formatList } from '../lib/uploads';
-interface Props { mediaId: string; kind: 'comic' | 'anime' }
-const { mediaId, kind } = Astro.props;
-const exts = Object.keys(UNIT_FORMATS[kind]);
+interface Props {
+  kind: 'comic' | 'anime';
+  /** Title id. Without it the uploader only collects files and a parent script calls uploadAll(). */
+  mediaId?: string;
+  series?: string;
+}
+const { mediaId, kind, series = '' } = Astro.props;
 const word = kind === 'anime' ? 'episodio' : 'número';
 ---
-<div class="panel stack uploader" id="subir" data-media-id={mediaId} data-exts={exts.join(',')} data-word={word}>
+<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''} data-kind={kind}>
   <div class="dropzone" id="unit-drop">
     <label class="btn primary file-pick">
       Elegir archivos
-      <input id="unit-files" type="file" multiple accept={exts.map((e) => `.${e}`).join(',')} />
+      <input id="unit-files" type="file" multiple accept={Object.keys(UNIT_FORMATS[kind]).map((e) => `.${e}`).join(',')} />
     </label>
-    <p class="muted">o arrástralos aquí · {formatList(kind)} · un archivo por {word}</p>
+    <p class="muted">o arrástralos aquí · <span id="unit-formats">{formatList(kind)}</span> · un archivo por <span class="unit-word">{word}</span></p>
+  </div>
+  <div class="row">
+    <label class="field">Nombre de la serie <small>así se nombra cada uno: "Batman #404"</small><input id="unit-series" maxlength="150" value={series} /></label>
+    <label class="field">Grupo <small>opcional: "Temporada 1"</small><input id="unit-group" maxlength="120" /></label>
   </div>
   <div id="unit-queue" class="stack" hidden>
     <div class="table-wrap"><table class="queue">
       <thead><tr><th>Archivo</th><th>N.º</th><th>Estado</th><th></th></tr></thead>
       <tbody></tbody>
     </table></div>
-    <label class="field">Grupo <small>opcional, se aplica a todos los nuevos: "Temporada 1", "Arco Chunin"…</small><input id="unit-group" maxlength="120" /></label>
     <div class="form-actions">
       <span class="hint" id="unit-summary"></span>
       <button class="btn" type="button" id="unit-clear">Vaciar lista</button>
-      <button class="btn primary" type="button" id="unit-start">Subir</button>
+      {mediaId && <button class="btn primary" type="button" id="unit-start">Subir</button>}
     </div>
   </div>
 </div>
 
 <script>
   import { appDialog, formatBytes, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/admin-upload';
-  import { detectNumber, extensionOf } from '../lib/uploads';
+  import { UNIT_FORMATS, detectNumber, extensionOf, formatList } from '../lib/uploads';
 
+  type Kind = 'comic' | 'anime';
   type Item = { file: File; number: number | null; status: 'pending' | 'uploading' | 'done' | 'error'; progress: number; message: string };
 
   const box = document.getElementById('subir')!;
-  const mediaId = box.dataset.mediaId!;
-  const exts = box.dataset.exts!.split(',');
-  const word = box.dataset.word!;
   const input = document.getElementById('unit-files') as HTMLInputElement;
   const drop = document.getElementById('unit-drop')!;
   const queue = document.getElementById('unit-queue')!;
   const tbody = queue.querySelector('tbody')!;
   const summary = document.getElementById('unit-summary')!;
-  const startBtn = document.getElementById('unit-start') as HTMLButtonElement;
+  const seriesInput = document.getElementById('unit-series') as HTMLInputElement;
+  const groupInput = document.getElementById('unit-group') as HTMLInputElement;
+  const startBtn = document.getElementById('unit-start') as HTMLButtonElement | null;
   const clearBtn = document.getElementById('unit-clear') as HTMLButtonElement;
+  let kind = box.dataset.kind as Kind;
   let items: Item[] = [];
   let busy = false;
+
+  const word = () => (kind === 'anime' ? 'episodio' : 'número');
+  const exts = () => Object.keys(UNIT_FORMATS[kind]);
 
   /** Small DOM builder; text always goes in as text, never as HTML. */
   function el(tag: string, props: Record<string, unknown> = {}, ...children: (Node | string)[]): HTMLElement {
@@ -55,25 +66,24 @@ const word = kind === 'anime' ? 'episodio' : 'número';
   }
 
   function add(files: FileList | File[]) {
-    const rejected: string[] = [];
-    for (const file of files) {
-      if (!exts.includes(extensionOf(file.name))) { rejected.push(file.name); continue; }
-      items.push({ file, number: detectNumber(file.name), status: 'pending', progress: 0, message: '' });
-    }
+    for (const file of files) items.push({ file, number: detectNumber(file.name), status: 'pending', progress: 0, message: '' });
     items.sort((a, b) => (a.number ?? Infinity) - (b.number ?? Infinity));
     render();
-    if (rejected.length) appDialog().alert({ title: 'Formato no admitido', message: `Solo se aceptan ${exts.map((e) => e.toUpperCase()).join(', ')}. No se agregaron:\n${rejected.join('\n')}` });
   }
 
-  function problems() {
+  function issues() {
     const seen = new Map<number, number>();
     items.forEach((it) => { if (it.number !== null) seen.set(it.number, (seen.get(it.number) ?? 0) + 1); });
-    return items.map((it) => (it.number === null ? `Falta el ${word}` : seen.get(it.number)! > 1 ? 'Número repetido' : ''));
+    return items.map((it) =>
+      !exts().includes(extensionOf(it.file.name)) ? `Formato no válido: usa ${formatList(kind)}`
+      : it.number === null ? `Falta el ${word()}`
+      : seen.get(it.number)! > 1 ? 'Número repetido'
+      : '');
   }
 
   function render() {
     queue.hidden = items.length === 0;
-    const issues = problems();
+    const problems = issues();
     tbody.replaceChildren(...items.map((it, i) => {
       const num = el('input', { type: 'number', min: '0', max: '99999', value: it.number === null ? '' : String(it.number), disabled: busy || it.status === 'done' }) as HTMLInputElement;
       num.setAttribute('aria-label', `Número de ${it.file.name}`);
@@ -84,7 +94,7 @@ const word = kind === 'anime' ? 'episodio' : 'número';
         status = el('div', { className: 'progress' }, bar);
       } else if (it.status === 'done') status = el('span', { className: 'ok-text' }, '✓ Subido');
       else if (it.status === 'error') status = el('span', { className: 'error-text' }, it.message);
-      else status = el('span', { className: issues[i] ? 'error-text' : 'muted' }, issues[i] || 'Listo para subir');
+      else status = el('span', { className: problems[i] ? 'error-text' : 'muted' }, problems[i] || 'Listo para subir');
       const remove = el('button', { type: 'button', className: 'btn small', textContent: 'Quitar', disabled: busy || it.status === 'uploading' });
       remove.addEventListener('click', () => { items.splice(i, 1); render(); });
       return el('tr', {},
@@ -95,20 +105,22 @@ const word = kind === 'anime' ? 'episodio' : 'número';
       );
     }));
     const pending = items.filter((it) => it.status !== 'done');
-    const blocked = issues.some((p, i) => p && items[i].status !== 'done');
     summary.textContent = `${items.length} archivo${items.length === 1 ? '' : 's'} · ${formatBytes(items.reduce((s, it) => s + it.file.size, 0))}`;
-    startBtn.textContent = busy ? 'Subiendo…' : `Subir ${pending.length}`;
-    startBtn.disabled = busy || pending.length === 0 || blocked;
+    if (startBtn) {
+      startBtn.textContent = busy ? 'Subiendo…' : `Subir ${pending.length}`;
+      startBtn.disabled = busy || pending.length === 0 || !api.ready();
+    }
     clearBtn.disabled = busy;
+    box.dispatchEvent(new CustomEvent('queuechange'));
   }
 
-  async function uploadOne(it: Item) {
+  async function uploadOne(mediaId: string, it: Item) {
     it.status = 'uploading'; it.progress = 0; render();
+    const series = seriesInput.value;
     try {
-      const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'unit', media_id: mediaId, number: it.number, filename: it.file.name, content_type: it.file.type, size: it.file.size });
+      const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'unit', media_id: mediaId, number: it.number, series, filename: it.file.name, content_type: it.file.type, size: it.file.size });
       await putFile(target, it.file, (f) => { it.progress = f; render(); });
-      const group = (document.getElementById('unit-group') as HTMLInputElement).value;
-      await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, path: target.path, group });
+      await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, path: target.path, group: groupInput.value });
       it.status = 'done';
     } catch (e) {
       it.status = 'error'; it.message = (e as Error).message;
@@ -118,18 +130,36 @@ const word = kind === 'anime' ? 'episodio' : 'número';
 
   const warnLeave = (e: BeforeUnloadEvent) => { e.preventDefault(); };
 
-  startBtn.addEventListener('click', async () => {
-    busy = true; render();
-    addEventListener('beforeunload', warnLeave);
-    for (const it of items.filter((x) => x.status !== 'done')) await uploadOne(it);
-    removeEventListener('beforeunload', warnLeave);
-    busy = false; render();
-    const done = items.filter((x) => x.status === 'done').length;
-    const failed = items.filter((x) => x.status === 'error').length;
+  /** API for the page: the edit page uploads right away, the create page after creating the title. */
+  const api = {
+    /** True when there are files and every pending one has a valid format and a unique number. */
+    ready: () => items.length > 0 && issues().every((p, i) => !p || items[i].status === 'done'),
+    hasProblems: () => issues().some((p, i) => p && items[i].status !== 'done'),
+    count: () => items.filter((it) => it.status !== 'done').length,
+    setKind(next: Kind) {
+      kind = next;
+      input.accept = exts().map((e) => `.${e}`).join(',');
+      document.getElementById('unit-formats')!.textContent = formatList(kind);
+      box.querySelectorAll('.unit-word').forEach((n) => { n.textContent = word(); });
+      render();
+    },
+    series: seriesInput,
+    async uploadAll(mediaId: string) {
+      busy = true; render();
+      addEventListener('beforeunload', warnLeave);
+      for (const it of items.filter((x) => x.status !== 'done')) await uploadOne(mediaId, it);
+      removeEventListener('beforeunload', warnLeave);
+      busy = false; render();
+      return { done: items.filter((x) => x.status === 'done').length, failed: items.filter((x) => x.status === 'error').length };
+    },
+  };
+  (box as HTMLElement & { unitQueue?: typeof api }).unitQueue = api;
+
+  startBtn?.addEventListener('click', async () => {
+    const { done, failed } = await api.uploadAll(box.dataset.mediaId!);
     if (!failed) return reloadWith('ok', `Se subieron ${done} archivo${done === 1 ? '' : 's'}.`, '#subir');
     await appDialog().alert({ title: 'Algunos archivos fallaron', message: `Se subieron ${done}. Fallaron ${failed}: revisa el motivo en la lista y vuelve a intentarlo.` });
   });
-
   clearBtn.addEventListener('click', () => { items = []; render(); });
   input.addEventListener('change', () => { if (input.files) add(input.files); input.value = ''; });
   ['dragenter', 'dragover'].forEach((t) => drop.addEventListener(t, (e) => { e.preventDefault(); drop.classList.add('over'); }));

@@ -15,6 +15,9 @@ const groups: { name: string | null; units: any[] }[] = [];
 });
 const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
 const withFile = (mu ?? []).filter((u: any) => u.units?.file_path).length;
+// Prefill the series with the name the existing numbers use ("Batman #404" -> "Batman"), else the title
+const firstLabel: string | undefined = ((mu ?? [])[0] as any)?.units?.label;
+const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+$/ : /^(.*) #\d+$/)?.[1] ?? m.title;
 ---
 <Layout title={`${m.title} · Admin`}>
   <p><a href="/admin/media">← Catálogo</a></p>
@@ -27,7 +30,7 @@ const withFile = (mu ?? []).filter((u: any) => u.units?.file_path).length;
 
       <h3 style="margin-top:0">Subir {unitWord}</h3>
       <p class="muted" style="margin-top:0">Un archivo ({formatList(m.kind)}) por cada {m.kind === 'anime' ? 'episodio' : 'número'}. El número se toma del nombre del archivo y puedes corregirlo antes de subir.</p>
-      <UnitUploader mediaId={m.id} kind={m.kind} />
+      <UnitUploader mediaId={m.id} kind={m.kind} series={seriesGuess} />
 
       {groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Agrégalos con el formulario.</p>}
       {groups.map((g) => (

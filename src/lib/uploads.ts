@@ -53,9 +53,14 @@ export const formatList = (kind: 'comic' | 'anime') => Object.keys(UNIT_FORMATS[
 export const MAX_UNIT_NUMBER = 99999;
 export const isUnitNumber = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_UNIT_NUMBER;
 
-/** Same labels add_range builds, so an uploaded file joins the unit that already exists. */
-export const unitLabel = (media: { title: string; kind: string }, n: number) =>
-  media.kind === 'anime' ? `${media.title} - Episodio ${n}` : `${media.title} #${n}`;
+/**
+ * Same labels add_range builds ("<series> #5", "<series> - Episodio 5"), so an uploaded file
+ * joins the unit that already exists. The series defaults to the title.
+ */
+export const unitLabel = (media: { title: string; kind: string }, n: number, series?: unknown) => {
+  const name = (typeof series === 'string' && series.trim() ? series.trim() : media.title).slice(0, 150);
+  return media.kind === 'anime' ? `${name} - Episodio ${n}` : `${name} #${n}`;
+};
 
 export const unitPath = (slug: string, n: number, filename: string, stamp = Date.now()) =>
   `${slug}/${String(n).padStart(5, '0')}-${stamp}.${extensionOf(filename)}`;

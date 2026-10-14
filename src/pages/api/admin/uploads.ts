@@ -24,7 +24,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     if (!isUnitNumber(number)) return jsonError(400, 'Indica un número entero válido para el archivo.');
     const contentType = UNIT_FORMATS[media.kind as 'comic' | 'anime'][extensionOf(filename)];
     if (!contentType) return jsonError(400, `Para ${media.kind === 'anime' ? 'un anime' : 'un cómic'} sube archivos ${formatList(media.kind)}.`);
-    const label = unitLabel(media, number);
+    const label = unitLabel(media, number, body.data.series);
     const { data: unit } = await sb.from('units').select('file_path').eq('label', label).maybeSingle();
     const target = await signUpload(sb, 'content', unitPath(media.slug, number, filename), contentType);
     return 'error' in target ? jsonError(403, target.error!) : Response.json({ ...target, label, replaces: !!unit?.file_path });

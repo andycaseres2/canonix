@@ -10,6 +10,8 @@ Branch: `feat/uploads-and-dialogs` (stacked on `feat/mock-mode-and-fixes`) · De
 - S3: "ni subir tampoco la porta del comic". The admin can upload a cover image for a title. Assumption: the cover is shown in the catalog (cards and title page) and in the admin.
 - S4 (assumption): mock mode (`USE_MOCK = true`) supports uploads with in-memory storage, so the flow can be tried without Supabase.
 - S5 (assumption): with Supabase, files go straight from the browser to Supabase Storage through signed upload URLs (Vercel functions cap request bodies at about 4.5 MB). Covers go to a public bucket and content to a private one, and only admins can write.
+- S6: "si todo eso debe estar" (answer to adding a "Nombre de la serie" field to the uploader). The uploader gets a series name, prefilled with the title like "Agregar un rango", and units are labelled `<series> #N` / `<series> - Episodio N`, so uploads join the numbers that already exist.
+- S7: "no veo el cargar los archivos y no es crear titulo debe ser la copion de crear el comic o anime subir portada ponerle name subir episodios todo eso". "Agregar título" is replaced by one "Nuevo cómic o anime" screen: type, name and data, cover and issue/episode files, all created and uploaded with one button. The title's edit page keeps the same cover and upload sections.
 
 ## Tasks
 
@@ -19,6 +21,8 @@ Branch: `feat/uploads-and-dialogs` (stacked on `feat/mock-mode-and-fixes`) · De
 | T2 | S4, S5 | inline | done | 31b682e |
 | T3 | S3 | inline | done | e4a8b7b |
 | T4 | S2 | inline | done | d2213c0 |
+| T5 | S6 | inline | done | (this commit) |
+| T6 | S7 | inline | pending | |
 
 Route evidence: no Writer trigger (sequential units sharing src/lib/mock and the admin title page); parent writes inline.
 
@@ -31,3 +35,4 @@ Route evidence: no Writer trigger (sequential units sharing src/lib/mock and the
 - L5: Gotcha: the demo DB cached on globalThis keeps its old shape across hot reloads, so it now reseeds when SEED_VERSION changes or the MockDb class identity changes.
 - L6: Not done (follow-ups): the remove_file endpoint has no UI yet. Very large videos may need resumable (TUS) uploads instead of one PUT. Reading the files (the reader) is not built yet.
 - L7: Independent verifier: S4, S5 PASS; S1, S2, S3 FAIL with 4 blockers. B1: the guard test was red in a clean clone; Vite `?raw` served transformed TS locally, so it now reads files with fs, and its regex skips method signatures. B2/B3: `.btn` and `.stack` overrode `[hidden]`, which kept the alert's Cancel button and the empty upload queue visible; a global `[hidden] { display: none !important }` fixes both and also the catalog search (broken since the baseline). B4: `reloadWith` with an unchanged URL only scrolled to the hash; it now reloads. Mock object responses are `no-store`. Recheck in Chrome: alert Cancel hidden, queue hidden on load, two covers and two unit uploads in a row reload with fresh data, catalog search filters. Advisory kept for the user: uploads label units `<title> #N`, so seeded titles whose units use another series prefix (e.g. "Batman: Year One" vs "Batman #404") get new units instead of joining the existing ones.
+- L8 (2026-10-13, user, verbatim): "si todo eso debe estar, otra cosa es que no veo el cargar los archivos yu no es crear titulo debe ser la copion de crear el comic o anime subir portada ponerle name subir episodios todo eso"
