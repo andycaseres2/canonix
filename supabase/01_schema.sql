@@ -120,6 +120,14 @@ create table if not exists public.progress (
 );
 create index if not exists progress_user_date on public.progress(user_id, completed_at desc);
 
+-- Rutas que cada usuario inició (aparecen en "Mi progreso")
+create table if not exists public.user_routes (
+  user_id uuid not null references auth.users(id) on delete cascade,
+  route_id uuid not null references public.routes(id) on delete cascade,
+  started_at timestamptz not null default now(),
+  primary key (user_id, route_id)
+);
+
 -- ---------- Seguridad (RLS) ----------
 alter table public.profiles enable row level security;
 alter table public.media enable row level security;
@@ -128,6 +136,7 @@ alter table public.media_units enable row level security;
 alter table public.routes enable row level security;
 alter table public.route_items enable row level security;
 alter table public.progress enable row level security;
+alter table public.user_routes enable row level security;
 
 -- Perfiles: cada quien ve y edita el suyo; el admin ve y edita todos
 drop policy if exists profiles_select on public.profiles;
@@ -177,6 +186,14 @@ drop policy if exists progress_insert on public.progress;
 create policy progress_insert on public.progress for insert with check (user_id = auth.uid());
 drop policy if exists progress_delete on public.progress;
 create policy progress_delete on public.progress for delete using (user_id = auth.uid());
+
+-- Rutas iniciadas: cada quien las suyas; solo puede iniciar rutas que puede leer
+drop policy if exists user_routes_select on public.user_routes;
+create policy user_routes_select on public.user_routes for select using (user_id = auth.uid() or public.is_admin());
+drop policy if exists user_routes_insert on public.user_routes;
+create policy user_routes_insert on public.user_routes for insert with check (user_id = auth.uid() and public.can_read_route(route_id));
+drop policy if exists user_routes_delete on public.user_routes;
+create policy user_routes_delete on public.user_routes for delete using (user_id = auth.uid());
 
 -- ---------- Resumen de rutas publicadas ----------
 -- Títulos e ids de números por ruta en una sola llamada (evita una consulta por ruta).

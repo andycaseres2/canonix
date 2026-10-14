@@ -98,6 +98,7 @@ export function seedDemoDb() {
   // Demo reader: first four titles of the Marvel route done, the fifth half way, spread over the last ten days.
   const reader = DEMO_ACCOUNTS[1].id;
   const marvelRoute = t.routes.find((r) => r.slug === 'marvel-esencial')!;
+  t.user_routes.push({ user_id: reader, route_id: marvelRoute.id, started_at: daysAgo(10, 2) });
   const firstItems = t.route_items.filter((i) => i.route_id === marvelRoute.id).sort((a, b) => a.position - b.position).slice(0, 5);
   let n = 0;
   firstItems.forEach((item, k) => {
@@ -111,8 +112,12 @@ export function seedDemoDb() {
   return db;
 }
 
+/** Bump when the mock tables change, so a running dev server reseeds instead of using a stale shape. */
+const SEED_VERSION = 2;
+
 /** One database per server process; survives Astro dev reloads, resets on restart. */
 export function getDemoDb(): MockDb {
-  const g = globalThis as typeof globalThis & { __rutasMockDb?: MockDb };
-  return (g.__rutasMockDb ??= seedDemoDb());
+  const g = globalThis as typeof globalThis & { __rutasMockDb?: { version: number; db: MockDb } };
+  if (g.__rutasMockDb?.version !== SEED_VERSION) g.__rutasMockDb = { version: SEED_VERSION, db: seedDemoDb() };
+  return g.__rutasMockDb.db;
 }

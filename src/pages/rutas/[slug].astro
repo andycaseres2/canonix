@@ -1,17 +1,41 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import Tracker from '../../components/Tracker.astro';
-import { getDoneUnitIds, getRoute } from '../../lib/data';
+import { getDoneUnitIds, getRoute, getStartedRoutes } from '../../lib/data';
 const { supabase, user, profile } = Astro.locals;
 const data = await getRoute(supabase, Astro.params.slug!, profile);
 if (!data) return new Response('Ruta no encontrada', { status: 404 });
 const { route, items, locked } = data;
-const done = locked ? new Set<string>() : await getDoneUnitIds(supabase, user?.id);
+const [done, started] = locked
+  ? [new Set<string>(), new Map<string, string>()]
+  : await Promise.all([getDoneUnitIds(supabase, user?.id), getStartedRoutes(supabase, user?.id)]);
+const startedAt = started.get(route.id);
+const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
 ---
 <Layout title={route.name} description={route.description ?? undefined}>
   <h1>{route.name}</h1>
   {route.description && <p class="lead">{route.description}</p>}
   {!route.published && <p class="alert error">Ruta en borrador: solo la ven los admins.</p>}
+  {!locked && route.published && (
+    <div class="route-start">
+      {!user && <a class="btn primary" href={`/login?next=${encodeURIComponent(`/rutas/${route.slug}`)}`}>Inicia sesión para iniciar la ruta</a>}
+      {user && !startedAt && (
+        <form method="post" action="/api/my-routes">
+          <input type="hidden" name="action" value="start" /><input type="hidden" name="route_id" value={route.id} /><input type="hidden" name="slug" value={route.slug} />
+          <button class="btn primary" type="submit">Iniciar ruta</button>
+        </form>
+      )}
+      {user && startedAt && (
+        <>
+          <p class="route-started"><b>✓ En tu progreso</b> <span class="muted">desde el {fmt.format(new Date(startedAt))}</span></p>
+          <form method="post" action="/api/my-routes" onsubmit="return confirm('¿Quitar esta ruta de Mi progreso? Lo que ya marcaste se mantiene.')">
+            <input type="hidden" name="action" value="leave" /><input type="hidden" name="route_id" value={route.id} /><input type="hidden" name="slug" value={route.slug} />
+            <button class="btn small" type="submit">Quitar de mi progreso</button>
+          </form>
+        </>
+      )}
+    </div>
+  )}
   {locked
     ? <p class="panel">Esta ruta es parte del plan premium.</p>
     : <Tracker items={items} done={[...done]} logged={!!user} />}

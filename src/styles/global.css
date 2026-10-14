@@ -153,3 +153,8 @@ td select { padding-right: 32px; background-position: right 9px center; min-widt
 .danger-zone small { display: block; color: var(--muted); }
 
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+
+/* Start / leave a route */
+.route-start { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: -8px 0 24px; }
+.route-start form { margin: 0; }
+.route-started { margin: 0; }

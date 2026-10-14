@@ -41,6 +41,14 @@ export async function getDoneUnitIds(sb: SupabaseClient, userId: string | undefi
   return new Set(rows.map((r) => r.unit_id));
 }
 
+/** Routes the user started, as route id -> start date. */
+export async function getStartedRoutes(sb: SupabaseClient, userId: string | undefined) {
+  if (!userId) return new Map<string, string>();
+  const { data, error } = await sb.from('user_routes').select('route_id, started_at').eq('user_id', userId).order('started_at', { ascending: false });
+  if (error) throw error;
+  return new Map((data ?? []).map((r) => [r.route_id as string, r.started_at as string]));
+}
+
 type Viewer = Pick<Profile, 'plan' | 'role'> | null;
 
 /** A premium route is locked for viewers who are neither premium nor admin. */

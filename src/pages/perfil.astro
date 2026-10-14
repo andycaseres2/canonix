@@ -1,8 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { getDoneUnitIds, getRouteUnitMap } from '../lib/data';
+import { getDoneUnitIds, getRouteUnitMap, getStartedRoutes } from '../lib/data';
 const { supabase, user, profile } = Astro.locals;
-const [done, routes] = await Promise.all([getDoneUnitIds(supabase, user!.id), getRouteUnitMap(supabase)]);
+const [done, allRoutes, started] = await Promise.all([
+  getDoneUnitIds(supabase, user!.id), getRouteUnitMap(supabase), getStartedRoutes(supabase, user!.id),
+]);
+// Only the routes the user started, most recent first
+const routes = allRoutes
+  .filter((r) => started.has(r.route.id))
+  .sort((a, b) => started.get(b.route.id)!.localeCompare(started.get(a.route.id)!));
+const day = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
 const { data: recent } = await supabase
   .from('progress').select('completed_at, units(label)').eq('user_id', user!.id)
   .order('completed_at', { ascending: false }).limit(40);
@@ -18,7 +25,8 @@ const thisWeek = (recent ?? []).filter((r: any) => new Date(r.completed_at).getT
     <div class="stat"><b>{profile?.plan === 'premium' ? 'Premium' : 'Gratis'}</b>tu plan</div>
   </div>
 
-  <h2>Rutas</h2>
+  <h2>Mis rutas</h2>
+  {routes.length === 0 && <p class="muted">Aún no has iniciado ninguna ruta. <a href="/rutas">Elige una</a> y toca «Iniciar ruta».</p>}
   <div class="grid">
     {routes.map(({ route, unitIds, unitCount }) => {
       const d = unitIds.filter((id) => done.has(id)).length;
@@ -28,6 +36,7 @@ const thisWeek = (recent ?? []).filter((r: any) => new Date(r.completed_at).getT
           <span class="t">{route.name}</span>
           <div class="bar"><span style={`width:${pct}%`}></span></div>
           <span><b>{pct}%</b> <span class="muted">· {d} de {unitCount}</span></span>
+          <small class="muted">Iniciada el {day.format(new Date(started.get(route.id)!))}</small>
         </a>
       );
     })}
@@ -45,6 +54,8 @@ const thisWeek = (recent ?? []).filter((r: any) => new Date(r.completed_at).getT
   <form class="panel stack narrow" method="post" action="/api/profile">
     <p class="muted" style="margin:0">{profile?.email}</p>
     <label class="field">Nombre<input name="display_name" value={profile?.display_name ?? ''} maxlength="60" required /></label>
-    <button class="btn" type="submit">Guardar</button>
+    <div class="form-actions">
+      <button class="btn" type="submit">Guardar</button>
+    </div>
   </form>
 </Layout>

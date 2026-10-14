@@ -5,7 +5,7 @@
  */
 
 export type Row = Record<string, any>;
-export type TableName = 'profiles' | 'media' | 'units' | 'media_units' | 'routes' | 'route_items' | 'progress';
+export type TableName = 'profiles' | 'media' | 'units' | 'media_units' | 'routes' | 'route_items' | 'progress' | 'user_routes';
 export type MockUser = {
   id: string;
   email: string;
@@ -25,6 +25,8 @@ export const FOREIGN_KEYS: ForeignKey[] = [
   { table: 'route_items', column: 'media_id', ref: 'media' },
   { table: 'progress', column: 'user_id', ref: 'users' },
   { table: 'progress', column: 'unit_id', ref: 'units' },
+  { table: 'user_routes', column: 'user_id', ref: 'users' },
+  { table: 'user_routes', column: 'route_id', ref: 'routes' },
 ];
 
 const UNIQUE_KEYS: Record<TableName, string[][]> = {
@@ -35,6 +37,7 @@ const UNIQUE_KEYS: Record<TableName, string[][]> = {
   routes: [['id'], ['slug']],
   route_items: [['id'], ['route_id', 'media_id']],
   progress: [['user_id', 'unit_id']],
+  user_routes: [['user_id', 'route_id']],
 };
 
 const now = () => new Date().toISOString();
@@ -51,6 +54,7 @@ const DEFAULTS: Record<TableName, () => Row> = {
   routes: () => ({ id: uuid(), kind: 'comic', description: null, published: false, requires_plan: 'free', position: 0, created_at: now() }),
   route_items: () => ({ id: uuid(), section: null, note: null }),
   progress: () => ({ completed_at: now() }),
+  user_routes: () => ({ started_at: now() }),
 };
 
 export class MockError extends Error {}
@@ -58,7 +62,7 @@ export class MockError extends Error {}
 export class MockDb {
   users: MockUser[] = [];
   tables: Record<TableName, Row[]> = {
-    profiles: [], media: [], units: [], media_units: [], routes: [], route_items: [], progress: [],
+    profiles: [], media: [], units: [], media_units: [], routes: [], route_items: [], progress: [], user_routes: [],
   };
 
   /** Creates an auth user plus its profile, like the on_auth_user_created trigger. */
@@ -129,7 +133,8 @@ export class Policies {
     switch (table) {
       case 'profiles': return row.id === this.uid || this.isAdmin;
       case 'routes': return row.published === true || this.isAdmin;
-      case 'progress': return row.user_id === this.uid || this.isAdmin;
+      case 'progress':
+      case 'user_routes': return row.user_id === this.uid || this.isAdmin;
       case 'route_items': return this.canReadRoute(row.route_id);
       default: return true;
     }
@@ -145,18 +150,19 @@ export class Policies {
 
   canInsert(table: TableName, row: Row): boolean {
     if (table === 'progress') return !!this.uid && row.user_id === this.uid;
+    if (table === 'user_routes') return !!this.uid && row.user_id === this.uid && this.canReadRoute(row.route_id);
     if (table === 'profiles') return false;
     return this.isAdmin;
   }
 
   canUpdate(table: TableName, row: Row): boolean {
     if (table === 'profiles') return row.id === this.uid || this.isAdmin;
-    if (table === 'progress') return false;
+    if (table === 'progress' || table === 'user_routes') return false;
     return this.isAdmin;
   }
 
   canDelete(table: TableName, row: Row): boolean {
-    if (table === 'progress') return row.user_id === this.uid;
+    if (table === 'progress' || table === 'user_routes') return row.user_id === this.uid;
     if (table === 'profiles') return false;
     return this.isAdmin;
   }
