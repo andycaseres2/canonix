@@ -54,8 +54,6 @@ const thisWeek = (recent ?? []).filter((r: any) => new Date(r.completed_at).getT
   <form class="panel stack narrow" method="post" action="/api/profile">
     <p class="muted" style="margin:0">{profile?.email}</p>
     <label class="field">Nombre<input name="display_name" value={profile?.display_name ?? ''} maxlength="60" required /></label>
-    <div class="form-actions">
-      <button class="btn" type="submit">Guardar</button>
-    </div>
+    <button class="btn" type="submit">Guardar</button>
   </form>
 </Layout>
