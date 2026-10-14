@@ -46,6 +46,10 @@ El CI (`.github/workflows/ci.yml`) corre ambos en cada push a `main` y en cada P
    ```
 6. En **Authentication → URL Configuration**, pon tu dominio como *Site URL*. Para probar más rápido puedes desactivar *Confirm email* en *Authentication → Providers → Email*.
 
+## Empezar de cero
+
+Para vaciar el contenido (catálogo, números o episodios, rutas, etapas y progreso) conservando las cuentas y los roles, ejecuta `supabase/90_reset_contenido.sql` en el SQL Editor. No se puede deshacer. Los archivos subidos se vacían aparte, en Storage → `covers` y `content` → *Empty bucket*. No vuelvas a correr `02_seed_marvel.sql` si quieres la base vacía.
+
 ## Desplegar en Vercel
 
 ```bash
