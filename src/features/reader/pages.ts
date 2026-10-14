@@ -1,6 +1,5 @@
-/** Picking and typing the pages inside a comic archive (CBZ). Shared by the viewer and its tests. */
-
-const TYPES: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', avif: 'image/avif' };
+/** Picking and typing the pages inside a comic archive (CBZ/CBR). Shared by the viewer, the uploader and tests. */
+import { PAGE_TYPES as TYPES } from '../../lib/uploads';
 
 const extension = (name: string) => name.split('.').pop()?.toLowerCase() ?? '';
 

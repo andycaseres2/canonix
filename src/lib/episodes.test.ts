@@ -160,3 +160,100 @@ describe('POST /api/admin/episodes', () => {
     expect(db.storage.read('content', path)).toBeNull();
   });
 });
+
+const pageList = (n: number, ext = 'jpg') => Array.from({ length: n }, (_, i) => ({ name: `${String(i + 1).padStart(3, '0')}.${ext}`, content_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`, size: 3 }));
+
+/** Sign, upload and register a comic split into pages, the way the admin page does. `skip` leaves pages out of the upload. */
+async function uploadPages(db: MockDb, media_id: string, number: number, count: number, skip: string[] = []) {
+  const pages = pageList(count);
+  const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source: 'cbz', pages });
+  if (signed.status !== 200) return { signed, done: signed };
+  for (const t of signed.body.targets) {
+    if (skip.includes(t.name)) continue;
+    const token = new URL(t.uploadUrl, ORIGIN).searchParams.get('token')!;
+    expect(db.storage.acceptUpload(token, new Uint8Array(3), t.headers['Content-Type'])).toBeNull();
+  }
+  const done = await json(episodes, db, { action: 'complete', media_id, number, folder: signed.body.folder, pages: pages.map((p) => p.name), source: 'cbz' });
+  return { signed, done };
+}
+
+describe('POST /api/admin/uploads (unit-pages)', () => {
+  it('signs every page inside a new folder for the issue', async () => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit-pages', media_id: 'm1', number: 5, source: 'cbr', pages: pageList(3) });
+    expect(status).toBe(200);
+    expect(body.folder).toMatch(/^asm\/00005-\d+\/$/);
+    expect(body.label).toBe('Spider-Man #5');
+    expect(body.targets.map((t: any) => [t.name, t.path, t.headers['Content-Type']])).toEqual(
+      ['001.jpg', '002.jpg', '003.jpg'].map((n) => [n, `${body.folder}${n}`, 'image/jpeg']));
+    expect(body.targets[0].uploadUrl).toContain(`/object/upload/sign/content/${body.folder}001.jpg?token=`);
+  });
+
+  it.each([
+    ['m3', pageList(2), 'cómic'],
+    ['m1', [], 'páginas'],
+    ['m1', pageList(2001), '2000'],
+    ['m1', [{ name: '001.txt', content_type: 'text/plain', size: 3 }], 'imagen'],
+    ['m1', [{ name: '../001.jpg', content_type: 'image/jpeg', size: 3 }], 'imagen'],
+    ['m1', [{ name: '001.jpg', content_type: 'image/jpeg', size: 51 * 1024 * 1024 }], '50 MB'],
+    ['m1', [...pageList(1), ...pageList(1)], 'repetida'],
+  ])('rejects %s with bad pages (%#)', async (media_id, pages, message) => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit-pages', media_id, number: 1, source: 'cbz', pages });
+    expect(status).toBe(400);
+    expect(body.error).toContain(message);
+  });
+});
+
+describe('POST /api/admin/episodes (pages)', () => {
+  it('registers the folder and its pages once every page is uploaded', async () => {
+    const db = fixture();
+    const { signed, done } = await uploadPages(db, 'm1', 8, 3);
+    expect(done.status).toBe(200);
+    const unit = db.tables.units.find((u) => u.label === 'Spider-Man #8')!;
+    expect(unit).toMatchObject({ file_path: signed.body.folder, pages: ['001.jpg', '002.jpg', '003.jpg'], file_format: 'cbz', file_size: 9 });
+    expect(unitsOf(db, 'm1').some((r) => r.unit_id === unit.id && r.short === '8')).toBe(true);
+  });
+
+  it('refuses to register when a page is missing and leaves the unit untouched', async () => {
+    const db = fixture();
+    const { done } = await uploadPages(db, 'm1', 8, 3, ['002.jpg']);
+    expect(done.status).toBe(400);
+    expect(done.body.error).toContain('Faltan 1 página');
+    expect(db.tables.units.some((u) => u.label === 'Spider-Man #8')).toBe(false);
+  });
+
+  it('refuses a folder of another title or number', async () => {
+    const db = fixture();
+    const body = { action: 'complete', media_id: 'm1', number: 8, pages: ['001.jpg'], source: 'cbz' };
+    expect((await json(episodes, db, { ...body, folder: 'ff/00008-1/' })).status).toBe(400);
+    expect((await json(episodes, db, { ...body, folder: 'asm/00009-1/' })).status).toBe(400);
+  });
+
+  it('replacing a single file with pages (and pages with pages) deletes what was stored before', async () => {
+    const db = fixture();
+    await uploadUnit(db, 'm1', 7, 'asm 7.cbz');
+    const unit = () => db.tables.units.find((u) => u.label === 'Spider-Man #7')!;
+    const single = unit().file_path;
+    await new Promise((r) => setTimeout(r, 2));
+    const first = await uploadPages(db, 'm1', 7, 2);
+    expect(db.storage.read('content', single)).toBeNull();
+    expect(unit().pages).toEqual(['001.jpg', '002.jpg']);
+    await new Promise((r) => setTimeout(r, 2));
+    await uploadPages(db, 'm1', 7, 1);
+    expect(db.storage.read('content', `${first.signed.body.folder}001.jpg`)).toBeNull();
+    expect(db.storage.read('content', `${first.signed.body.folder}002.jpg`)).toBeNull();
+    expect(unit().pages).toEqual(['001.jpg']);
+    await new Promise((r) => setTimeout(r, 2));
+    await uploadUnit(db, 'm1', 7, 'asm 7.pdf');
+    expect(unit()).toMatchObject({ file_format: 'pdf', pages: null });
+  });
+
+  it('remove_file deletes every page of a paged unit', async () => {
+    const db = fixture();
+    const { signed } = await uploadPages(db, 'm1', 9, 2);
+    const unit = db.tables.units.find((u) => u.label === 'Spider-Man #9')!;
+    expect((await json(episodes, db, { action: 'remove_file', unit_id: unit.id })).status).toBe(200);
+    expect(unit).toMatchObject({ file_path: null, pages: null, file_format: null, file_size: null });
+    expect(db.storage.read('content', `${signed.body.folder}001.jpg`)).toBeNull();
+    expect(db.storage.read('content', `${signed.body.folder}002.jpg`)).toBeNull();
+  });
+});

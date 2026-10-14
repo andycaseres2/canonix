@@ -1,15 +1,35 @@
 import type { APIRoute } from 'astro';
-import { COVER_MAX_BYTES, UNIT_FORMATS, coverPath, extensionOf, formatList, isUnitNumber, jsonError, readJson, signUpload, unitLabel, unitPath } from '../../../lib/uploads';
+import { COVER_MAX_BYTES, UNIT_FORMATS, checkPages, coverPath, extensionOf, formatList, isUnitNumber, jsonError, mapLimit, readJson, signUpload, unitFolder, unitLabel, unitPath } from '../../../lib/uploads';
 
 /** Step 1 of an upload: validate the file and hand the browser a signed Storage URL. */
 export const POST: APIRoute = async ({ request, url, locals }) => {
   const body = await readJson(request, url);
   if ('error' in body) return body.error;
   const { kind, media_id, filename, content_type, size } = body.data ?? {};
+  const sb = locals.supabase;
+
+  if (kind === 'unit-pages') {
+    if (typeof media_id !== 'string') return jsonError(400, 'Faltan datos del cómic.');
+    const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', media_id).maybeSingle();
+    if (!media) return jsonError(404, 'Título no encontrado.');
+    if (media.kind !== 'comic') return jsonError(400, 'Solo un cómic se sube por páginas.');
+    const number = body.data.number;
+    if (!isUnitNumber(number)) return jsonError(400, 'Indica un número entero válido para el archivo.');
+    const checked = checkPages(body.data.pages);
+    if ('error' in checked) return jsonError(400, checked.error);
+    const label = unitLabel(media, number, body.data.series);
+    const { data: unit } = await sb.from('units').select('file_path').eq('label', label).maybeSingle();
+    const folder = unitFolder(media.slug, number);
+    // One signed upload URL per page; a few at a time to stay friendly with the Storage API
+    const targets = await mapLimit(checked.pages, 8, async (p) => ({ name: p.name, ...(await signUpload(sb, 'content', `${folder}${p.name}`, p.content_type)) }));
+    const failed = targets.find((t) => 'error' in t);
+    if (failed && 'error' in failed) return jsonError(403, failed.error!);
+    return Response.json({ folder, targets, label, replaces: !!unit?.file_path });
+  }
+
   if (typeof media_id !== 'string' || typeof filename !== 'string' || typeof content_type !== 'string' || typeof size !== 'number') {
     return jsonError(400, 'Faltan datos del archivo.');
   }
-  const sb = locals.supabase;
   const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', media_id).maybeSingle();
   if (!media) return jsonError(404, 'Título no encontrado.');
 
