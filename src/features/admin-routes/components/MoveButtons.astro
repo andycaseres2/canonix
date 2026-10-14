@@ -1,0 +1,19 @@
+---
+// Up/down reorder forms for a stage or a stage item; the ends of the list get a disabled button.
+interface Props {
+  action: 'section_move' | 'item_move';
+  routeId: string;
+  id: string;
+  isFirst: boolean;
+  isLast: boolean;
+  upLabel: string;
+  downLabel: string;
+}
+const { action, routeId, id, isFirst, isLast, upLabel, downLabel } = Astro.props;
+---
+{(['up', 'down'] as const).map((dir) => (
+  <form data-swap="#route-page" method="post" action="/api/admin/route-items">
+    <input type="hidden" name="action" value={action} /><input type="hidden" name="route_id" value={routeId} /><input type="hidden" name="id" value={id} /><input type="hidden" name="dir" value={dir} />
+    <button class="btn small" type="submit" aria-label={dir === 'up' ? upLabel : downLabel} disabled={(dir === 'up' && isFirst) || (dir === 'down' && isLast)}>{dir === 'up' ? '↑' : '↓'}</button>
+  </form>
+))}

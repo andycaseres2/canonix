@@ -1,0 +1,13 @@
+---
+// Danger zone that deletes the whole route after confirmation.
+import DangerZone from '../../../components/ui/DangerZone.astro';
+interface Props { routeId: string }
+const { routeId } = Astro.props;
+const description = 'Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer.';
+---
+<DangerZone title="Borrar ruta" description={description}>
+  <form data-swap="#route-page" method="post" action="/api/admin/routes" data-confirm={description} data-confirm-title="¿Borrar ruta?" data-confirm-label="Borrar ruta" data-confirm-danger>
+    <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={routeId} />
+    <button class="btn small danger" type="submit">Borrar ruta</button>
+  </form>
+</DangerZone>

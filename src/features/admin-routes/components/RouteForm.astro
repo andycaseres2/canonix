@@ -1,0 +1,24 @@
+---
+// Route data form: name, description, derived universe/kind, publish flag and access plan.
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+import FormActions from '../../../components/ui/FormActions.astro';
+import type { RouteRecord } from '../types';
+interface Props { route: RouteRecord }
+const { route: r } = Astro.props;
+const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 'cómics';
+---
+<Panel as="form" data-swap="#route-page" class="stack" method="post" action="/api/admin/routes">
+  <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={r.id} />
+  <Field label="Nombre"><input name="name" value={r.name} maxlength="120" required /></Field>
+  <Field label="Descripción"><textarea name="description" maxlength="2000">{r.description ?? ''}</textarea></Field>
+  <small class="muted">Universo: <b>{r.universe}</b> · Tipo: <b>{kindLabel}</b> · se calculan solos según los títulos.</small>
+  <FormActions>
+    <label class="check"><input type="checkbox" name="published" checked={r.published} /> Publicada</label>
+    <select name="requires_plan" aria-label="Acceso" class="inline-select">
+      <option value="free" selected={r.requires_plan === 'free'}>Gratis</option>
+      <option value="premium" selected={r.requires_plan === 'premium'}>Premium</option>
+    </select>
+    <button class="btn primary" type="submit">Guardar cambios</button>
+  </FormActions>
+</Panel>

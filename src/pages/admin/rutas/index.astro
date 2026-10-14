@@ -1,6 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import AdminNav from '../../../features/admin/components/AdminNav.astro';
+import RoutesTable from '../../../features/admin-routes/components/RoutesTable.astro';
+import CreateRouteForm from '../../../features/admin-routes/components/CreateRouteForm.astro';
 const { supabase } = Astro.locals;
 const { data: routes } = await supabase.from('routes').select('id, slug, name, universe, kind, published, requires_plan, position, route_sections(count), route_items(count)').order('position').order('name');
 ---
@@ -9,32 +11,8 @@ const { data: routes } = await supabase.from('routes').select('id, slug, name, u
   <AdminNav />
   <div class="split">
     <section>
-      <div class="table-wrap"><table style="min-width:0">
-        <thead><tr><th>Ruta</th><th>Etapas</th><th>Títulos</th><th>Estado</th></tr></thead>
-        <tbody>
-          {(routes ?? []).map((r: any) => (
-            <tr>
-              <td><a href={`/admin/rutas/${r.id}`}><b>{r.name}</b></a><br /><small class="muted">{r.universe} · /rutas/{r.slug}</small></td>
-              <td>{r.route_sections?.[0]?.count ?? 0}</td>
-              <td>{r.route_items?.[0]?.count ?? 0}</td>
-              <td>{r.published ? 'Publicada' : 'Borrador'}{r.requires_plan === 'premium' && ' · Premium'}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table></div>
-      {(routes ?? []).length === 0 && <p class="muted">Aún no hay rutas.</p>}
+      <RoutesTable routes={(routes ?? []) as any[]} />
     </section>
-    <section id="nueva">
-      <h2 style="margin-top:0">Crear ruta</h2>
-      <form class="panel stack" method="post" action="/api/admin/routes">
-        <input type="hidden" name="action" value="create" />
-        <label class="field">Nombre<input name="name" placeholder="Ruta DC esencial" maxlength="120" required /></label>
-        <label class="field">Descripción<textarea name="description" maxlength="2000"></textarea></label>
-        <div class="form-actions">
-          <span class="hint">Se crea como borrador; luego le armas las etapas.</span>
-          <button class="btn primary" type="submit">Crear ruta</button>
-        </div>
-      </form>
-    </section>
+    <CreateRouteForm />
   </div>
 </Layout>

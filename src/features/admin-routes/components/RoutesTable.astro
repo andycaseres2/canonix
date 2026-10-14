@@ -1,0 +1,20 @@
+---
+// List of every route with its stage/title counts and status; links to each route's editor.
+import type { RouteListRow } from '../types';
+interface Props { routes: RouteListRow[] }
+const { routes } = Astro.props;
+---
+<div class="table-wrap"><table style="min-width:0">
+  <thead><tr><th>Ruta</th><th>Etapas</th><th>Títulos</th><th>Estado</th></tr></thead>
+  <tbody>
+    {routes.map((r) => (
+      <tr>
+        <td><a href={`/admin/rutas/${r.id}`}><b>{r.name}</b></a><br /><small class="muted">{r.universe} · /rutas/{r.slug}</small></td>
+        <td>{r.route_sections?.[0]?.count ?? 0}</td>
+        <td>{r.route_items?.[0]?.count ?? 0}</td>
+        <td>{r.published ? 'Publicada' : 'Borrador'}{r.requires_plan === 'premium' && ' · Premium'}</td>
+      </tr>
+    ))}
+  </tbody>
+</table></div>
+{routes.length === 0 && <p class="muted">Aún no hay rutas.</p>}

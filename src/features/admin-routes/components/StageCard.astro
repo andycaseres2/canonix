@@ -1,0 +1,36 @@
+---
+// One stage: number with move/delete actions, its edit form, its titles and the button that opens the picker.
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+import FormActions from '../../../components/ui/FormActions.astro';
+import MoveButtons from './MoveButtons.astro';
+import StageItemList from './StageItemList.astro';
+import type { Stage, StageItem } from '../types';
+interface Props { routeId: string; stage: Stage; index: number; total: number; items: StageItem[] }
+const { routeId, stage: s, index: i, total, items } = Astro.props;
+---
+<Panel as="article" class="stage" id={`etapa-${s.id}`} style={`view-transition-name: st-${s.id}`}>
+  <div class="stage-head">
+    <span class="stage-n">Etapa {i + 1}</span>
+    <div class="actions">
+      <MoveButtons action="section_move" routeId={routeId} id={s.id} isFirst={i === 0} isLast={i === total - 1} upLabel="Subir etapa" downLabel="Bajar etapa" />
+      <form data-swap="#route-page" method="post" action="/api/admin/route-items" data-confirm={items.length ? `Se quitan sus ${items.length} títulos de la ruta (siguen en el catálogo).` : 'La etapa está vacía.'} data-confirm-title={`¿Borrar la etapa «${s.title}»?`} data-confirm-label="Borrar etapa" data-confirm-danger>
+        <input type="hidden" name="action" value="section_delete" /><input type="hidden" name="route_id" value={routeId} /><input type="hidden" name="id" value={s.id} />
+        <button class="btn small danger" type="submit">Borrar etapa</button>
+      </form>
+    </div>
+  </div>
+
+  <form data-swap="#route-page" class="stack" method="post" action="/api/admin/route-items">
+    <input type="hidden" name="action" value="section_update" /><input type="hidden" name="route_id" value={routeId} /><input type="hidden" name="id" value={s.id} />
+    <Field label="Título de la etapa"><input name="title" value={s.title} maxlength="120" required /></Field>
+    <Field label="Descripción" hint="opcional"><textarea name="description" rows="2" maxlength="2000">{s.description ?? ''}</textarea></Field>
+    <FormActions><button class="btn" type="submit">Guardar etapa</button></FormActions>
+  </form>
+
+  <StageItemList routeId={routeId} items={items} />
+
+  <div class="stage-add">
+    <button class="btn primary stage-pick" type="button" data-section-id={s.id} data-stage-title={s.title}>+ Agregar cómics o animes</button>
+  </div>
+</Panel>

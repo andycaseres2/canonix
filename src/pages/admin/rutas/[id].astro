@@ -1,6 +1,14 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import AdminNav from '../../../features/admin/components/AdminNav.astro';
+import SectionHead from '../../../components/ui/SectionHead.astro';
+import RouteForm from '../../../features/admin-routes/components/RouteForm.astro';
+import StageCard from '../../../features/admin-routes/components/StageCard.astro';
+import NewStageForm from '../../../features/admin-routes/components/NewStageForm.astro';
+import StagePickerData from '../../../features/admin-routes/components/StagePickerData.astro';
+import DeleteRouteForm from '../../../features/admin-routes/components/DeleteRouteForm.astro';
+import StagePicker from '../../../features/admin-routes/components/StagePicker.astro';
+import type { PickerOption, StageItem } from '../../../features/admin-routes/types';
 const { supabase } = Astro.locals;
 const { data: r } = await supabase.from('routes').select('*').eq('id', Astro.params.id!).maybeSingle();
 if (!r) return Astro.redirect('/admin/rutas?error=' + encodeURIComponent('Ruta no encontrada'));
@@ -9,11 +17,11 @@ const [{ data: stages }, { data: items }, { data: allMedia }] = await Promise.al
   supabase.from('route_items').select('id, section_id, position, media(id, title, year_label, kind, cover_url)').eq('route_id', r.id).order('position'),
   supabase.from('media').select('id, title, year_label, kind, universe, cover_url').order('universe').order('year_start').order('title'),
 ]);
-const byStage = new Map<string, any[]>();
+const stageList = stages ?? [];
+const byStage = new Map<string, StageItem[]>();
 (items ?? []).forEach((it: any) => byStage.set(it.section_id, [...(byStage.get(it.section_id) ?? []), it]));
 const used = new Set((items ?? []).map((i: any) => i.media?.id));
-const options = (allMedia ?? []).filter((m) => !used.has(m.id)).map((m) => ({ id: m.id, t: m.title, y: m.year_label, u: m.universe, k: m.kind, c: m.cover_url }));
-const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 'cómics';
+const options: PickerOption[] = (allMedia ?? []).filter((m) => !used.has(m.id)).map((m) => ({ id: m.id, t: m.title, y: m.year_label, u: m.universe, k: m.kind, c: m.cover_url }));
 ---
 <Layout title={`${r.name} · Admin`}>
   <p><a href="/admin/rutas">← Rutas</a></p>
@@ -21,196 +29,17 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
   <AdminNav />
 
   <div class="route-editor" id="route-page">
-    <div class="section-head">
-      <h2>Ruta</h2>
-      <a class="btn small" href={`/rutas/${r.slug}`}>Ver ruta ↗</a>
-    </div>
-    <form data-swap="#route-page" class="panel stack" method="post" action="/api/admin/routes">
-      <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={r.id} />
-      <label class="field">Nombre<input name="name" value={r.name} maxlength="120" required /></label>
-      <label class="field">Descripción<textarea name="description" maxlength="2000">{r.description ?? ''}</textarea></label>
-      <small class="muted">Universo: <b>{r.universe}</b> · Tipo: <b>{kindLabel}</b> · se calculan solos según los títulos.</small>
-      <div class="form-actions">
-        <label class="check"><input type="checkbox" name="published" checked={r.published} /> Publicada</label>
-        <select name="requires_plan" aria-label="Acceso" class="inline-select">
-          <option value="free" selected={r.requires_plan === 'free'}>Gratis</option>
-          <option value="premium" selected={r.requires_plan === 'premium'}>Premium</option>
-        </select>
-        <button class="btn primary" type="submit">Guardar cambios</button>
-      </div>
-    </form>
+    <SectionHead title="Ruta"><a class="btn small" href={`/rutas/${r.slug}`}>Ver ruta ↗</a></SectionHead>
+    <RouteForm route={r} />
 
     <h2>Etapas ({stages?.length ?? 0})</h2>
-    {(stages ?? []).length === 0 && <p class="muted">Crea la primera etapa, por ejemplo «Años 60», y agrégale cómics o animes.</p>}
+    {stageList.length === 0 && <p class="muted">Crea la primera etapa, por ejemplo «Años 60», y agrégale cómics o animes.</p>}
+    {stageList.map((s, i) => <StageCard routeId={r.id} stage={s} index={i} total={stageList.length} items={byStage.get(s.id) ?? []} />)}
 
-    {(stages ?? []).map((s, i) => {
-      const list = byStage.get(s.id) ?? [];
-      return (
-        <article class="panel stage" id={`etapa-${s.id}`} style={`view-transition-name: st-${s.id}`}>
-          <div class="stage-head">
-            <span class="stage-n">Etapa {i + 1}</span>
-            <div class="actions">
-              {(['up', 'down'] as const).map((dir) => (
-                <form data-swap="#route-page" method="post" action="/api/admin/route-items">
-                  <input type="hidden" name="action" value="section_move" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} /><input type="hidden" name="dir" value={dir} />
-                  <button class="btn small" type="submit" aria-label={dir === 'up' ? 'Subir etapa' : 'Bajar etapa'} disabled={(dir === 'up' && i === 0) || (dir === 'down' && i === (stages?.length ?? 0) - 1)}>{dir === 'up' ? '↑' : '↓'}</button>
-                </form>
-              ))}
-              <form data-swap="#route-page" method="post" action="/api/admin/route-items" data-confirm={list.length ? `Se quitan sus ${list.length} títulos de la ruta (siguen en el catálogo).` : 'La etapa está vacía.'} data-confirm-title={`¿Borrar la etapa «${s.title}»?`} data-confirm-label="Borrar etapa" data-confirm-danger>
-                <input type="hidden" name="action" value="section_delete" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} />
-                <button class="btn small danger" type="submit">Borrar etapa</button>
-              </form>
-            </div>
-          </div>
-
-          <form data-swap="#route-page" class="stack" method="post" action="/api/admin/route-items">
-            <input type="hidden" name="action" value="section_update" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} />
-            <label class="field">Título de la etapa<input name="title" value={s.title} maxlength="120" required /></label>
-            <label class="field">Descripción <small>opcional</small><textarea name="description" rows="2" maxlength="2000">{s.description ?? ''}</textarea></label>
-            <div class="form-actions"><button class="btn" type="submit">Guardar etapa</button></div>
-          </form>
-
-          {list.length === 0
-            ? <p class="muted">Todavía no tiene cómics ni animes.</p>
-            : <ol class="stage-items">
-                {list.map((it: any, k: number) => (
-                  <li style={`view-transition-name: it-${it.id}`}>
-                    {it.media?.cover_url ? <img class="stage-thumb" src={it.media.cover_url} alt="" loading="lazy" /> : <span class="stage-thumb empty" aria-hidden="true"></span>}
-                    <span class="stage-item-text"><b>{it.media?.title}</b> <span class="muted">{it.media?.year_label}{it.media?.kind === 'anime' ? ' · anime' : ''}</span></span>
-                    <span class="actions">
-                      {(['up', 'down'] as const).map((dir) => (
-                        <form data-swap="#route-page" method="post" action="/api/admin/route-items">
-                          <input type="hidden" name="action" value="item_move" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={it.id} /><input type="hidden" name="dir" value={dir} />
-                          <button class="btn small" type="submit" aria-label={dir === 'up' ? 'Subir' : 'Bajar'} disabled={(dir === 'up' && k === 0) || (dir === 'down' && k === list.length - 1)}>{dir === 'up' ? '↑' : '↓'}</button>
-                        </form>
-                      ))}
-                      <form data-swap="#route-page" method="post" action="/api/admin/route-items">
-                        <input type="hidden" name="action" value="item_remove" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={it.id} />
-                        <button class="btn small danger" type="submit" aria-label={`Quitar ${it.media?.title}`}>✕</button>
-                      </form>
-                    </span>
-                  </li>
-                ))}
-              </ol>}
-
-          <div class="stage-add">
-            <button class="btn primary stage-pick" type="button" data-section-id={s.id} data-stage-title={s.title}>+ Agregar cómics o animes</button>
-          </div>
-        </article>
-      );
-    })}
-
-    <form data-swap="#route-page" class="panel stack" id="nueva-etapa" method="post" action="/api/admin/route-items">
-      <h3 style="margin:0">Nueva etapa</h3>
-      <input type="hidden" name="action" value="section_create" /><input type="hidden" name="route_id" value={r.id} />
-      <label class="field">Título<input name="title" maxlength="120" placeholder="Ej: Años 60" required /></label>
-      <label class="field">Descripción <small>opcional</small><textarea name="description" rows="2" maxlength="2000"></textarea></label>
-      <div class="form-actions"><button class="btn primary" type="submit">Crear etapa</button></div>
-    </form>
-    <p class="muted">¿No está el título que buscas? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>
-
-    <script type="application/json" id="add-data" set:html={JSON.stringify(options).replace(/</g, '\\u003c')}></script>
-    <div class="danger-zone">
-      <p><b>Borrar ruta</b><small>Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer.</small></p>
-      <form data-swap="#route-page" method="post" action="/api/admin/routes" data-confirm="Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer." data-confirm-title="¿Borrar ruta?" data-confirm-label="Borrar ruta" data-confirm-danger>
-        <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={r.id} />
-        <button class="btn small danger" type="submit">Borrar ruta</button>
-      </form>
-    </div>
+    <NewStageForm routeId={r.id} />
+    <StagePickerData options={options} />
+    <DeleteRouteForm routeId={r.id} />
   </div>
 
-  <dialog id="picker" class="app-dialog picker" aria-labelledby="picker-title">
-    <form data-swap="#route-page" method="post" action="/api/admin/route-items" class="app-dialog-body" id="picker-form">
-      <input type="hidden" name="action" value="item_add" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="section_id" id="picker-section" />
-      <h2 class="app-dialog-title" id="picker-title">Agregar</h2>
-      <p class="muted" style="margin:0">Marca los que quieras sumar a esta etapa; se agregan en el orden en que los marcas.</p>
-      <div class="picker-tools">
-        <div class="picker-tabs" role="group" aria-label="Tipo">
-          <button class="btn small" type="button" data-kind="" aria-pressed="true">Todos</button>
-          <button class="btn small" type="button" data-kind="comic" aria-pressed="false">Cómics</button>
-          <button class="btn small" type="button" data-kind="anime" aria-pressed="false">Anime</button>
-        </div>
-        <input type="search" id="picker-filter" placeholder="Filtrar (opcional)" aria-label="Filtrar la lista" autocomplete="off" />
-      </div>
-      <ul class="picker-list" id="picker-list"></ul>
-      <p class="muted" id="picker-empty" hidden>No quedan títulos por agregar con ese filtro. ¿Falta alguno? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>
-      <div class="app-dialog-actions">
-        <span class="hint" id="picker-count">Ninguno marcado</span>
-        <button class="btn" type="button" id="picker-cancel">Cancelar</button>
-        <button class="btn primary" type="submit" id="picker-submit" disabled>Agregar</button>
-      </div>
-    </form>
-  </dialog>
-  <script>
-    type Option = { id: string; t: string; y: string | null; u: string | null; k: string; c: string | null };
-    let all: Option[] = [];
-    const dialog = document.getElementById('picker') as HTMLDialogElement;
-    const form = document.getElementById('picker-form') as HTMLFormElement;
-    const list = document.getElementById('picker-list')!;
-    const filter = document.getElementById('picker-filter') as HTMLInputElement;
-    const count = document.getElementById('picker-count')!;
-    const submit = document.getElementById('picker-submit') as HTMLButtonElement;
-    const empty = document.getElementById('picker-empty')!;
-    const tabs = [...dialog.querySelectorAll<HTMLButtonElement>('.picker-tabs button')];
-    const norm = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-    let picked: string[] = [];
-    let kind = '';
-    let stageTitle = '';
-
-    /** Small DOM builder; text always goes in as text, never as HTML. */
-    function el(tag: string, props: Record<string, unknown> = {}, ...kids: (Node | string)[]): HTMLElement {
-      const n = Object.assign(document.createElement(tag), props);
-      n.append(...kids);
-      return n;
-    }
-
-    function render() {
-      const v = norm(filter.value.trim());
-      const shown = all.filter((m) => (!kind || m.k === kind) && (!v || norm(`${m.t} ${m.y} ${m.u}`).includes(v)));
-      list.replaceChildren(...shown.map((m) => {
-        const order = picked.indexOf(m.id);
-        const box = el('input', { type: 'checkbox', checked: order >= 0 }) as HTMLInputElement;
-        box.addEventListener('change', () => {
-          picked = box.checked ? [...picked, m.id] : picked.filter((id) => id !== m.id);
-          render();
-        });
-        const thumb = m.c ? el('img', { className: 'stage-thumb', src: m.c, alt: '', loading: 'lazy' }) : el('span', { className: 'stage-thumb empty' });
-        return el('li', { className: order >= 0 ? 'on' : '' },
-          el('label', {}, box, thumb,
-            el('span', { className: 'picker-text' }, el('b', { textContent: m.t }), el('small', { className: 'muted', textContent: [...new Set([m.y, m.u, m.k === 'anime' ? 'anime' : 'cómic'].filter(Boolean))].join(' · ') })),
-            order >= 0 ? el('span', { className: 'picker-order', textContent: String(order + 1) }) : ''));
-      }));
-      empty.hidden = shown.length > 0;
-      count.textContent = picked.length ? `${picked.length} marcado${picked.length === 1 ? '' : 's'}` : 'Ninguno marcado';
-      submit.disabled = picked.length === 0;
-      submit.textContent = picked.length ? `Agregar ${picked.length} a «${stageTitle}»` : 'Agregar';
-    }
-
-    // Delegated: the stages are replaced after every change
-    document.addEventListener('click', (e) => {
-      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.stage-pick');
-      if (!btn) return;
-      all = JSON.parse(document.getElementById('add-data')!.textContent || '[]'); // titles not yet in the route
-      (document.getElementById('picker-section') as HTMLInputElement).value = btn.dataset.sectionId!;
-      stageTitle = btn.dataset.stageTitle!;
-      document.getElementById('picker-title')!.textContent = `Agregar a «${stageTitle}»`;
-      picked = []; filter.value = '';
-      render();
-      dialog.showModal();
-      list.scrollTop = 0;
-    });
-    tabs.forEach((t) => t.addEventListener('click', () => {
-      kind = t.dataset.kind!;
-      tabs.forEach((x) => x.setAttribute('aria-pressed', String(x === t)));
-      render();
-    }));
-    filter.addEventListener('input', render);
-    document.getElementById('picker-cancel')!.addEventListener('click', () => dialog.close());
-    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
-    form.addEventListener('submit', () => {
-      form.querySelectorAll('input[name=media_id]').forEach((n) => n.remove());
-      picked.forEach((id) => form.append(el('input', { type: 'hidden', name: 'media_id', value: id })));
-      dialog.close();
-    });
-  </script>
+  <StagePicker routeId={r.id} />
 </Layout>

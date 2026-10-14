@@ -1,0 +1,16 @@
+---
+// "Nueva etapa" form appended after the stages, plus the link to create a missing title.
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+import FormActions from '../../../components/ui/FormActions.astro';
+interface Props { routeId: string }
+const { routeId } = Astro.props;
+---
+<Panel as="form" data-swap="#route-page" class="stack" id="nueva-etapa" method="post" action="/api/admin/route-items">
+  <h3 style="margin:0">Nueva etapa</h3>
+  <input type="hidden" name="action" value="section_create" /><input type="hidden" name="route_id" value={routeId} />
+  <Field label="Título"><input name="title" maxlength="120" placeholder="Ej: Años 60" required /></Field>
+  <Field label="Descripción" hint="opcional"><textarea name="description" rows="2" maxlength="2000"></textarea></Field>
+  <FormActions><button class="btn primary" type="submit">Crear etapa</button></FormActions>
+</Panel>
+<p class="muted">¿No está el título que buscas? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>

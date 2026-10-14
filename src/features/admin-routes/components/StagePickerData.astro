@@ -1,0 +1,7 @@
+---
+// Titles not yet in the route, as JSON inside #route-page so in-place updates refresh it; StagePicker reads it on open.
+import type { PickerOption } from '../types';
+interface Props { options: PickerOption[] }
+const { options } = Astro.props;
+---
+<script type="application/json" id="add-data" set:html={JSON.stringify(options).replace(/</g, '\\u003c')}></script>

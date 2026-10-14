@@ -1,0 +1,17 @@
+---
+// "Crear ruta" side panel: creates a draft route by name and description.
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+import FormActions from '../../../components/ui/FormActions.astro';
+---
+<section id="nueva">
+  <h2 style="margin-top:0">Crear ruta</h2>
+  <Panel as="form" class="stack" method="post" action="/api/admin/routes">
+    <input type="hidden" name="action" value="create" />
+    <Field label="Nombre"><input name="name" placeholder="Ruta DC esencial" maxlength="120" required /></Field>
+    <Field label="Descripción"><textarea name="description" maxlength="2000"></textarea></Field>
+    <FormActions hint="Se crea como borrador; luego le armas las etapas.">
+      <button class="btn primary" type="submit">Crear ruta</button>
+    </FormActions>
+  </Panel>
+</section>

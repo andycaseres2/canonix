@@ -1,0 +1,100 @@
+---
+// Dialog to add titles to a stage: opened by any `.stage-pick` button, lists the titles from #add-data
+// with kind tabs and a text filter, and submits the checked ones in the order they were checked.
+interface Props { routeId: string }
+const { routeId } = Astro.props;
+---
+<dialog id="picker" class="app-dialog picker" aria-labelledby="picker-title">
+  <form data-swap="#route-page" method="post" action="/api/admin/route-items" class="app-dialog-body" id="picker-form">
+    <input type="hidden" name="action" value="item_add" /><input type="hidden" name="route_id" value={routeId} /><input type="hidden" name="section_id" id="picker-section" />
+    <h2 class="app-dialog-title" id="picker-title">Agregar</h2>
+    <p class="muted" style="margin:0">Marca los que quieras sumar a esta etapa; se agregan en el orden en que los marcas.</p>
+    <div class="picker-tools">
+      <div class="picker-tabs" role="group" aria-label="Tipo">
+        <button class="btn small" type="button" data-kind="" aria-pressed="true">Todos</button>
+        <button class="btn small" type="button" data-kind="comic" aria-pressed="false">Cómics</button>
+        <button class="btn small" type="button" data-kind="anime" aria-pressed="false">Anime</button>
+      </div>
+      <input type="search" id="picker-filter" placeholder="Filtrar (opcional)" aria-label="Filtrar la lista" autocomplete="off" />
+    </div>
+    <ul class="picker-list" id="picker-list"></ul>
+    <p class="muted" id="picker-empty" hidden>No quedan títulos por agregar con ese filtro. ¿Falta alguno? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>
+    <div class="app-dialog-actions">
+      <span class="hint" id="picker-count">Ninguno marcado</span>
+      <button class="btn" type="button" id="picker-cancel">Cancelar</button>
+      <button class="btn primary" type="submit" id="picker-submit" disabled>Agregar</button>
+    </div>
+  </form>
+</dialog>
+<script>
+  import type { PickerOption as Option } from '../types';
+  let all: Option[] = [];
+  const dialog = document.getElementById('picker') as HTMLDialogElement;
+  const form = document.getElementById('picker-form') as HTMLFormElement;
+  const list = document.getElementById('picker-list')!;
+  const filter = document.getElementById('picker-filter') as HTMLInputElement;
+  const count = document.getElementById('picker-count')!;
+  const submit = document.getElementById('picker-submit') as HTMLButtonElement;
+  const empty = document.getElementById('picker-empty')!;
+  const tabs = [...dialog.querySelectorAll<HTMLButtonElement>('.picker-tabs button')];
+  const norm = (s: unknown) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  let picked: string[] = [];
+  let kind = '';
+  let stageTitle = '';
+
+  /** Small DOM builder; text always goes in as text, never as HTML. */
+  function el(tag: string, props: Record<string, unknown> = {}, ...kids: (Node | string)[]): HTMLElement {
+    const n = Object.assign(document.createElement(tag), props);
+    n.append(...kids);
+    return n;
+  }
+
+  function render() {
+    const v = norm(filter.value.trim());
+    const shown = all.filter((m) => (!kind || m.k === kind) && (!v || norm(`${m.t} ${m.y} ${m.u}`).includes(v)));
+    list.replaceChildren(...shown.map((m) => {
+      const order = picked.indexOf(m.id);
+      const box = el('input', { type: 'checkbox', checked: order >= 0 }) as HTMLInputElement;
+      box.addEventListener('change', () => {
+        picked = box.checked ? [...picked, m.id] : picked.filter((id) => id !== m.id);
+        render();
+      });
+      const thumb = m.c ? el('img', { className: 'stage-thumb', src: m.c, alt: '', loading: 'lazy' }) : el('span', { className: 'stage-thumb empty' });
+      return el('li', { className: order >= 0 ? 'on' : '' },
+        el('label', {}, box, thumb,
+          el('span', { className: 'picker-text' }, el('b', { textContent: m.t }), el('small', { className: 'muted', textContent: [...new Set([m.y, m.u, m.k === 'anime' ? 'anime' : 'cómic'].filter(Boolean))].join(' · ') })),
+          order >= 0 ? el('span', { className: 'picker-order', textContent: String(order + 1) }) : ''));
+    }));
+    empty.hidden = shown.length > 0;
+    count.textContent = picked.length ? `${picked.length} marcado${picked.length === 1 ? '' : 's'}` : 'Ninguno marcado';
+    submit.disabled = picked.length === 0;
+    submit.textContent = picked.length ? `Agregar ${picked.length} a «${stageTitle}»` : 'Agregar';
+  }
+
+  // Delegated: the stages are replaced after every change
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.stage-pick');
+    if (!btn) return;
+    all = JSON.parse(document.getElementById('add-data')!.textContent || '[]'); // titles not yet in the route
+    (document.getElementById('picker-section') as HTMLInputElement).value = btn.dataset.sectionId!;
+    stageTitle = btn.dataset.stageTitle!;
+    document.getElementById('picker-title')!.textContent = `Agregar a «${stageTitle}»`;
+    picked = []; filter.value = '';
+    render();
+    dialog.showModal();
+    list.scrollTop = 0;
+  });
+  tabs.forEach((t) => t.addEventListener('click', () => {
+    kind = t.dataset.kind!;
+    tabs.forEach((x) => x.setAttribute('aria-pressed', String(x === t)));
+    render();
+  }));
+  filter.addEventListener('input', render);
+  document.getElementById('picker-cancel')!.addEventListener('click', () => dialog.close());
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close(); });
+  form.addEventListener('submit', () => {
+    form.querySelectorAll('input[name=media_id]').forEach((n) => n.remove());
+    picked.forEach((id) => form.append(el('input', { type: 'hidden', name: 'media_id', value: id })));
+    dialog.close();
+  });
+</script>

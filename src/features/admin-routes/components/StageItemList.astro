@@ -1,0 +1,24 @@
+---
+// Ordered titles of one stage, each with reorder and remove actions; a hint when the stage is empty.
+import MoveButtons from './MoveButtons.astro';
+import type { StageItem } from '../types';
+interface Props { routeId: string; items: StageItem[] }
+const { routeId, items } = Astro.props;
+---
+{items.length === 0
+  ? <p class="muted">Todavía no tiene cómics ni animes.</p>
+  : <ol class="stage-items">
+      {items.map((it, k) => (
+        <li style={`view-transition-name: it-${it.id}`}>
+          {it.media?.cover_url ? <img class="stage-thumb" src={it.media.cover_url} alt="" loading="lazy" /> : <span class="stage-thumb empty" aria-hidden="true"></span>}
+          <span class="stage-item-text"><b>{it.media?.title}</b> <span class="muted">{it.media?.year_label}{it.media?.kind === 'anime' ? ' · anime' : ''}</span></span>
+          <span class="actions">
+            <MoveButtons action="item_move" routeId={routeId} id={it.id} isFirst={k === 0} isLast={k === items.length - 1} upLabel="Subir" downLabel="Bajar" />
+            <form data-swap="#route-page" method="post" action="/api/admin/route-items">
+              <input type="hidden" name="action" value="item_remove" /><input type="hidden" name="route_id" value={routeId} /><input type="hidden" name="id" value={it.id} />
+              <button class="btn small danger" type="submit" aria-label={`Quitar ${it.media?.title}`}>✕</button>
+            </form>
+          </span>
+        </li>
+      ))}
+    </ol>}
