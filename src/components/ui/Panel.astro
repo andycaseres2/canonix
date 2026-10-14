@@ -1,0 +1,7 @@
+---
+// Bordered card surface (`.panel`); `as` picks the element (div, form, p, section) and extra attributes pass through.
+import type { HTMLAttributes, HTMLTag } from 'astro/types';
+type Props = HTMLAttributes<'div'> & HTMLAttributes<'form'> & { as?: HTMLTag; class?: string };
+const { as: Tag = 'div', class: className, ...attrs } = Astro.props;
+---
+<Tag class={className ? `panel ${className}` : 'panel'} {...attrs}><slot /></Tag>

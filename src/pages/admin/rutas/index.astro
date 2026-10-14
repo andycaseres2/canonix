@@ -1,6 +1,6 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import AdminNav from '../../../features/admin/components/AdminNav.astro';
 const { supabase } = Astro.locals;
 const { data: routes } = await supabase.from('routes').select('id, slug, name, universe, kind, published, requires_plan, position, route_sections(count), route_items(count)').order('position').order('name');
 ---

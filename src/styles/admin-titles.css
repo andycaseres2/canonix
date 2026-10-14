@@ -1,0 +1,52 @@
+/* Catalog admin: cover editor, unit uploader and the new-title flow. */
+/* Covers */
+.cover-editor { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: start; margin-bottom: 24px; }
+.cover-preview { aspect-ratio: 2 / 3; border: 2px solid var(--line); background: var(--paper); background-image: radial-gradient(var(--dot) 1px, transparent 1.2px); background-size: 8px 8px; display: grid; place-items: center; overflow: hidden; text-align: center; font-size: .85rem; }
+.cover-preview img { width: 100%; height: 100%; object-fit: cover; }
+.cover-link summary { cursor: pointer; font-weight: 700; font-size: .9rem; }
+.file-pick { position: relative; overflow: hidden; cursor: pointer; }
+.file-pick input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; min-height: 0; }
+.file-pick:focus-within { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.progress { height: 12px; border: 2px solid var(--line); background: var(--paper); }
+.progress > span { display: block; height: 100%; width: 0; background: var(--red); transition: width .15s; }
+
+/* Issue/episode uploader */
+.uploader { margin-bottom: 20px; }
+.dropzone { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px; border: 2px dashed var(--muted); background: var(--paper); }
+.dropzone p { margin: 0; }
+.dropzone.over { border-color: var(--red); background: color-mix(in srgb, var(--yellow) 25%, var(--paper)); }
+table.queue { min-width: 0; table-layout: fixed; }
+.queue th:nth-child(2) { width: 88px; } .queue th:nth-child(3) { width: 30%; } .queue th:nth-child(4) { width: 92px; }
+.queue td .btn { white-space: nowrap; }
+.queue .num-cell input { width: 100%; }
+.queue .file-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue .progress { min-width: 120px; }
+.ok-text { color: var(--green); font-weight: 700; }
+.error-text { color: var(--red); font-weight: 700; font-size: .9rem; }
+.file-dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; background: var(--green); border: 1.5px solid var(--line); vertical-align: middle; }
+.chip-admin.has-file { border-color: var(--green); }
+
+/* "Nuevo cómic o anime" screen */
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+.create-flow { display: grid; gap: 8px; }
+.create-step { max-width: 760px; }
+.create-step h2 { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.create-step h2 small { font-family: var(--font-body); font-size: .9rem; letter-spacing: 0; }
+.step-n { display: inline-grid; place-items: center; width: 1.4em; height: 1.4em; background: var(--yellow); color: #1C2541; border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--red); font-size: .9em; }
+.kind-pick { display: flex; flex-wrap: wrap; gap: 10px; border: 0; padding: 0; margin: 0; }
+.kind-pick label { flex: 1 1 160px; }
+.kind-pick input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.kind-pick span { display: block; text-align: center; font-weight: 700; padding: 12px 16px; border: 2px solid var(--line); background: var(--panel); cursor: pointer; }
+.kind-pick input:checked + span { background: var(--ink); color: var(--paper); box-shadow: 4px 4px 0 var(--red); }
+.kind-pick input:focus-visible + span { outline: 3px solid var(--yellow); outline-offset: 2px; }
+.details-sum { cursor: pointer; font-weight: 700; }
+.create-bar { position: sticky; bottom: 0; z-index: 5; max-width: 760px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 28px 0 24px; padding: 14px 16px; background: var(--panel); border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
+.create-bar p { margin: 0; }
+@media (max-width: 520px) { .create-bar .btn { flex: 1 1 100%; } }
+.create-steps { margin: 0; padding-left: 0; list-style: none; display: grid; gap: 8px; }
+.create-steps li { font-weight: 700; }
+.create-steps li::before { display: inline-block; width: 1.6em; }
+.create-steps li[data-state="running"]::before { content: "…"; }
+.create-steps li[data-state="done"]::before { content: "✓"; color: var(--green); }
+.create-steps li[data-state="error"] { color: var(--red); }
+.create-steps li[data-state="error"]::before { content: "✗"; }

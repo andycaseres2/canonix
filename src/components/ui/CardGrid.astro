@@ -1,0 +1,7 @@
+---
+// Responsive card grid (`.grid`); extra attributes (e.g. id) pass through.
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'div'>;
+const attrs = Astro.props;
+---
+<div class="grid" {...attrs}><slot /></div>

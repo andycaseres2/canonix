@@ -1,0 +1,7 @@
+---
+// Success and error messages passed through the ?ok= and ?error= query parameters.
+interface Props { ok?: string | null; error?: string | null }
+const { ok, error } = Astro.props;
+---
+{ok && <p class="alert ok" role="status">{ok}</p>}
+      {error && <p class="alert error" role="alert">{error}</p>}

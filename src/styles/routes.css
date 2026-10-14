@@ -1,0 +1,14 @@
+/* Public routes: comic hero and the start / leave route band. */
+/* Hero cómic */
+.hero { position: relative; border: 3px solid var(--line); background: var(--yellow); color: #1C2541; padding: 20px; box-shadow: 6px 6px 0 var(--red); overflow: hidden; margin-bottom: 24px; }
+.hero::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(28,37,65,.18) 1.6px, transparent 1.8px); background-size: 10px 10px; pointer-events: none; }
+.hero > * { position: relative; }
+.hero .lbl { font-weight: 700; margin: 0; }
+.hero .big { font-family: var(--font-display); font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.05; margin: 4px 0; }
+.hero .bar { border-color: #1C2541; background: #fff; margin-top: 12px; }
+.hero .btn { border-color: #1C2541; box-shadow: 3px 3px 0 #1C2541; background: #fff; color: #1C2541; }
+
+/* Start / leave a route */
+.route-start { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin: -8px 0 24px; }
+.route-start form { margin: 0; }
+.route-started { margin: 0; }

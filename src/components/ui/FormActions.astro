@@ -1,0 +1,6 @@
+---
+// Form footer band (`.form-actions`): optional left `hint` text or `start` slot, actions in the default slot.
+interface Props { hint?: string }
+const { hint } = Astro.props;
+---
+<div class="form-actions">{hint && <span class="hint">{hint}</span>}<slot name="start" /><slot /></div>

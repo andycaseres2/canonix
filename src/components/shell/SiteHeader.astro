@@ -1,0 +1,21 @@
+---
+// Site-wide sticky header: logo and main navigation, marking the current section.
+interface Props { signedIn: boolean; isAdmin: boolean }
+const { signedIn, isAdmin } = Astro.props;
+const path = Astro.url.pathname;
+const cur = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'page' : undefined;
+---
+<header class="site-header">
+    <div class="wrap">
+      <a class="logo" href="/"><span>RUTAS</span></a>
+      <nav class="nav" aria-label="Principal">
+        <a href="/rutas" aria-current={cur('/rutas')}>Rutas</a>
+        <a href="/catalogo" aria-current={cur('/catalogo')}>Catálogo</a>
+        {signedIn && <a href="/perfil" aria-current={cur('/perfil')}>Mi progreso</a>}
+        {isAdmin && <a href="/admin" aria-current={cur('/admin')}>Admin</a>}
+        {signedIn
+          ? <form method="post" action="/api/auth/logout"><button type="submit">Salir</button></form>
+          : <a class="btn small yellow" href="/login">Entrar</a>}
+      </nav>
+    </div>
+  </header>

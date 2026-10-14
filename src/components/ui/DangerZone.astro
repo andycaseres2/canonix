@@ -1,0 +1,6 @@
+---
+// Destructive action block (`.danger-zone`): bold title, muted description, action (usually a form) in the slot.
+interface Props { title: string; description: string }
+const { title, description } = Astro.props;
+---
+<div class="danger-zone"><p><b>{title}</b><small>{description}</small></p><slot /></div>

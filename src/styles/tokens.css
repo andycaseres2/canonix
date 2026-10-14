@@ -1,0 +1,19 @@
+/* Design tokens: colors, fonts, chevron icon; dark-mode overrides. */
+:root {
+  --paper: #EEF2F8; --panel: #FFFFFF; --ink: #1C2541; --muted: #5B6584; --line: #1C2541;
+  --red: #E23B3B; --yellow: #FFC93C; --green: #1F9D6B; --dot: rgba(28,37,65,.12); --done: #8A93AD;
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 6l5 5 5-5' fill='none' stroke='%231C2541' stroke-width='2.5'/%3E%3C/svg%3E");
+  --font-display: "Bangers", "Impact", "Arial Black", sans-serif;
+  --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #11162A; --panel: #1A2140; --ink: #EEF2F8; --muted: #A5AEC8; --line: #EEF2F8; --dot: rgba(238,242,248,.07); --done: #6E7898;
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 6l5 5 5-5' fill='none' stroke='%23EEF2F8' stroke-width='2.5'/%3E%3C/svg%3E");
+    color-scheme: dark;
+  }
+}

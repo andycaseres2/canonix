@@ -1,0 +1,7 @@
+---
+// Inline message (`p.alert.ok` / `p.alert.error`); `role` is optional and passed through.
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'p'> & { kind: 'ok' | 'error' };
+const { kind, ...attrs } = Astro.props;
+---
+<p class={`alert ${kind}`} {...attrs}><slot /></p>

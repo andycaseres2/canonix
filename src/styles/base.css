@@ -1,0 +1,31 @@
+/* Base: resets, typography, layout helpers, [hidden] and view transitions. */
+*, *::before, *::after { box-sizing: inherit; }
+/* Components set their own display (.btn, .stack, .card…); the hidden attribute must still win */
+[hidden] { display: none !important; }
+html { scroll-padding-top: 80px; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--font-body); line-height: 1.5; }
+a { color: inherit; }
+img { max-width: 100%; display: block; }
+h1, h2, .display { font-family: var(--font-display); font-weight: 400; letter-spacing: .03em; line-height: 1.05; }
+h1 { font-size: clamp(2.2rem, 6vw, 3.2rem); margin: 0 0 .3em; }
+h2 { font-size: 1.9rem; margin: 1.6em 0 .4em; }
+h3 { margin: 1.2em 0 .4em; }
+.wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+.narrow { max-width: 640px; }
+.muted { color: var(--muted); }
+.lead { color: var(--muted); font-size: 1.1rem; margin: 0 0 1.5em; max-width: 60ch; }
+
+/* ---------- View Transitions ---------- */
+/* Page changes animate (browsers without support just navigate). The header stays still. */
+@view-transition { navigation: auto; }
+.site-header { view-transition-name: site-header; }
+::view-transition-old(root) { animation: vt-leave .16s ease-in both; }
+::view-transition-new(root) { animation: vt-enter .26s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes vt-leave { to { opacity: 0; transform: translateY(-8px); } }
+@keyframes vt-enter { from { opacity: 0; transform: translateY(12px); } }
+/* In-place admin updates: the page itself stays still; only named items move or fade */
+:root[data-swapping]::view-transition-old(root), :root[data-swapping]::view-transition-new(root) { animation: none; }
+::view-transition-group(*) { animation-duration: .28s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}

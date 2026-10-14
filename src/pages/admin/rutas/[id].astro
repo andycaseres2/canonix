@@ -1,6 +1,6 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import AdminNav from '../../../features/admin/components/AdminNav.astro';
 const { supabase } = Astro.locals;
 const { data: r } = await supabase.from('routes').select('*').eq('id', Astro.params.id!).maybeSingle();
 if (!r) return Astro.redirect('/admin/rutas?error=' + encodeURIComponent('Ruta no encontrada'));

@@ -1,6 +1,6 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import AdminNav from '../../../components/AdminNav.astro';
+import AdminNav from '../../../features/admin/components/AdminNav.astro';
 const { supabase } = Astro.locals;
 const { data: media } = await supabase.from('media').select('id, slug, kind, universe, title, year_label, media_units(count)').order('kind').order('year_start').order('title');
 ---

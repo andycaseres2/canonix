@@ -1,0 +1,7 @@
+/* Public catalog: cards with cover and the title page header. */
+.card.with-cover { display: grid; grid-template-columns: 76px 1fr; gap: 14px; align-items: start; }
+.card-thumb { width: 76px; aspect-ratio: 2 / 3; object-fit: cover; border: 2px solid var(--line); background: var(--paper); }
+.card-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.title-head { display: grid; gap: 20px; align-items: start; }
+@media (min-width: 640px) { .title-head.with-cover { grid-template-columns: 180px 1fr; } }
+.title-cover { width: 100%; max-width: 180px; aspect-ratio: 2 / 3; object-fit: cover; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }

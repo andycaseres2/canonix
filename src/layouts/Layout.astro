@@ -1,14 +1,15 @@
 ---
 import '../styles/global.css';
-import AppDialog from '../components/AppDialog.astro';
-import FormSwap from '../components/FormSwap.astro';
+import AppDialog from '../components/shell/AppDialog.astro';
+import FormSwap from '../components/shell/FormSwap.astro';
+import SiteHeader from '../components/shell/SiteHeader.astro';
+import DemoBanner from '../components/shell/DemoBanner.astro';
+import FlashMessages from '../components/shell/FlashMessages.astro';
 import { USE_MOCK } from '../lib/config';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../lib/mock/seed';
 interface Props { title: string; description?: string }
 const { title, description = 'Rutas de lectura de cómics y guías de anime, con tu progreso guardado.' } = Astro.props;
 const { profile, user } = Astro.locals;
-const path = Astro.url.pathname;
-const cur = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'page' : undefined;
 const ok = Astro.url.searchParams.get('ok');
 const error = Astro.url.searchParams.get('error');
 ---
@@ -26,29 +27,11 @@ const error = Astro.url.searchParams.get('error');
   <title>{title} · Rutas</title>
 </head>
 <body>
-  {USE_MOCK && (
-    <p class="demo-banner" role="note">
-      Modo demo: datos de prueba en memoria. Cuentas: {DEMO_ACCOUNTS.map((a) => a.email).join(', ')} · contraseña <b>{DEMO_PASSWORD}</b>
-    </p>
-  )}
-  <header class="site-header">
-    <div class="wrap">
-      <a class="logo" href="/"><span>RUTAS</span></a>
-      <nav class="nav" aria-label="Principal">
-        <a href="/rutas" aria-current={cur('/rutas')}>Rutas</a>
-        <a href="/catalogo" aria-current={cur('/catalogo')}>Catálogo</a>
-        {user && <a href="/perfil" aria-current={cur('/perfil')}>Mi progreso</a>}
-        {profile?.role === 'admin' && <a href="/admin" aria-current={cur('/admin')}>Admin</a>}
-        {user
-          ? <form method="post" action="/api/auth/logout"><button type="submit">Salir</button></form>
-          : <a class="btn small yellow" href="/login">Entrar</a>}
-      </nav>
-    </div>
-  </header>
+  {USE_MOCK && <DemoBanner emails={DEMO_ACCOUNTS.map((a) => a.email)} password={DEMO_PASSWORD} />}
+  <SiteHeader signedIn={!!user} isAdmin={profile?.role === 'admin'} />
   <main>
     <div class="wrap">
-      {ok && <p class="alert ok" role="status">{ok}</p>}
-      {error && <p class="alert error" role="alert">{error}</p>}
+      <FlashMessages ok={ok} error={error} />
       <slot />
     </div>
   </main>

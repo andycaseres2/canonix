@@ -1,0 +1,6 @@
+---
+// Completion bar (`.bar` > span) filled to `pct` percent.
+interface Props { pct: number }
+const { pct } = Astro.props;
+---
+<div class="bar"><span style={`width:${pct}%`}></span></div>

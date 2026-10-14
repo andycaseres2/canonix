@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import AdminNav from '../../features/admin/components/AdminNav.astro';
 const { supabase } = Astro.locals;
 const c = async (t: string, f?: (q: any) => any) => {
   let q = supabase.from(t).select('*', { count: 'exact', head: true });

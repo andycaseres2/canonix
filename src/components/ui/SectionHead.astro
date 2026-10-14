@@ -1,0 +1,7 @@
+---
+// Section title (`.section-head` > h2) with an optional secondary action in the default slot.
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'div'> & { title: string };
+const { title, ...attrs } = Astro.props;
+---
+<div class="section-head" {...attrs}><h2>{title}</h2><slot /></div>

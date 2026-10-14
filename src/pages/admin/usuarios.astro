@@ -1,6 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import AdminNav from '../../components/AdminNav.astro';
+import AdminNav from '../../features/admin/components/AdminNav.astro';
 import { createServiceClient } from '../../lib/supabase';
 const { supabase, user } = Astro.locals;
 const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });

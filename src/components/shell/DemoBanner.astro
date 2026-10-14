@@ -1,0 +1,8 @@
+---
+// Notice shown in mock mode, listing the demo accounts and their shared password.
+interface Props { emails: string[]; password: string }
+const { emails, password } = Astro.props;
+---
+<p class="demo-banner" role="note">
+      Modo demo: datos de prueba en memoria. Cuentas: {emails.join(', ')} · contraseña <b>{password}</b>
+    </p>

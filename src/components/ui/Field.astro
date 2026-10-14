@@ -1,0 +1,7 @@
+---
+// Labelled form control (`label.field`): label text, optional `<small>` hint, then the control in the slot.
+import type { HTMLAttributes } from 'astro/types';
+type Props = HTMLAttributes<'label'> & { label: string; hint?: string };
+const { label, hint, ...attrs } = Astro.props;
+---
+<label class="field" {...attrs}>{label}{hint && ' '}{hint && <small>{hint}</small>}<slot /></label>

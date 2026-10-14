@@ -1,0 +1,29 @@
+/* Routes admin: route editor, stages and the title picker dialog. */
+/* Route editor: route -> stages -> titles */
+.route-editor { max-width: 860px; }
+.inline-select { width: auto; min-width: 9em; }
+.stage { display: grid; gap: 14px; margin-bottom: 18px; scroll-margin-top: 90px; }
+.stage-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.stage-head form { margin: 0; }
+.stage-n { font-family: var(--font-display); font-size: 1.4rem; letter-spacing: .03em; background: var(--yellow); color: #1C2541; padding: 0 10px; border: 2px solid var(--line); box-shadow: 3px 3px 0 var(--red); }
+.stage-items { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.stage-items li { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border: 1.5px solid var(--line); background: var(--paper); }
+.stage-items form { margin: 0; }
+.stage-item-text { flex: 1; min-width: 0; }
+.stage-thumb { width: 28px; aspect-ratio: 2 / 3; object-fit: cover; border: 1.5px solid var(--line); flex: none; }
+.stage-thumb.empty { background: var(--panel); }
+.stage-add { display: grid; gap: 8px; padding-top: 12px; border-top: 2px dashed var(--muted); }
+#nueva-etapa { scroll-margin-top: 90px; margin-bottom: 12px; }
+.stage-add .stage-pick { justify-self: start; }
+.app-dialog.picker { width: min(760px, calc(100vw - 32px)); }
+.picker-tools { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.picker-tools input { flex: 1 1 200px; width: auto; }
+.picker-tabs { display: flex; gap: 6px; }
+.picker-tabs button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+.picker-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); max-height: min(52vh, 520px); overflow: auto; padding-right: 4px; }
+.picker-list label { display: flex; align-items: center; gap: 10px; padding: 8px; border: 2px solid var(--line); background: var(--paper); cursor: pointer; }
+.picker-list li.on label { background: color-mix(in srgb, var(--yellow) 30%, var(--panel)); box-shadow: 3px 3px 0 var(--red); }
+.picker-list input[type=checkbox] { width: 20px; min-height: 20px; flex: none; }
+.picker-text { display: grid; min-width: 0; flex: 1; }
+.picker-text b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-order { flex: none; display: grid; place-items: center; width: 24px; height: 24px; background: var(--red); color: #fff; font-weight: 700; font-size: .85rem; border: 2px solid var(--line); }
