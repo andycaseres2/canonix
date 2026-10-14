@@ -15,7 +15,7 @@ Branch: `feat/paged-reader` (stacked on `feat/reader`) · Delivery: work-unit co
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S2, S4 | inline | pending | |
+| T1 | S2, S4 | inline | done | 3bbf365 |
 | T2 | S2, S4, S5 | inline | pending | |
 | T3 | S2, S5 | inline | pending | |
 | T4 | S1, S2, S3, S4 | inline | pending | |
@@ -31,3 +31,4 @@ Route evidence: no Writer trigger (sequential units sharing schema, endpoints an
 - L3 (2026-10-14, user, verbatim): "aja cual seria la forma mas optima para hacer esto necesito sea optimo y que el usuario pueda ver tranquilo cada comic" → proposal: split pages + PDF ranges.
 - L4 (2026-10-14, user, verbatim): "crees que es mejor que busquemos directamente los comics y animes en pdf?" → answered no (CBZ is lighter to display; anime should be MP4 H.264/AAC); copyright exposure flagged.
 - L5 (2026-10-14, user, verbatim): "necesito que esto funcione de verdad de forma profesional porfavor tu sabes como hacerlo de forma profesional entonces dale"
+- L6: T1 evidence: RED (2 mock tests) then GREEN; own check caught that the folder path itself matched file_path, tightened to single-file units only. PG17 (01+03 re-applied over existing data): anon none; free user reads only listed pages of the free paged unit (not extra.jpg, not the folder key); premium also reads the premium paged unit; admin everything. vitest 127/127.
