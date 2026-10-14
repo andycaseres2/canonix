@@ -18,7 +18,7 @@ Branch: `feat/reader` (stacked on `feat/upload-only-units`) · Delivery: work-un
 | T1 | S2, S3 | inline | done | b706a86 |
 | T2 | S1, S3, S5 | inline | done | e19bcb4 |
 | T3 | S1, S4 | inline | done | e19bcb4 |
-| T4 | S4 | inline | pending | |
+| T4 | S4 | inline | done | ed1ffcc |
 | T5 | S1 | inline | done | c13a387 |
 | T6 | all | delegated verifier | pending | |
 
@@ -33,3 +33,4 @@ Route evidence: no Writer trigger (sequential units sharing schema, data layer a
 - L4: T1 evidence: real Postgres 17 (01 twice, 02, 03 twice): 62 titles default to free. As anon no content file is readable; free user reads only the free title's file; premium reads free + premium; admin also reads an orphan file; free user insert into storage.objects is rejected by RLS. RED (3 tests) then GREEN, vitest 111/111, astro check 0 errors.
 - L5: T2/T3 evidence: getReader RED (module missing) then GREEN, 5 tests (ready + neighbours, login, locked/premium/admin, nofile/404, skip units without file). comicPages RED then GREEN (3 tests). Isolated harness (scratch copy, `astro dev --port 4399 --ignore-lock`, user's 4321 untouched) driven by Chrome CDP: real 30 MB CBZ (FF #3 from the user's CBR) opens 25 pages, ArrowRight turns, fit toggle, last page shows "Siguiente"; generated 3-page PDF renders to canvas and turns; CBR and 404 show their messages; no console errors; no horizontal overflow at 1180 and 390. Bug found and fixed: fit-to-height image overflowed its stage (grid → flex). pdf.js worker must be a static `?url` import (dynamic import gave "Invalid workerSrc type"). vitest 119/119, astro check 0 errors. Not verified: the page itself against real Supabase (no login available).
 - L6: T5 evidence: getTitleUnits RED then GREEN (2 tests: order + format/size without storage path; units without file). Harness renders of the title page at 1180 (free signed-in with progress, premium locked, anonymous) and 390 (anonymous): no overflow. The title page no longer shows the old Tracker's external "Dónde leer" link and search hint; routes still use the Tracker. vitest 121/121, astro check 0 errors.
+- L7: T4 evidence: RED (formats + raw .cbr rejected) then GREEN; vendored worker/wasm byte-equal to node_modules (test). Harness in headless Chrome converted the user's real "Fantastic Four 003 (1962).cbr" (RAR v4) to "Fantastic Four 003 (1962).cbz", application/vnd.comicbook+zip, 29.1 MB, 25 pages (bsdtar lists 25 images), 401 ms, no console errors; garbage bytes give "El CBR no tiene imágenes.". `astro build` passes and emits pdf.worker.min and /vendor/libarchive/*. vitest 125/125, astro check 0 errors. Not verified: an end-to-end upload against real Supabase Storage.
