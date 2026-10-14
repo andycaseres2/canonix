@@ -15,7 +15,7 @@ Branch: `feat/reader` (stacked on `feat/upload-only-units`) · Delivery: work-un
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S2, S3 | inline | pending | |
+| T1 | S2, S3 | inline | done | b706a86 |
 | T2 | S1, S3, S5 | inline | pending | |
 | T3 | S1, S4 | inline | pending | |
 | T4 | S4 | inline | pending | |
@@ -30,3 +30,4 @@ Route evidence: no Writer trigger (sequential units sharing schema, data layer a
 - L1 (2026-10-14, user, verbatim): "mejora lo de los numeros esos son los episodios yu toca implementar el visual de los arcxhivos pueden ser pdf o cbr o cbz"
 - L2 (2026-10-14): explorer map: title page `src/pages/catalogo/[slug].astro` uses shared client-rendered `Tracker.astro`; `units_read using (true)`; `content` bucket has only an admin policy; no plan on media; no createSignedUrl in app code.
 - L3 (2026-10-14): the user answered the access question with "Plan en el título (Recomendado)" (S2).
+- L4: T1 evidence: real Postgres 17 (01 twice, 02, 03 twice): 62 titles default to free. As anon no content file is readable; free user reads only the free title's file; premium reads free + premium; admin also reads an orphan file; free user insert into storage.objects is rejected by RLS. RED (3 tests) then GREEN, vitest 111/111, astro check 0 errors.
