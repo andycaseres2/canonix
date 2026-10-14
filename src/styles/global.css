@@ -262,3 +262,9 @@ table.queue { min-width: 0; table-layout: fixed; }
 @media (prefers-reduced-motion: reduce) {
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
+
+/* Toast for in-place updates */
+.toast { position: fixed; right: 16px; bottom: 16px; z-index: 60; max-width: min(420px, calc(100vw - 32px)); padding: 12px 16px; font-weight: 700; border: 2px solid var(--line); background: var(--panel); color: var(--ink); box-shadow: 4px 4px 0 var(--line); view-transition-name: toast; }
+.toast.ok { box-shadow: 4px 4px 0 var(--green); }
+.toast.error { box-shadow: 4px 4px 0 var(--red); }
+form[aria-busy="true"] { opacity: .7; }

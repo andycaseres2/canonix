@@ -1,6 +1,7 @@
 ---
 import '../styles/global.css';
 import AppDialog from '../components/AppDialog.astro';
+import FormSwap from '../components/FormSwap.astro';
 import { USE_MOCK } from '../lib/config';
 import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../lib/mock/seed';
 interface Props { title: string; description?: string }
@@ -52,5 +53,6 @@ const error = Astro.url.searchParams.get('error');
     </div>
   </main>
   <AppDialog />
+  <FormSwap />
 </body>
 </html>

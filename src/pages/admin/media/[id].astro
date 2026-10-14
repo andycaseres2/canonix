@@ -25,12 +25,15 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
   <AdminNav />
   <div class="split">
     <section>
+      <div id="units-head">
       <h2 style="margin-top:0">{unitWord[0].toUpperCase() + unitWord.slice(1)} ({mu?.length ?? 0})</h2>
       <p class="muted" style="margin-top:-6px">{withFile} de {mu?.length ?? 0} con archivo · <span class="file-dot" aria-hidden="true"></span> tiene archivo</p>
+      </div>
 
       <h3 style="margin-top:0">Subir {unitWord}</h3>
       <p class="muted" style="margin-top:0">Un archivo ({formatList(m.kind)}) por cada {m.kind === 'anime' ? 'episodio' : 'número'}. El número se toma del nombre del archivo y puedes corregirlo antes de subir.</p>
       <UnitUploader mediaId={m.id} kind={m.kind} series={seriesGuess} />
+      <div id="units-list">
 
       {groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Agrégalos con el formulario.</p>}
       {groups.map((g) => (
@@ -39,7 +42,7 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
           <div class="chips-admin">
             {g.units.map((u: any) => (
               <span class={`chip-admin${u.units?.file_path ? ' has-file' : ''}`} title={u.units?.file_path ? `${u.units?.label} · ${u.units.file_format?.toUpperCase()}` : u.units?.label}>{u.units?.file_path && <span class="file-dot" aria-label="Tiene archivo"></span>}{u.short}
-                <form method="post" action="/api/admin/units">
+                <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units">
                   <input type="hidden" name="action" value="remove" /><input type="hidden" name="media_id" value={m.id} /><input type="hidden" name="unit_id" value={u.unit_id} />
                   <button type="submit" aria-label={`Quitar ${u.units?.label}`}>×</button>
                 </form>
@@ -50,7 +53,7 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
       ))}
 
       <h3>Agregar un rango sin archivos</h3>
-      <form class="panel stack" method="post" action="/api/admin/units">
+      <form data-swap="#units-head, #units-list" class="panel stack" method="post" action="/api/admin/units">
         <input type="hidden" name="action" value="add_range" /><input type="hidden" name="media_id" value={m.id} />
         <label class="field">Nombre de la serie <small>Ej: Ultimate Spider-Man, Naruto Shippuden</small><input name="prefix" value={m.title} required /></label>
         <div class="row">
@@ -69,7 +72,7 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
       </form>
 
       <h3>Agregar uno suelto</h3>
-      <form class="panel stack" method="post" action="/api/admin/units">
+      <form data-swap="#units-head, #units-list" class="panel stack" method="post" action="/api/admin/units">
         <input type="hidden" name="action" value="add_one" /><input type="hidden" name="media_id" value={m.id} />
         <div class="row">
           <label class="field">Nombre completo <small>único, con el título: "Giant-Size X-Men #1", no solo "1"</small><input name="label" required /></label>
@@ -82,12 +85,13 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
       {(mu?.length ?? 0) > 0 && (
         <div class="danger-zone">
           <p><b>Quitar todos los {unitWord}</b><small>El título queda vacío. Los {unitWord} siguen en las demás series que los incluyan.</small></p>
-          <form method="post" action="/api/admin/units" data-confirm={`El título queda sin ${unitWord}. Siguen en las demás series que los incluyan.`} data-confirm-title={`¿Quitar todos los ${unitWord}?`} data-confirm-label="Quitar todos" data-confirm-danger>
+          <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units" data-confirm={`El título queda sin ${unitWord}. Siguen en las demás series que los incluyan.`} data-confirm-title={`¿Quitar todos los ${unitWord}?`} data-confirm-label="Quitar todos" data-confirm-danger>
             <input type="hidden" name="action" value="clear" /><input type="hidden" name="media_id" value={m.id} />
             <button class="btn small danger" type="submit">Quitar todos</button>
           </form>
         </div>
       )}
+      </div>
     </section>
 
     <section>

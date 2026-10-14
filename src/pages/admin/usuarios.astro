@@ -19,7 +19,7 @@ const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
   <AdminNav />
   {!service && <p class="alert error">Falta SUPABASE_SERVICE_ROLE_KEY en el .env: puedes cambiar rol y plan, pero no bloquear ni borrar usuarios.</p>}
   <label class="field" style="max-width:420px;margin-bottom:14px">Buscar<input id="f" type="search" autocomplete="off" /></label>
-  <div class="table-wrap"><table>
+  <div class="table-wrap" id="users-table"><table>
     <thead><tr><th>Usuario</th><th>Registro</th><th>Progreso</th><th>Rol y plan</th><th>Cuenta</th></tr></thead>
     <tbody id="rows">
       {(profiles ?? []).map((p: any) => {
@@ -31,7 +31,7 @@ const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
             <td>{fmt.format(new Date(p.created_at))}</td>
             <td>{s?.units_done ?? 0}<br /><small class="muted">{s?.last_activity ? fmt.format(new Date(s.last_activity)) : 'sin actividad'}</small></td>
             <td>
-              <form method="post" action="/api/admin/users" class="row" style="gap:4px;flex-wrap:nowrap">
+              <form data-swap="#users-table" method="post" action="/api/admin/users" class="row" style="gap:4px;flex-wrap:nowrap">
                 <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={p.id} />
                 <select name="role" aria-label="Rol" disabled={me}><option value="user" selected={p.role === 'user'}>Usuario</option><option value="admin" selected={p.role === 'admin'}>Admin</option></select>
                 <select name="plan" aria-label="Plan"><option value="free" selected={p.plan === 'free'}>Gratis</option><option value="premium" selected={p.plan === 'premium'}>Premium</option></select>
@@ -42,11 +42,11 @@ const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
               <div class="actions">
               {service && !me && (
                 <>
-                  <form method="post" action="/api/admin/users">
+                  <form data-swap="#users-table" method="post" action="/api/admin/users">
                     <input type="hidden" name="action" value={banned.has(p.id) ? 'unban' : 'ban'} /><input type="hidden" name="id" value={p.id} />
                     <button class="btn small" type="submit">{banned.has(p.id) ? 'Desbloquear' : 'Bloquear'}</button>
                   </form>
-                  <form method="post" action="/api/admin/users" data-confirm="Se borra su cuenta y todo su progreso. No se puede deshacer." data-confirm-title="¿Borrar usuario?" data-confirm-label="Borrar usuario" data-confirm-danger>
+                  <form data-swap="#users-table" method="post" action="/api/admin/users" data-confirm="Se borra su cuenta y todo su progreso. No se puede deshacer." data-confirm-title="¿Borrar usuario?" data-confirm-label="Borrar usuario" data-confirm-danger>
                     <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={p.id} />
                     <button class="btn small danger" type="submit">Borrar</button>
                   </form>

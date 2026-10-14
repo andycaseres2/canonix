@@ -20,12 +20,12 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
   <h1>{r.name}</h1>
   <AdminNav />
 
-  <div class="route-editor">
+  <div class="route-editor" id="route-page">
     <div class="section-head">
       <h2>Ruta</h2>
       <a class="btn small" href={`/rutas/${r.slug}`}>Ver ruta ↗</a>
     </div>
-    <form class="panel stack" method="post" action="/api/admin/routes">
+    <form data-swap="#route-page" class="panel stack" method="post" action="/api/admin/routes">
       <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={r.id} />
       <label class="field">Nombre<input name="name" value={r.name} maxlength="120" required /></label>
       <label class="field">Descripción<textarea name="description" maxlength="2000">{r.description ?? ''}</textarea></label>
@@ -46,24 +46,24 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
     {(stages ?? []).map((s, i) => {
       const list = byStage.get(s.id) ?? [];
       return (
-        <article class="panel stage" id={`etapa-${s.id}`}>
+        <article class="panel stage" id={`etapa-${s.id}`} style={`view-transition-name: st-${s.id}`}>
           <div class="stage-head">
             <span class="stage-n">Etapa {i + 1}</span>
             <div class="actions">
               {(['up', 'down'] as const).map((dir) => (
-                <form method="post" action="/api/admin/route-items">
+                <form data-swap="#route-page" method="post" action="/api/admin/route-items">
                   <input type="hidden" name="action" value="section_move" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} /><input type="hidden" name="dir" value={dir} />
                   <button class="btn small" type="submit" aria-label={dir === 'up' ? 'Subir etapa' : 'Bajar etapa'} disabled={(dir === 'up' && i === 0) || (dir === 'down' && i === (stages?.length ?? 0) - 1)}>{dir === 'up' ? '↑' : '↓'}</button>
                 </form>
               ))}
-              <form method="post" action="/api/admin/route-items" data-confirm={list.length ? `Se quitan sus ${list.length} títulos de la ruta (siguen en el catálogo).` : 'La etapa está vacía.'} data-confirm-title={`¿Borrar la etapa «${s.title}»?`} data-confirm-label="Borrar etapa" data-confirm-danger>
+              <form data-swap="#route-page" method="post" action="/api/admin/route-items" data-confirm={list.length ? `Se quitan sus ${list.length} títulos de la ruta (siguen en el catálogo).` : 'La etapa está vacía.'} data-confirm-title={`¿Borrar la etapa «${s.title}»?`} data-confirm-label="Borrar etapa" data-confirm-danger>
                 <input type="hidden" name="action" value="section_delete" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} />
                 <button class="btn small danger" type="submit">Borrar etapa</button>
               </form>
             </div>
           </div>
 
-          <form class="stack" method="post" action="/api/admin/route-items">
+          <form data-swap="#route-page" class="stack" method="post" action="/api/admin/route-items">
             <input type="hidden" name="action" value="section_update" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={s.id} />
             <label class="field">Título de la etapa<input name="title" value={s.title} maxlength="120" required /></label>
             <label class="field">Descripción <small>opcional</small><textarea name="description" rows="2" maxlength="2000">{s.description ?? ''}</textarea></label>
@@ -74,17 +74,17 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
             ? <p class="muted">Todavía no tiene cómics ni animes.</p>
             : <ol class="stage-items">
                 {list.map((it: any, k: number) => (
-                  <li>
+                  <li style={`view-transition-name: it-${it.id}`}>
                     {it.media?.cover_url ? <img class="stage-thumb" src={it.media.cover_url} alt="" loading="lazy" /> : <span class="stage-thumb empty" aria-hidden="true"></span>}
                     <span class="stage-item-text"><b>{it.media?.title}</b> <span class="muted">{it.media?.year_label}{it.media?.kind === 'anime' ? ' · anime' : ''}</span></span>
                     <span class="actions">
                       {(['up', 'down'] as const).map((dir) => (
-                        <form method="post" action="/api/admin/route-items">
+                        <form data-swap="#route-page" method="post" action="/api/admin/route-items">
                           <input type="hidden" name="action" value="item_move" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={it.id} /><input type="hidden" name="dir" value={dir} />
                           <button class="btn small" type="submit" aria-label={dir === 'up' ? 'Subir' : 'Bajar'} disabled={(dir === 'up' && k === 0) || (dir === 'down' && k === list.length - 1)}>{dir === 'up' ? '↑' : '↓'}</button>
                         </form>
                       ))}
-                      <form method="post" action="/api/admin/route-items">
+                      <form data-swap="#route-page" method="post" action="/api/admin/route-items">
                         <input type="hidden" name="action" value="item_remove" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="id" value={it.id} />
                         <button class="btn small danger" type="submit" aria-label={`Quitar ${it.media?.title}`}>✕</button>
                       </form>
@@ -100,7 +100,7 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
       );
     })}
 
-    <form class="panel stack" id="nueva-etapa" method="post" action="/api/admin/route-items">
+    <form data-swap="#route-page" class="panel stack" id="nueva-etapa" method="post" action="/api/admin/route-items">
       <h3 style="margin:0">Nueva etapa</h3>
       <input type="hidden" name="action" value="section_create" /><input type="hidden" name="route_id" value={r.id} />
       <label class="field">Título<input name="title" maxlength="120" placeholder="Ej: Años 60" required /></label>
@@ -109,18 +109,18 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
     </form>
     <p class="muted">¿No está el título que buscas? <a href="/admin/media/nuevo">Créalo aquí</a>.</p>
 
+    <script type="application/json" id="add-data" set:html={JSON.stringify(options).replace(/</g, '\\u003c')}></script>
     <div class="danger-zone">
       <p><b>Borrar ruta</b><small>Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer.</small></p>
-      <form method="post" action="/api/admin/routes" data-confirm="Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer." data-confirm-title="¿Borrar ruta?" data-confirm-label="Borrar ruta" data-confirm-danger>
+      <form data-swap="#route-page" method="post" action="/api/admin/routes" data-confirm="Sus etapas se borran; los títulos siguen en el catálogo. No se puede deshacer." data-confirm-title="¿Borrar ruta?" data-confirm-label="Borrar ruta" data-confirm-danger>
         <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={r.id} />
         <button class="btn small danger" type="submit">Borrar ruta</button>
       </form>
     </div>
   </div>
 
-  <script type="application/json" id="add-data" set:html={JSON.stringify(options).replace(/</g, '\\u003c')}></script>
   <dialog id="picker" class="app-dialog picker" aria-labelledby="picker-title">
-    <form method="post" action="/api/admin/route-items" class="app-dialog-body" id="picker-form">
+    <form data-swap="#route-page" method="post" action="/api/admin/route-items" class="app-dialog-body" id="picker-form">
       <input type="hidden" name="action" value="item_add" /><input type="hidden" name="route_id" value={r.id} /><input type="hidden" name="section_id" id="picker-section" />
       <h2 class="app-dialog-title" id="picker-title">Agregar</h2>
       <p class="muted" style="margin:0">Marca los que quieras sumar a esta etapa; se agregan en el orden en que los marcas.</p>
@@ -143,7 +143,7 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
   </dialog>
   <script>
     type Option = { id: string; t: string; y: string | null; u: string | null; k: string; c: string | null };
-    const all: Option[] = JSON.parse(document.getElementById('add-data')!.textContent || '[]');
+    let all: Option[] = [];
     const dialog = document.getElementById('picker') as HTMLDialogElement;
     const form = document.getElementById('picker-form') as HTMLFormElement;
     const list = document.getElementById('picker-list')!;
@@ -186,7 +186,11 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
       submit.textContent = picked.length ? `Agregar ${picked.length} a «${stageTitle}»` : 'Agregar';
     }
 
-    document.querySelectorAll<HTMLButtonElement>('.stage-pick').forEach((btn) => btn.addEventListener('click', () => {
+    // Delegated: the stages are replaced after every change
+    document.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.stage-pick');
+      if (!btn) return;
+      all = JSON.parse(document.getElementById('add-data')!.textContent || '[]'); // titles not yet in the route
       (document.getElementById('picker-section') as HTMLInputElement).value = btn.dataset.sectionId!;
       stageTitle = btn.dataset.stageTitle!;
       document.getElementById('picker-title')!.textContent = `Agregar a «${stageTitle}»`;
@@ -194,7 +198,7 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
       render();
       dialog.showModal();
       list.scrollTop = 0;
-    }));
+    });
     tabs.forEach((t) => t.addEventListener('click', () => {
       kind = t.dataset.kind!;
       tabs.forEach((x) => x.setAttribute('aria-pressed', String(x === t)));
@@ -206,6 +210,7 @@ const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 
     form.addEventListener('submit', () => {
       form.querySelectorAll('input[name=media_id]').forEach((n) => n.remove());
       picked.forEach((id) => form.append(el('input', { type: 'hidden', name: 'media_id', value: id })));
+      dialog.close();
     });
   </script>
 </Layout>

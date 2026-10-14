@@ -13,7 +13,7 @@ Branch: `feat/smooth-ui` (stacked on `feat/route-stages`) · Delivery: ask-on-ri
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S1 | inline | pending | |
+| T1 | S1 | inline | done | f5fbf97 |
 | T2 | S2, S3 | inline | pending | |
 
 Route evidence: no Writer trigger; parent writes inline.
@@ -22,3 +22,5 @@ Route evidence: no Writer trigger; parent writes inline.
 
 - L1 (2026-10-13, user, verbatim): "algo que no me gusta para nada 1 aghregale animaciones a los cambios de paginas con viewtransition 2 cada que hago un cambio por ejemplo cambiar de lugar los comics de una etapa la web titila feo eso no puede pasar"
 - L2: Decision: native cross-document View Transitions (`@view-transition { navigation: auto }`) for page changes, instead of Astro's ClientRouter. ClientRouter would require rewriting every page script for its page-load lifecycle. In-place admin updates use one generic `data-swap` form enhancement: fetch, parse, replace only the named regions inside `document.startViewTransition`.
+- L3: T1 evidence (Chrome): before, a link navigation had no view transition (pagereveal.viewTransition null) and the header had no transition name; after, both are present.
+- L4: T2 evidence (Chrome, reorder in the Marvel route): before, a full reload, the window marker lost and scroll jumped 819→649; after, no reload, marker kept, scroll stayed 819 and the order changed. Root cause found while debugging: `form.action` returns the `<input name="action">` these forms carry, so FormSwap reads the attribute. All in-place: stage create/update/delete (via the app dialog), picker add (2 in order, then 65 left in the list), item move, title chip remove (count updates), users plan change, Iniciar ruta; deleting a route navigates to the list (fallback). Toasts show the result; the stale page flash and ?ok are cleared. vitest 122/122, astro check 0 errors.

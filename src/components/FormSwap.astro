@@ -1,0 +1,72 @@
+---
+/**
+ * In-place form submissions. A form with data-swap="#a, #b" is sent in the background and only
+ * those regions are replaced with the server's new HTML, inside a View Transition: no reload,
+ * no flash, the scroll stays put and elements with a view-transition-name animate to their
+ * new place. The ok/error message shows as a toast. Without fetch or when the response is
+ * another page, it falls back to a normal navigation.
+ */
+---
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+  const toast = document.getElementById('toast')!;
+  let toastTimer: number | undefined;
+
+  function showToast(text: string, kind: 'ok' | 'error') {
+    toast.textContent = text;
+    toast.className = `toast ${kind}`;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => { toast.hidden = true; }, kind === 'error' ? 6000 : 3000);
+  }
+
+  async function swap(form: HTMLFormElement, submitter: HTMLElement | null) {
+    const selectors = form.dataset.swap!.split(',').map((s) => s.trim()).filter(Boolean);
+    const button = submitter instanceof HTMLButtonElement ? submitter : null;
+    const body = new FormData(form, submitter); // before disabling the button
+    form.setAttribute('aria-busy', 'true');
+    if (button) button.disabled = true;
+    try {
+      // getAttribute: form.action would return the <input name="action"> these forms carry
+      const res = await fetch(form.getAttribute('action') ?? location.href, { method: 'POST', body });
+      const url = new URL(res.url);
+      if (!res.ok || url.pathname !== location.pathname) return location.assign(res.url); // went to another page
+      const doc = new DOMParser().parseFromString(await res.text(), 'text/html');
+      const pairs = selectors.map((s) => [document.querySelector(s), doc.querySelector(s)] as const);
+      if (pairs.some(([now, next]) => !now || !next)) return location.assign(res.url);
+
+      const apply = () => pairs.forEach(([now, next]) => now!.replaceWith(document.adoptNode(next!)));
+      document.documentElement.dataset.swapping = '';
+      const transition = document.startViewTransition?.(apply);
+      if (!transition) apply();
+      await transition?.finished.catch(() => {});
+      delete document.documentElement.dataset.swapping;
+
+      // The page's own flash message is from an earlier action: drop it and keep the URL clean
+      document.querySelectorAll('main .alert').forEach((a) => a.remove());
+      const clean = new URL(location.href);
+      clean.searchParams.delete('ok');
+      clean.searchParams.delete('error');
+      history.replaceState(history.state, '', clean);
+      const ok = url.searchParams.get('ok'), error = url.searchParams.get('error');
+      if (error) showToast(error, 'error');
+      else if (ok) showToast(ok, 'ok');
+      document.dispatchEvent(new CustomEvent('swap:done', { detail: { selectors } }));
+    } catch {
+      form.removeAttribute('data-swap');
+      form.requestSubmit(submitter as HTMLButtonElement | null); // network trouble: plain submission
+    } finally {
+      form.removeAttribute('aria-busy');
+      if (button?.isConnected) button.disabled = false;
+    }
+  }
+
+  document.addEventListener('submit', (e) => {
+    const form = e.target as HTMLFormElement;
+    if (!form.dataset.swap || e.defaultPrevented) return;
+    if (form.dataset.confirm && form.dataset.confirmed !== 'yes') return; // the app dialog asks first
+    e.preventDefault();
+    swap(form, (e as SubmitEvent).submitter);
+  });
+</script>
