@@ -1,4 +1,6 @@
-# Rutas de lectura
+# Canonix
+
+Rutas de lectura de cómics, manga y anime.
 
 App para seguir rutas de lectura de cómics (Marvel, DC…) y guías de anime, con login y progreso por usuario.
 
