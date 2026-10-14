@@ -119,7 +119,7 @@ const SEED_VERSION = 3;
 export function getDemoDb(): MockDb {
   const g = globalThis as typeof globalThis & { __rutasMockDb?: { version: number; db: MockDb } };
   // Reseed when the seed changed or db.ts was hot-reloaded (a new MockDb class means a possibly new shape)
-  const cached = g.__rutasMockDb;
-  if (cached?.version !== SEED_VERSION || !(cached.db instanceof MockDb)) g.__rutasMockDb = { version: SEED_VERSION, db: seedDemoDb() };
-  return g.__rutasMockDb.db;
+  let cached = g.__rutasMockDb;
+  if (!cached || cached.version !== SEED_VERSION || !(cached.db instanceof MockDb)) cached = g.__rutasMockDb = { version: SEED_VERSION, db: seedDemoDb() };
+  return cached.db;
 }

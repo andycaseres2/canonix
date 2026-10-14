@@ -1,0 +1,122 @@
+import { describe, expect, it } from 'vitest';
+import { POST as uploads } from '../pages/api/admin/uploads';
+import { POST as episodes } from '../pages/api/admin/episodes';
+import type { MockDb, Row } from './mock/db';
+import { ADMIN, as, fixture } from './mock/fixture';
+import { detectNumber, unitLabel } from './uploads';
+
+const ORIGIN = 'http://x';
+
+async function json(handler: any, db: MockDb, body: unknown) {
+  const request = new Request(`${ORIGIN}/api`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json', Origin: ORIGIN } });
+  const res: Response = await handler({ request, url: new URL(request.url), locals: { supabase: as(db, ADMIN) } });
+  return { status: res.status, body: await res.json().catch(() => null) };
+}
+
+/** Sign, upload and register one file the way the admin page does. */
+async function uploadUnit(db: MockDb, media_id: string, number: number, filename: string, group: string | null = null) {
+  const signed = await json(uploads, db, { kind: 'unit', media_id, number, filename, content_type: '', size: 4 });
+  if (signed.status !== 200) return signed;
+  const token = new URL(signed.body.uploadUrl, ORIGIN).searchParams.get('token')!;
+  expect(db.storage.acceptUpload(token, new Uint8Array(4), signed.body.headers['Content-Type'])).toBeNull();
+  return json(episodes, db, { action: 'complete', media_id, number, path: signed.body.path, group });
+}
+
+const unitsOf = (db: MockDb, mediaId: string) =>
+  db.tables.media_units.filter((mu) => mu.media_id === mediaId).map((mu): Row => ({ ...mu, unit: db.tables.units.find((u) => u.id === mu.unit_id)! }));
+
+describe('detectNumber', () => {
+  it.each([
+    ['Amazing Spider-Man 005.cbz', 5],
+    ['Amazing Spider-Man (1963) #012.cbr', 12],
+    ['Uncanny X-Men 129 (1980).pdf', 129],
+    ['[SubGroup] Naruto - 012 [1080p][x264].mkv', 12],
+    ['Naruto Shippuden Episodio 45 1080p.mp4', 45],
+    ['One Piece Cap. 1050.cbz', 1050],
+    ['Watchmen 1986.pdf', null],
+    ['portada.cbz', null],
+    ['2.cbz', 2],
+  ])('%s -> %s', (name, n) => {
+    expect(detectNumber(name)).toBe(n);
+  });
+});
+
+describe('unitLabel', () => {
+  it('uses #n for comics and Episodio n for anime', () => {
+    expect(unitLabel({ title: 'Spider-Man', kind: 'comic' }, 5)).toBe('Spider-Man #5');
+    expect(unitLabel({ title: 'Naruto', kind: 'anime' }, 3)).toBe('Naruto - Episodio 3');
+  });
+});
+
+describe('POST /api/admin/uploads (unit)', () => {
+  it('signs a comic file with its content type and label', async () => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit', media_id: 'm1', number: 5, filename: 'ASM 005.CBZ', content_type: '', size: 10 });
+    expect(status).toBe(200);
+    expect(body.path).toMatch(/^asm\/00005-\d+\.cbz$/);
+    expect(body.headers['Content-Type']).toBe('application/vnd.comicbook+zip');
+    expect(body.label).toBe('Spider-Man #5');
+  });
+
+  it.each([
+    ['m1', 'episodio.mp4', 1, 'CBZ, CBR o PDF'],
+    ['m3', 'naruto.cbz', 1, 'MP4, WEBM o MKV'],
+    ['m1', 'asm.cbz', -1, 'número'],
+    ['m1', 'asm.cbz', 1.5, 'número'],
+  ])('rejects %s %s #%s', async (media_id, filename, number, message) => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit', media_id, number, filename, content_type: '', size: 10 });
+    expect(status).toBe(400);
+    expect(body.error).toContain(message);
+  });
+});
+
+describe('POST /api/admin/episodes', () => {
+  it('registers each uploaded file as a unit of the title, so the count follows the files', async () => {
+    const db = fixture();
+    const before = unitsOf(db, 'm3').length;
+    expect((await uploadUnit(db, 'm3', 2, 'Naruto 002.mp4')).status).toBe(200);
+    expect((await uploadUnit(db, 'm3', 3, 'Naruto 003.mp4', 'Temporada 1')).status).toBe(200);
+    const rows = unitsOf(db, 'm3');
+    expect(rows).toHaveLength(before + 2);
+    const ep3 = rows.find((r) => r.short === '3')!;
+    expect(ep3).toMatchObject({ group_name: 'Temporada 1', unit: { label: 'Naruto - Episodio 3', file_format: 'mp4', file_size: 4 } });
+    expect(ep3.unit.file_path).toMatch(/^naruto\/00003-\d+\.mp4$/);
+    expect(ep3.position).toBeGreaterThan(rows.find((r) => r.short === '2')!.position);
+  });
+
+  it('attaches the file to a unit that already exists with that label, without duplicating it', async () => {
+    const db = fixture();
+    db.tables.units.find((u) => u.id === 'u1')!.label = 'Spider-Man #1';
+    expect((await uploadUnit(db, 'm1', 1, 'asm 1.cbz')).status).toBe(200);
+    expect(unitsOf(db, 'm1')).toHaveLength(2);
+    expect(db.tables.units.find((u) => u.id === 'u1')!.file_format).toBe('cbz');
+  });
+
+  it('a second upload for the same number replaces the file and deletes the old one', async () => {
+    const db = fixture();
+    await uploadUnit(db, 'm1', 7, 'asm 7.cbz');
+    const unit = () => db.tables.units.find((u) => u.label === 'Spider-Man #7')!;
+    const oldPath = unit().file_path;
+    await new Promise((r) => setTimeout(r, 2));
+    await uploadUnit(db, 'm1', 7, 'asm 7 v2.pdf');
+    expect(unit().file_format).toBe('pdf');
+    expect(unit().file_path).not.toBe(oldPath);
+    expect(db.storage.read('content', oldPath)).toBeNull();
+    expect(unitsOf(db, 'm1').filter((r) => r.unit.label === 'Spider-Man #7')).toHaveLength(1);
+  });
+
+  it('refuses a path that was not uploaded or belongs to another title', async () => {
+    const db = fixture();
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: 1, path: 'asm/00001-1.cbz' })).status).toBe(400);
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: 1, path: 'ff/00001-1.cbz' })).status).toBe(400);
+  });
+
+  it('remove_file clears the unit file and deletes it from storage', async () => {
+    const db = fixture();
+    await uploadUnit(db, 'm1', 9, 'asm 9.cbz');
+    const unit = db.tables.units.find((u) => u.label === 'Spider-Man #9')!;
+    const path = unit.file_path;
+    expect((await json(episodes, db, { action: 'remove_file', unit_id: unit.id })).status).toBe(200);
+    expect(unit).toMatchObject({ file_path: null, file_format: null, file_size: null });
+    expect(db.storage.read('content', path)).toBeNull();
+  });
+});

@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { coverStoragePath, fileExists, jsonError, readJson } from '../../../lib/uploads';
+import { coverStoragePath, findFile, jsonError, readJson } from '../../../lib/uploads';
 
 /** Step 2 of a cover upload, plus removing a cover or using an external link. */
 export const POST: APIRoute = async ({ request, url, locals }) => {
@@ -14,7 +14,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   if (action === 'complete') {
     const path = String(body.data.path ?? '');
     const ownFolder = new RegExp(`^${media.slug.replace(/[^a-z0-9-]/g, '')}/cover-\\d+\\.[a-z0-9]{1,5}$`);
-    if (!ownFolder.test(path) || !(await fileExists(sb, 'covers', path))) return jsonError(400, 'No encontramos la portada subida.');
+    if (!ownFolder.test(path) || !(await findFile(sb, 'covers', path))) return jsonError(400, 'No encontramos la portada subida.');
     cover = sb.storage.from('covers').getPublicUrl(path).data.publicUrl;
   } else if (action === 'link') {
     cover = typeof body.data.url === 'string' && /^https:\/\/\S+$/i.test(body.data.url) ? body.data.url.slice(0, 1000) : null;

@@ -175,3 +175,19 @@ td select { padding-right: 32px; background-position: right 9px center; min-widt
 .title-head { display: grid; gap: 20px; align-items: start; }
 @media (min-width: 640px) { .title-head.with-cover { grid-template-columns: 180px 1fr; } }
 .title-cover { width: 100%; max-width: 180px; aspect-ratio: 2 / 3; object-fit: cover; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
+
+/* Issue/episode uploader */
+.uploader { margin-bottom: 20px; }
+.dropzone { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px; border: 2px dashed var(--muted); background: var(--paper); }
+.dropzone p { margin: 0; }
+.dropzone.over { border-color: var(--red); background: color-mix(in srgb, var(--yellow) 25%, var(--paper)); }
+table.queue { min-width: 0; table-layout: fixed; }
+.queue th:nth-child(2) { width: 88px; } .queue th:nth-child(3) { width: 30%; } .queue th:nth-child(4) { width: 92px; }
+.queue td .btn { white-space: nowrap; }
+.queue .num-cell input { width: 100%; }
+.queue .file-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.queue .progress { min-width: 120px; }
+.ok-text { color: var(--green); font-weight: 700; }
+.error-text { color: var(--red); font-weight: 700; font-size: .9rem; }
+.file-dot { display: inline-block; width: 8px; height: 8px; margin-right: 5px; background: var(--green); border: 1.5px solid var(--line); vertical-align: middle; }
+.chip-admin.has-file { border-color: var(--green); }
