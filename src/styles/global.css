@@ -247,3 +247,18 @@ table.queue { min-width: 0; table-layout: fixed; }
 .picker-text { display: grid; min-width: 0; flex: 1; }
 .picker-text b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .picker-order { flex: none; display: grid; place-items: center; width: 24px; height: 24px; background: var(--red); color: #fff; font-weight: 700; font-size: .85rem; border: 2px solid var(--line); }
+
+/* ---------- View Transitions ---------- */
+/* Page changes animate (browsers without support just navigate). The header stays still. */
+@view-transition { navigation: auto; }
+.site-header { view-transition-name: site-header; }
+::view-transition-old(root) { animation: vt-leave .16s ease-in both; }
+::view-transition-new(root) { animation: vt-enter .26s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes vt-leave { to { opacity: 0; transform: translateY(-8px); } }
+@keyframes vt-enter { from { opacity: 0; transform: translateY(12px); } }
+/* In-place admin updates: the page itself stays still; only named items move or fade */
+:root[data-swapping]::view-transition-old(root), :root[data-swapping]::view-transition-new(root) { animation: none; }
+::view-transition-group(*) { animation-duration: .28s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
