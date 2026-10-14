@@ -4,8 +4,6 @@ import AdminNav from '../../../features/admin/components/AdminNav.astro';
 import UnitsHeader from '../../../features/admin-titles/components/UnitsHeader.astro';
 import UnitsUploadSection from '../../../features/admin-titles/components/UnitsUploadSection.astro';
 import UnitsList from '../../../features/admin-titles/components/UnitsList.astro';
-import AddRangeForm from '../../../features/admin-titles/components/AddRangeForm.astro';
-import AddUnitForm from '../../../features/admin-titles/components/AddUnitForm.astro';
 import ClearUnitsZone from '../../../features/admin-titles/components/ClearUnitsZone.astro';
 import CoverEditor from '../../../features/admin-titles/components/CoverEditor.astro';
 import TitleDataForm from '../../../features/admin-titles/components/TitleDataForm.astro';
@@ -38,12 +36,9 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
   <div class="split">
     <section>
       <UnitsHeader unitWord={unitWord} total={mu.length} withFile={withFile} />
+      <UnitsList mediaId={m.id} unitWord={unitWord} groups={groups} />
       <UnitsUploadSection mediaId={m.id} kind={m.kind} unitWord={unitWord} series={seriesGuess} />
-      <UnitsList mediaId={m.id} unitWord={unitWord} groups={groups}>
-        <AddRangeForm mediaId={m.id} kind={m.kind} title={m.title} />
-        <AddUnitForm mediaId={m.id} />
-        {mu.length > 0 && <ClearUnitsZone mediaId={m.id} unitWord={unitWord} />}
-      </UnitsList>
+      <div id="units-clear">{mu.length > 0 && <ClearUnitsZone mediaId={m.id} unitWord={unitWord} />}</div>
     </section>
 
     <section>

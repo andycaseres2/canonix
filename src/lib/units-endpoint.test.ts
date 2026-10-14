@@ -16,25 +16,27 @@ async function post(fields: Record<string, string>) {
 }
 
 describe('POST /api/admin/units', () => {
-  it.each(['5', '#12', 'E1', '  7 ', '1-3', '123456', '#10000', 'Vol 1', 'Cap 5', 'Ep. 12', 'Episodio 3', 'Capítulo 7'])('add_one rejects the generic label %j', async (label) => {
-    const { db, error } = await post({ media_id: 'm1', action: 'add_one', label });
-    expect(error).toContain('Usa un nombre que identifique el número');
-    expect(db.tables.units.some((u) => u.label === label.trim())).toBe(false);
+  it.each<Record<string, string>>([
+    { action: 'add_range', prefix: 'FF', from: '2', to: '3', format: 'issue' },
+    { action: 'add_one', label: 'Spider-Man Annual #1', short: 'A1' },
+  ])('no longer creates units without a file ($action)', async (fields) => {
+    const before = fixture();
+    const { db, ok, error } = await post({ media_id: 'm1', ...fields });
+    expect({ ok, error }).toEqual({ ok: null, error: null });
+    expect(db.tables.units).toHaveLength(before.tables.units.length);
+    expect(db.tables.media_units).toHaveLength(before.tables.media_units.length);
   });
 
-  it.each(['X-23 #1', 'Annual', 'Watchmen #5'])('add_one accepts the descriptive label %j', async (label) => {
-    expect((await post({ media_id: 'm1', action: 'add_one', label })).ok).toBe('Agregado.');
+  it('remove unlinks one unit from the title', async () => {
+    const unit = fixture().tables.media_units.find((r) => r.media_id === 'm1')!;
+    const { db } = await post({ media_id: 'm1', action: 'remove', unit_id: unit.unit_id });
+    expect(db.tables.media_units.some((r) => r.media_id === 'm1' && r.unit_id === unit.unit_id)).toBe(false);
+    expect(db.tables.units.some((u) => u.id === unit.unit_id)).toBe(true);
   });
 
-  it('add_one stores a descriptive label', async () => {
-    const { db, ok } = await post({ media_id: 'm1', action: 'add_one', label: 'Spider-Man Annual #1', short: 'A1' });
-    expect(ok).toBe('Agregado.');
-    expect(db.tables.media_units.some((r) => r.media_id === 'm1' && r.short === 'A1')).toBe(true);
-  });
-
-  it('add_range keeps building labels from the prefix', async () => {
-    const { db, ok } = await post({ media_id: 'm2', action: 'add_range', prefix: 'FF', from: '2', to: '3', format: 'issue' });
-    expect(ok).toBe('Se agregaron 2.');
-    expect(db.tables.units.filter((u) => /^FF #[23]$/.test(u.label))).toHaveLength(2);
+  it('clear unlinks every unit from the title', async () => {
+    const { db, ok } = await post({ media_id: 'm1', action: 'clear' });
+    expect(ok).toBe('Se quitaron todos.');
+    expect(db.tables.media_units.some((r) => r.media_id === 'm1')).toBe(false);
   });
 });

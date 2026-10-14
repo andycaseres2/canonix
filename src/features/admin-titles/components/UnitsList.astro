@@ -1,12 +1,12 @@
 ---
-// Units of a title (`#units-list`): grouped removable chips, then the unit forms passed in the slot.
+// Units of a title (`#units-list`): grouped removable chips.
 import UnitChip from './UnitChip.astro';
 import type { UnitGroup } from '../types';
 interface Props { mediaId: string; unitWord: string; groups: UnitGroup[] }
 const { mediaId, unitWord, groups } = Astro.props;
 ---
 <div id="units-list">
-{groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Agrégalos con el formulario.</p>}
+{groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Súbelos abajo.</p>}
 {groups.map((g) => (
   <div style="margin-bottom:14px">
     {g.name && <p class="muted" style="margin:0 0 6px;font-weight:700">{g.name}</p>}
@@ -15,5 +15,4 @@ const { mediaId, unitWord, groups } = Astro.props;
     </div>
   </div>
 ))}
-<slot />
 </div>
