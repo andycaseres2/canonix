@@ -1,5 +1,5 @@
 ---
-import { UNIT_FORMATS, formatList } from '../../../lib/uploads';
+import { formatList, pickExtensions } from '../../../lib/uploads';
 interface Props {
   kind: 'comic' | 'anime';
   /** Title id. Without it the uploader only collects files and a parent script calls uploadAll(). */
@@ -13,7 +13,7 @@ const word = kind === 'anime' ? 'episodio' : 'número';
   <div class="dropzone" id="unit-drop">
     <label class="btn primary file-pick">
       Elegir archivos
-      <input id="unit-files" type="file" multiple accept={Object.keys(UNIT_FORMATS[kind]).map((e) => `.${e}`).join(',')} />
+      <input id="unit-files" type="file" multiple accept={pickExtensions(kind).map((e) => `.${e}`).join(',')} />
     </label>
     <p class="muted">o arrástralos aquí · <span id="unit-formats">{formatList(kind)}</span> · un archivo por <span class="unit-word">{word}</span></p>
   </div>
@@ -36,10 +36,11 @@ const word = kind === 'anime' ? 'episodio' : 'número';
 
 <script>
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
-  import { UNIT_FORMATS, detectNumber, extensionOf, formatBytes, formatList } from '../../../lib/uploads';
+  import { cbrToCbz, isCbr } from '../scripts/cbr';
+  import { detectNumber, extensionOf, formatBytes, formatList, pickExtensions } from '../../../lib/uploads';
 
   type Kind = 'comic' | 'anime';
-  type Item = { file: File; number: number | null; status: 'pending' | 'uploading' | 'done' | 'error'; progress: number; message: string };
+  type Item = { file: File; number: number | null; status: 'pending' | 'converting' | 'uploading' | 'done' | 'error'; progress: number; message: string };
 
   const box = document.getElementById('subir')!;
   const input = document.getElementById('unit-files') as HTMLInputElement;
@@ -56,7 +57,7 @@ const word = kind === 'anime' ? 'episodio' : 'número';
   let busy = false;
 
   const word = () => (kind === 'anime' ? 'episodio' : 'número');
-  const exts = () => Object.keys(UNIT_FORMATS[kind]);
+  const exts = () => pickExtensions(kind);
 
   /** Small DOM builder; text always goes in as text, never as HTML. */
   function el(tag: string, props: Record<string, unknown> = {}, ...children: (Node | string)[]): HTMLElement {
@@ -89,13 +90,14 @@ const word = kind === 'anime' ? 'episodio' : 'número';
       num.setAttribute('aria-label', `Número de ${it.file.name}`);
       num.addEventListener('change', () => { it.number = num.value === '' ? null : Math.trunc(Number(num.value)); render(); });
       let status: Node;
-      if (it.status === 'uploading') {
+      if (it.status === 'converting') status = el('span', { className: 'muted' }, 'Convirtiendo a CBZ…');
+      else if (it.status === 'uploading') {
         const bar = el('span'); bar.style.width = `${Math.round(it.progress * 100)}%`;
         status = el('div', { className: 'progress' }, bar);
       } else if (it.status === 'done') status = el('span', { className: 'ok-text' }, '✓ Subido');
       else if (it.status === 'error') status = el('span', { className: 'error-text' }, it.message);
       else status = el('span', { className: problems[i] ? 'error-text' : 'muted' }, problems[i] || 'Listo para subir');
-      const remove = el('button', { type: 'button', className: 'btn small', textContent: 'Quitar', disabled: busy || it.status === 'uploading' });
+      const remove = el('button', { type: 'button', className: 'btn small', textContent: 'Quitar', disabled: busy || it.status === 'uploading' || it.status === 'converting' });
       remove.addEventListener('click', () => { items.splice(i, 1); render(); });
       return el('tr', {},
         el('td', {}, el('b', { className: 'file-name', textContent: it.file.name, title: it.file.name }), el('br'), el('small', { className: 'muted', textContent: formatBytes(it.file.size) })),
@@ -115,9 +117,11 @@ const word = kind === 'anime' ? 'episodio' : 'número';
   }
 
   async function uploadOne(mediaId: string, it: Item) {
-    it.status = 'uploading'; it.progress = 0; render();
     const series = seriesInput.value;
     try {
+      // CBR pages are repacked as CBZ first: storage and the reader only handle CBZ
+      if (isCbr(it.file)) { it.status = 'converting'; render(); it.file = await cbrToCbz(it.file); }
+      it.status = 'uploading'; it.progress = 0; render();
       const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'unit', media_id: mediaId, number: it.number, series, filename: it.file.name, content_type: it.file.type, size: it.file.size });
       await putFile(target, it.file, (f) => { it.progress = f; render(); });
       await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, path: target.path, group: groupInput.value });

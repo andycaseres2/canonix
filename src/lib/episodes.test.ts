@@ -3,7 +3,7 @@ import { POST as uploads } from '../pages/api/admin/uploads';
 import { POST as episodes } from '../pages/api/admin/episodes';
 import type { MockDb, Row } from '../test/mock/db';
 import { ADMIN, as, fixture } from '../test/mock/fixture';
-import { detectNumber, unitFileMeta, unitLabel } from './uploads';
+import { UNIT_FORMATS, detectNumber, formatList, pickExtensions, unitFileMeta, unitLabel } from './uploads';
 
 const ORIGIN = 'http://x';
 
@@ -54,6 +54,15 @@ describe('unitFileMeta', () => {
   });
 });
 
+describe('unit formats', () => {
+  it('stores comics only as CBZ or PDF, but lets the admin pick CBR files to convert', () => {
+    expect(Object.keys(UNIT_FORMATS.comic)).toEqual(['cbz', 'pdf']);
+    expect(pickExtensions('comic')).toEqual(['cbz', 'cbr', 'pdf']);
+    expect(pickExtensions('anime')).toEqual(['mp4', 'webm', 'mkv']);
+    expect(formatList('comic')).toBe('CBZ, CBR o PDF');
+  });
+});
+
 describe('unitLabel', () => {
   it('uses the series name when given, otherwise the title', () => {
     expect(unitLabel({ title: 'Batman: Year One', kind: 'comic' }, 404, 'Batman')).toBe('Batman #404');
@@ -78,6 +87,7 @@ describe('POST /api/admin/uploads (unit)', () => {
   it.each([
     ['m1', 'episodio.mp4', 1, 'CBZ, CBR o PDF'],
     ['m3', 'naruto.cbz', 1, 'MP4, WEBM o MKV'],
+    ['m1', 'asm.cbr', 1, 'se convierten a CBZ'],
     ['m1', 'asm.cbz', -1, 'número'],
     ['m1', 'asm.cbz', 1.5, 'número'],
   ])('rejects %s %s #%s', async (media_id, filename, number, message) => {

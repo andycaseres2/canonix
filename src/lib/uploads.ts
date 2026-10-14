@@ -46,10 +46,12 @@ export async function findFile(sb: SupabaseClient, bucket: string, path: string)
 
 /** One file per issue/episode. The content type comes from the extension: browsers leave it empty for CBZ/CBR. */
 export const UNIT_FORMATS: Record<'comic' | 'anime', Record<string, string>> = {
-  comic: { cbz: 'application/vnd.comicbook+zip', cbr: 'application/vnd.comicbook-rar', pdf: 'application/pdf' },
+  comic: { cbz: 'application/vnd.comicbook+zip', pdf: 'application/pdf' },
   anime: { mp4: 'video/mp4', webm: 'video/webm', mkv: 'video/x-matroska' },
 };
-export const formatList = (kind: 'comic' | 'anime') => Object.keys(UNIT_FORMATS[kind]).map((f) => f.toUpperCase()).join(', ').replace(/, (\w+)$/, ' o $1');
+/** Extensions the admin can pick: the stored formats plus CBR, which the browser converts to CBZ before uploading. */
+export const pickExtensions = (kind: 'comic' | 'anime') => (kind === 'comic' ? ['cbz', 'cbr', 'pdf'] : Object.keys(UNIT_FORMATS[kind]));
+export const formatList = (kind: 'comic' | 'anime') => pickExtensions(kind).map((f) => f.toUpperCase()).join(', ').replace(/, (\w+)$/, ' o $1');
 export const MAX_UNIT_NUMBER = 99999;
 export const isUnitNumber = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_UNIT_NUMBER;
 

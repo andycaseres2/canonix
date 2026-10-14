@@ -22,6 +22,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   if (kind === 'unit') {
     const number = body.data.number;
     if (!isUnitNumber(number)) return jsonError(400, 'Indica un número entero válido para el archivo.');
+    if (extensionOf(filename) === 'cbr') return jsonError(400, 'Los CBR se convierten a CBZ en el navegador antes de subir. Vuelve a elegir el archivo desde el panel.');
     const contentType = UNIT_FORMATS[media.kind as 'comic' | 'anime'][extensionOf(filename)];
     if (!contentType) return jsonError(400, `Para ${media.kind === 'anime' ? 'un anime' : 'un cómic'} sube archivos ${formatList(media.kind)}.`);
     const label = unitLabel(media, number, body.data.series);

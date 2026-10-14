@@ -16,6 +16,7 @@
     "@supabase/supabase-js": "2.117.2",
     "astro": "7.3.5",
     "fflate": "0.8.3",
+    "libarchive.js": "2.0.2",
     "pdfjs-dist": "6.3.289"
   },
   "devDependencies": {
