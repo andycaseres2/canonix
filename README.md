@@ -15,6 +15,34 @@ App para seguir rutas de lectura de cómics (Marvel, DC…) y guías de anime, c
 
 La app guarda el **catálogo y el progreso**, no archivos de cómics ni episodios. Cada título tiene un botón "Dónde leer/ver" hacia la plataforma oficial.
 
+## Modo demo (sin Supabase)
+
+Para ver la web sin configurar Supabase, deja `USE_MOCK = true` en `src/lib/config.ts` y corre:
+
+```bash
+pnpm install
+pnpm dev
+```
+
+La app usa una base de datos en memoria (`src/lib/mock/`) con las mismas tablas, llaves y reglas RLS que `supabase/01_schema.sql`. Trae la ruta Marvel, una ruta de anime premium y una ruta de DC en borrador. Cuentas de prueba, todas con la contraseña `demo1234`:
+
+| Correo | Rol | Plan |
+|---|---|---|
+| `admin@demo.com` | admin | premium |
+| `lector@demo.com` | usuario, con progreso | free |
+| `premium@demo.com` | usuario | premium |
+
+Los cambios se pierden al reiniciar el servidor. Para usar Supabase, pon `USE_MOCK = false` y sigue la puesta en marcha.
+
+## Tests
+
+```bash
+pnpm test    # vitest
+pnpm check   # tipos de Astro
+```
+
+El CI (`.github/workflows/ci.yml`) corre ambos en cada push a `main` y en cada PR.
+
 ## Puesta en marcha
 
 1. **Crea un proyecto en Supabase.**
