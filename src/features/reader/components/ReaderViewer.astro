@@ -147,7 +147,12 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       count.textContent = `${page + 1} / ${book.count}`;
       store.set(key, String(page));
       if (nextLink) nextLink.hidden = page < book.count - 1;
-      const el = await book.draw(page, stage.clientWidth);
+      let el: HTMLElement;
+      try {
+        el = await book.draw(page, stage.clientWidth);
+      } catch {
+        el = Object.assign(document.createElement('p'), { className: 'viewer-page-error', textContent: `No se pudo mostrar la página ${page + 1}.` });
+      }
       if (ticket !== drawing) return; // a later turn already won
       el.classList.add('viewer-page');
       el.setAttribute('aria-label', `Página ${page + 1} de ${book.count}`);

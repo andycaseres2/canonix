@@ -6,7 +6,8 @@
 @media (min-width: 640px) { .title-head.with-cover { grid-template-columns: 180px 1fr; } }
 .title-cover { width: 100%; max-width: 180px; aspect-ratio: 2 / 3; object-fit: cover; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
 
-/* Title page: issues/episodes list */
+/* Title page: where to read and issues/episodes list */
+.title-where { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .badge.premium { color: var(--ink); background: var(--yellow); border-color: var(--line); }
 .episodes { margin-top: 32px; }
 .episodes-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; margin-bottom: 14px; }

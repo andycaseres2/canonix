@@ -235,6 +235,9 @@ returns boolean language sql stable security definer set search_path = public as
         or exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'premium'))
   ));
 $$;
+-- Solo la usa la política de Storage para usuarios con sesión
+revoke execute on function public.can_read_unit_file(text) from public, anon;
+grant execute on function public.can_read_unit_file(text) to authenticated;
 
 -- Ítems de ruta: el candado premium vive aquí, no solo en la página
 drop policy if exists route_items_read on public.route_items;

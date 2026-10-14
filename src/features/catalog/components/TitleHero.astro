@@ -1,9 +1,10 @@
 ---
 // Title page header: optional cover, kind and premium badges, universe, title, year / credits, description
-// and the published routes that include it ("Está en").
+// the official "where to read" link and search hint, and the published routes that include it ("Está en").
 import KindBadge from '../../../components/ui/KindBadge.astro';
 import type { RouteLink, TitleInfo } from '../types';
-interface Props { media: TitleInfo & { description: string | null }; routes: RouteLink[] }
+type Where = { search_hint?: string | null; where_label?: string | null; where_url?: string | null };
+interface Props { media: TitleInfo & Where & { description: string | null }; routes: RouteLink[] }
 const { media: m, routes } = Astro.props;
 ---
 <div class={`title-head${m.cover_url ? ' with-cover' : ''}`}>
@@ -13,6 +14,12 @@ const { media: m, routes } = Astro.props;
     <h1>{m.title}</h1>
     <p class="lead">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</p>
     {m.description && <p style="max-width:65ch">{m.description}</p>}
+    {(m.where_url || m.search_hint) && (
+      <p class="title-where">
+        {m.where_url && <a class="btn small" href={m.where_url} target="_blank" rel="noopener">{m.kind === 'anime' ? 'Dónde ver' : 'Dónde leer'}: {m.where_label || 'enlace oficial'} ↗</a>}
+        {m.search_hint && <span class="muted">Busca: <b>{m.search_hint}</b></span>}
+      </p>
+    )}
     {routes.length > 0 && <p class="muted">Está en: {routes.map((r, i) => <>{i > 0 && ', '}<a href={`/rutas/${r.slug}`}>{r.name}</a></>)}</p>}
   </div>
 </div>

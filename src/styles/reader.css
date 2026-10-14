@@ -24,6 +24,7 @@
 .viewer[data-fit="width"] .viewer-page { display: block; width: 100%; height: auto; }
 .viewer:fullscreen .viewer-stage { flex: 1; height: auto; }
 /* Tap the left or right third to turn the page */
+.viewer-page-error { color: #fff; margin: 0; padding: 24px; }
 .viewer-hit { position: absolute; top: 0; bottom: 0; width: 33%; border: 0; background: none; min-height: 0; cursor: pointer; z-index: 1; }
 .viewer-hit.prev { left: 0; cursor: w-resize; }
 .viewer-hit.next { right: 0; cursor: e-resize; }
