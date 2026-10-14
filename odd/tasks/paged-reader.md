@@ -16,7 +16,7 @@ Branch: `feat/paged-reader` (stacked on `feat/reader`) · Delivery: work-unit co
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
 | T1 | S2, S4 | inline | done | 3bbf365 |
-| T2 | S2, S4, S5 | inline | pending | |
+| T2 | S2, S4, S5 | inline | done | 55e16c4 |
 | T3 | S2, S5 | inline | pending | |
 | T4 | S1, S2, S3, S4 | inline | pending | |
 | T5 | all | delegated verifier | pending | |
@@ -32,3 +32,4 @@ Route evidence: no Writer trigger (sequential units sharing schema, endpoints an
 - L4 (2026-10-14, user, verbatim): "crees que es mejor que busquemos directamente los comics y animes en pdf?" → answered no (CBZ is lighter to display; anime should be MP4 H.264/AAC); copyright exposure flagged.
 - L5 (2026-10-14, user, verbatim): "necesito que esto funcione de verdad de forma profesional porfavor tu sabes como hacerlo de forma profesional entonces dale"
 - L6: T1 evidence: RED (2 mock tests) then GREEN; own check caught that the folder path itself matched file_path, tightened to single-file units only. PG17 (01+03 re-applied over existing data): anon none; free user reads only listed pages of the free paged unit (not extra.jpg, not the folder key); premium also reads the premium paged unit; admin everything. vitest 127/127.
+- L7: T2 evidence: 12 RED endpoint tests then GREEN (sign pages into folder; reject anime, empty, >2000, non-image, path-like name, >50 MB, duplicate; register only when all pages exist; missing page → "Faltan 1 página…" with no unit created; foreign folder refused; single→pages→pages→single replacement deletes previous storage; remove_file deletes every page). Existing single-file tests unchanged and passing. vitest 140/140, astro check 0 errors.
