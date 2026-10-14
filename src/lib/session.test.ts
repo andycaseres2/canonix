@@ -13,8 +13,4 @@ describe('hasSessionCookie', () => {
     expect(hasSessionCookie('sb-abcd1234-auth-token=base64-xyz')).toBe(true);
     expect(hasSessionCookie('theme=dark; sb-abcd1234-auth-token.0=part; sb-abcd1234-auth-token.1=part')).toBe(true);
   });
-
-  it('detects the demo session cookie', () => {
-    expect(hasSessionCookie('rutas-mock-session=00000000-0000-4000-8000-000000000002')).toBe(true);
-  });
 });

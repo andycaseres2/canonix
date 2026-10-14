@@ -1,7 +1,7 @@
 /**
- * In-memory stand-in for the Supabase database used when USE_MOCK is on.
+ * In-memory stand-in for the Supabase database, used by the tests.
  * It mirrors the tables, keys, cascades and RLS policies of supabase/01_schema.sql
- * closely enough for every page to behave as it would against Supabase.
+ * closely enough for endpoints and data functions to behave as they do against Supabase.
  */
 
 export type Row = Record<string, any>;

@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { MockDb, MockError, Policies, type MockUser, type TableName } from './db';
 import { Query } from './query';
-import { BUCKETS, objectUrl, type BucketName } from './storage';
+import { BUCKETS, publicObjectUrl, signedObjectUrl, signedUploadUrl, type BucketName } from './storage';
 
 /** Where the mock keeps the signed-in user id (a cookie in the app, memory in tests). */
 export type SessionStore = { get(): string | null; set(userId: string): void; clear(): void };
@@ -43,12 +43,12 @@ export function createMockClient(db: MockDb, session: SessionStore) {
         async createSignedUploadUrl(path: string) {
           if (!rls().isAdmin) return { data: null, error: denied };
           const token = db.storage.issueUploadToken(bucket, path);
-          return { data: { signedUrl: `/api/mock-storage/upload?token=${token}`, token, path }, error: null };
+          return { data: { signedUrl: signedUploadUrl(bucket, path, token), token, path }, error: null };
         },
-        getPublicUrl: (path: string) => ({ data: { publicUrl: objectUrl(bucket, path) } }),
+        getPublicUrl: (path: string) => ({ data: { publicUrl: publicObjectUrl(bucket, path) } }),
         async createSignedUrl(path: string, seconds: number) {
           if (!rls().isAdmin) return { data: null, error: denied };
-          return { data: { signedUrl: `${objectUrl(bucket, path)}&token=${db.storage.issueReadToken(bucket, path, seconds)}` }, error: null };
+          return { data: { signedUrl: signedObjectUrl(bucket, path, db.storage.issueReadToken(bucket, path, seconds)) }, error: null };
         },
         async list(dir: string, opts: { search?: string; limit?: number } = {}) {
           if (!rls().isAdmin) return { data: [], error: null };

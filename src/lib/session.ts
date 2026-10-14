@@ -1,5 +1,3 @@
-export const MOCK_SESSION_COOKIE = 'rutas-mock-session';
-
 /** Supabase SSR stores the session as sb-<ref>-auth-token, split into .0, .1… when large. */
 const SUPABASE_AUTH_COOKIE = /^sb-[^=]+-auth-token(\.\d+)?$/;
 
@@ -11,6 +9,6 @@ export function hasSessionCookie(cookieHeader: string | null) {
   if (!cookieHeader) return false;
   return cookieHeader.split(';').some((pair) => {
     const name = pair.split('=')[0].trim();
-    return name === MOCK_SESSION_COOKIE || SUPABASE_AUTH_COOKIE.test(name);
+    return SUPABASE_AUTH_COOKIE.test(name);
   });
 }

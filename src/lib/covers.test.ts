@@ -2,8 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { POST as uploads } from '../pages/api/admin/uploads';
 import { POST as covers } from '../pages/api/admin/covers';
 import { POST as media } from '../pages/api/admin/media';
-import type { MockDb } from './mock/db';
-import { ADMIN, as, fixture } from './mock/fixture';
+import type { MockDb } from '../test/mock/db';
+import { ADMIN, as, fixture } from '../test/mock/fixture';
 import { coverPath } from './uploads';
 
 const ORIGIN = 'http://x';
@@ -49,7 +49,7 @@ describe('POST /api/admin/uploads (cover)', () => {
   it('returns a signed upload target for an image', async () => {
     const { status, body } = await json(uploads, fixture(), { kind: 'cover', media_id: 'm1', filename: 'a.jpg', content_type: 'image/jpeg', size: 1000 });
     expect(status).toBe(200);
-    expect(body.uploadUrl).toContain('/api/mock-storage/upload?token=');
+    expect(body.uploadUrl).toMatch(/\/storage\/v1\/object\/upload\/sign\/covers\/asm\/cover-\d+\.jpg\?token=/);
     expect(body.path).toMatch(/^asm\/cover-\d+\.jpg$/);
     expect(body.headers['Content-Type']).toBe('image/jpeg');
   });
@@ -81,8 +81,8 @@ describe('POST /api/admin/covers', () => {
     const first = await uploadCover(db);
     expect(first.status).toBe(200);
     const firstUrl = db.tables.media.find((m) => m.id === 'm1')!.cover_url;
-    expect(firstUrl).toMatch(/^\/api\/mock-storage\/object\?bucket=covers&path=asm%2Fcover-\d+\.png$/);
-    const firstPath = new URL(firstUrl, ORIGIN).searchParams.get('path')!;
+    expect(firstUrl).toMatch(/^https:\/\/mock\.supabase\.co\/storage\/v1\/object\/public\/covers\/asm\/cover-\d+\.png$/);
+    const firstPath = firstUrl.split('/object/public/covers/')[1];
 
     await new Promise((r) => setTimeout(r, 2));
     await uploadCover(db, 'otra.png');
@@ -99,7 +99,7 @@ describe('POST /api/admin/covers', () => {
   it('remove clears the cover and deletes the file', async () => {
     const db = fixture();
     await uploadCover(db);
-    const path = new URL(db.tables.media.find((m) => m.id === 'm1')!.cover_url, ORIGIN).searchParams.get('path')!;
+    const path = db.tables.media.find((m) => m.id === 'm1')!.cover_url.split('/object/public/covers/')[1];
     expect((await json(covers, db, { action: 'remove', media_id: 'm1' })).status).toBe(200);
     expect(db.tables.media.find((m) => m.id === 'm1')!.cover_url).toBeNull();
     expect(db.storage.read('covers', path)).toBeNull();

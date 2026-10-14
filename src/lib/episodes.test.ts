@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { POST as uploads } from '../pages/api/admin/uploads';
 import { POST as episodes } from '../pages/api/admin/episodes';
-import type { MockDb, Row } from './mock/db';
-import { ADMIN, as, fixture } from './mock/fixture';
+import type { MockDb, Row } from '../test/mock/db';
+import { ADMIN, as, fixture } from '../test/mock/fixture';
 import { detectNumber, unitLabel } from './uploads';
 
 const ORIGIN = 'http://x';

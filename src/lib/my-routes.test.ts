@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { POST } from '../pages/api/my-routes';
 import { getStartedRoutes } from './data';
-import type { MockDb } from './mock/db';
-import { ADMIN, PREMIUM, READER, as, fixture } from './mock/fixture';
+import type { MockDb } from '../test/mock/db';
+import { ADMIN, PREMIUM, READER, as, fixture } from '../test/mock/fixture';
 
 async function post(db: MockDb, uid: string | null, fields: Record<string, string>) {
   const body = new FormData();

@@ -1,5 +1,4 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { USE_MOCK } from './config';
 
 /** Shared rules and helpers for files the admin uploads straight to Storage. */
 
@@ -26,12 +25,13 @@ export async function readJson(request: Request, url: URL): Promise<{ data: any 
   }
 }
 
-/** Signed upload target the browser PUTs the raw file to (Supabase Storage, or the demo store). */
+/** Signed upload target the browser PUTs the raw file to (Supabase Storage). */
 export async function signUpload(sb: SupabaseClient, bucket: string, path: string, contentType: string) {
   const { data, error } = await sb.storage.from(bucket).createSignedUploadUrl(path, { upsert: true });
   if (error || !data) return { error: error?.message ?? 'No se pudo preparar la subida.' };
   const headers: Record<string, string> = { 'Content-Type': contentType, 'x-upsert': 'true' };
-  if (!USE_MOCK) headers.apikey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  const anonKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  if (anonKey) headers.apikey = anonKey;
   return { uploadUrl: data.signedUrl, headers, path };
 }
 
@@ -86,10 +86,6 @@ export function detectNumber(filename: string): number | null {
 /** Storage path of a cover we uploaded, or null for an external link. */
 export function coverStoragePath(coverUrl: string | null) {
   if (!coverUrl) return null;
-  if (coverUrl.startsWith('/api/mock-storage/object?')) {
-    const u = new URL(coverUrl, 'http://x');
-    return u.searchParams.get('bucket') === 'covers' ? u.searchParams.get('path') : null;
-  }
   const marker = '/storage/v1/object/public/covers/';
   const i = coverUrl.indexOf(marker);
   return i >= 0 ? decodeURIComponent(coverUrl.slice(i + marker.length)) : null;

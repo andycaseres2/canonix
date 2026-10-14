@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { POST as routes } from '../pages/api/admin/routes';
 import { POST as items } from '../pages/api/admin/route-items';
-import type { MockDb } from './mock/db';
-import { ADMIN, as, fixture } from './mock/fixture';
+import type { MockDb } from '../test/mock/db';
+import { ADMIN, as, fixture } from '../test/mock/fixture';
 
 const ORIGIN = 'http://x';
 

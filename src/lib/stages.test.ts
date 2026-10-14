@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getRoute } from './data';
-import { ADMIN, PREMIUM, READER, as, fixture } from './mock/fixture';
-import { seedDemoDb } from './mock/seed';
+import { ADMIN, PREMIUM, READER, as, fixture } from '../test/mock/fixture';
 
 describe('route_sections row level security', () => {
   it('stages follow the route lock: free, premium and draft', async () => {
@@ -39,15 +38,5 @@ describe('getRoute with stages', () => {
       ['ff', 'A', 'Primera etapa'],
     ]);
     expect(data!.items[0].sectionId).toBe('s0');
-  });
-});
-
-describe('demo seed', () => {
-  it('builds stages for every route and puts every item in one', () => {
-    const db = seedDemoDb();
-    const marvel = db.tables.routes.find((r) => r.slug === 'marvel-esencial')!;
-    const stages = db.tables.route_sections.filter((s) => s.route_id === marvel.id).sort((a, b) => a.position - b.position);
-    expect(stages[0].title).toBe('Años 60');
-    expect(db.tables.route_items.every((i) => db.tables.route_sections.some((s) => s.id === i.section_id && s.route_id === i.route_id))).toBe(true);
   });
 });

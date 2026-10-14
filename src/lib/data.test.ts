@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getRoute, getRouteUnitMap } from './data';
-import { PREMIUM, READER, as, fixture } from './mock/fixture';
+import { PREMIUM, READER, as, fixture } from '../test/mock/fixture';
 
 /** Wraps a client and records every table queried and rpc called. */
 function spy(sb: SupabaseClient) {

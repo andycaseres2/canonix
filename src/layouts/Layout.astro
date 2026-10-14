@@ -4,10 +4,7 @@ import AppDialog from '../components/shell/AppDialog.astro';
 import FormSwap from '../components/shell/FormSwap.astro';
 import ListFilter from '../components/shell/ListFilter.astro';
 import SiteHeader from '../components/shell/SiteHeader.astro';
-import DemoBanner from '../components/shell/DemoBanner.astro';
 import FlashMessages from '../components/shell/FlashMessages.astro';
-import { USE_MOCK } from '../lib/config';
-import { DEMO_ACCOUNTS, DEMO_PASSWORD } from '../lib/mock/seed';
 interface Props { title: string; description?: string }
 const { title, description = 'Canonix: rutas de lectura de cómics y guías de anime, con tu progreso guardado.' } = Astro.props;
 const { profile, user } = Astro.locals;
@@ -28,7 +25,6 @@ const error = Astro.url.searchParams.get('error');
   <title>{title} · Canonix</title>
 </head>
 <body>
-  {USE_MOCK && <DemoBanner emails={DEMO_ACCOUNTS.map((a) => a.email)} password={DEMO_PASSWORD} />}
   <SiteHeader signedIn={!!user} isAdmin={profile?.role === 'admin'} />
   <main>
     <div class="wrap">

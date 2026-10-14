@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { POST } from '../pages/api/admin/units';
-import { ADMIN, as, fixture } from './mock/fixture';
+import { ADMIN, as, fixture } from '../test/mock/fixture';
 
 async function post(fields: Record<string, string>) {
   const db = fixture();

@@ -8,9 +8,8 @@ describe('mock storage', () => {
     const db = fixture();
     const { data, error } = await as(db, ADMIN).storage.from('content').createSignedUploadUrl('asm/1.cbz');
     expect(error).toBeNull();
-    expect(data!.signedUrl).toContain('/api/mock-storage/upload?');
-    expect(data!.signedUrl).toContain(`token=${data!.token}`);
-
+    expect(data!.signedUrl).toBe(`https://mock.supabase.co/storage/v1/object/upload/sign/content/asm/1.cbz?token=${data!.token}`);
+    
     expect(db.storage.acceptUpload(data!.token, bytes('PK..'), 'application/zip')).toBeNull();
     expect(db.storage.read('content', 'asm/1.cbz')).toMatchObject({ contentType: 'application/zip', size: 4 });
     expect(db.storage.acceptUpload(data!.token, bytes('again'), 'application/zip')).toMatch(/token/i);
@@ -34,9 +33,9 @@ describe('mock storage', () => {
     const db = fixture();
     const sb = as(db, ADMIN);
     expect(sb.storage.from('covers').getPublicUrl('asm/cover.webp').data.publicUrl)
-      .toBe('/api/mock-storage/object?bucket=covers&path=asm%2Fcover.webp');
+      .toBe('https://mock.supabase.co/storage/v1/object/public/covers/asm/cover.webp');
     const { data } = await sb.storage.from('content').createSignedUrl('asm/1.cbz', 60);
-    expect(data!.signedUrl).toMatch(/^\/api\/mock-storage\/object\?bucket=content&path=asm%2F1\.cbz&token=/);
+    expect(data!.signedUrl).toMatch(/^https:\/\/mock\.supabase\.co\/storage\/v1\/object\/sign\/content\/asm\/1\.cbz\?token=/);
     const token = new URL(data!.signedUrl, 'http://x').searchParams.get('token')!;
     expect(db.storage.canRead('content', 'asm/1.cbz', token)).toBe(true);
     expect(db.storage.canRead('content', 'asm/1.cbz', null)).toBe(false);

@@ -1,5 +1,5 @@
 /**
- * In-memory stand-in for Supabase Storage, mirroring supabase/03_storage.sql:
+ * In-memory stand-in for Supabase Storage used by the tests, mirroring supabase/03_storage.sql:
  * "covers" is public (images up to 5 MB), "content" is private (signed URLs only).
  */
 
@@ -14,8 +14,11 @@ export const BUCKETS: Record<BucketName, { public: boolean; maxBytes: number | n
 
 const UPLOAD_TTL_MS = 2 * 60 * 60 * 1000; // Supabase signed upload URLs last two hours
 
-export const objectUrl = (bucket: string, path: string) =>
-  `/api/mock-storage/object?bucket=${encodeURIComponent(bucket)}&path=${encodeURIComponent(path)}`;
+/** Same shapes as Supabase Storage URLs, so app code needs no test-only branches. */
+export const MOCK_STORAGE_ORIGIN = 'https://mock.supabase.co/storage/v1';
+export const publicObjectUrl = (bucket: string, path: string) => `${MOCK_STORAGE_ORIGIN}/object/public/${bucket}/${path}`;
+export const signedObjectUrl = (bucket: string, path: string, token: string) => `${MOCK_STORAGE_ORIGIN}/object/sign/${bucket}/${path}?token=${token}`;
+export const signedUploadUrl = (bucket: string, path: string, token: string) => `${MOCK_STORAGE_ORIGIN}/object/upload/sign/${bucket}/${path}?token=${token}`;
 
 export class MockStorage {
   private files = new Map<string, StoredFile>();
