@@ -16,8 +16,8 @@ Branch: `feat/reader` (stacked on `feat/upload-only-units`) · Delivery: work-un
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
 | T1 | S2, S3 | inline | done | b706a86 |
-| T2 | S1, S3, S5 | inline | pending | |
-| T3 | S1, S4 | inline | pending | |
+| T2 | S1, S3, S5 | inline | done | e19bcb4 |
+| T3 | S1, S4 | inline | done | e19bcb4 |
 | T4 | S4 | inline | pending | |
 | T5 | S1 | inline | pending | |
 | T6 | all | delegated verifier | pending | |
@@ -31,3 +31,4 @@ Route evidence: no Writer trigger (sequential units sharing schema, data layer a
 - L2 (2026-10-14): explorer map: title page `src/pages/catalogo/[slug].astro` uses shared client-rendered `Tracker.astro`; `units_read using (true)`; `content` bucket has only an admin policy; no plan on media; no createSignedUrl in app code.
 - L3 (2026-10-14): the user answered the access question with "Plan en el título (Recomendado)" (S2).
 - L4: T1 evidence: real Postgres 17 (01 twice, 02, 03 twice): 62 titles default to free. As anon no content file is readable; free user reads only the free title's file; premium reads free + premium; admin also reads an orphan file; free user insert into storage.objects is rejected by RLS. RED (3 tests) then GREEN, vitest 111/111, astro check 0 errors.
+- L5: T2/T3 evidence: getReader RED (module missing) then GREEN, 5 tests (ready + neighbours, login, locked/premium/admin, nofile/404, skip units without file). comicPages RED then GREEN (3 tests). Isolated harness (scratch copy, `astro dev --port 4399 --ignore-lock`, user's 4321 untouched) driven by Chrome CDP: real 30 MB CBZ (FF #3 from the user's CBR) opens 25 pages, ArrowRight turns, fit toggle, last page shows "Siguiente"; generated 3-page PDF renders to canvas and turns; CBR and 404 show their messages; no console errors; no horizontal overflow at 1180 and 390. Bug found and fixed: fit-to-height image overflowed its stage (grid → flex). pdf.js worker must be a static `?url` import (dynamic import gave "Invalid workerSrc type"). vitest 119/119, astro check 0 errors. Not verified: the page itself against real Supabase (no login available).
