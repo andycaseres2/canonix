@@ -15,10 +15,10 @@ Branch: `feat/uploads-and-dialogs` (stacked on `feat/mock-mode-and-fixes`) · De
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S1 | inline | pending | |
-| T2 | S4, S5 | inline | pending | |
-| T3 | S3 | inline | pending | |
-| T4 | S2 | inline | pending | |
+| T1 | S1 | inline | done | a51ab08 |
+| T2 | S4, S5 | inline | done | 31b682e |
+| T3 | S3 | inline | done | e4a8b7b |
+| T4 | S2 | inline | done | d2213c0 |
 
 Route evidence: no Writer trigger (sequential units sharing src/lib/mock and the admin title page); parent writes inline.
 
@@ -27,3 +27,6 @@ Route evidence: no Writer trigger (sequential units sharing src/lib/mock and the
 - L1 (2026-10-13, user, verbatim): "mira para las alertas que queramos mostrar necesitamos un modal para eso no usar la alert(), 2. necesito mejores la carga de los comics porque no veo opcions para subir los episodios ni nada de eso ni subir tampoco la porta del comic necesitop ajustes eso."
 - L2 (2026-10-13, user, verbatim, previous turn): "desde el admin se cargara el comic o el manga y se subirran los episodios 1 por uno para que se registren y se sepa la cantidad osea cada episodio seria un archivo por comic o anime eso toca tenerlo presente"
 - L3: Verified with the supabase-js source (context7): `createSignedUploadUrl(path)` returns `{ signedUrl, token, path }`. `uploadToSignedUrl` sends a PUT to `/object/upload/sign/{bucket}/{path}?token=` with either a raw body plus `content-type`, `cache-control` and `x-upsert` headers, or FormData. Plan: the browser PUTs the raw file with XMLHttpRequest, which gives upload progress.
+- L4: Evidence. vitest 96/96, astro check 0 errors (two type errors slipped into 31b682e and e4a8b7b because check ran before the last edit; both fixed in the next commit). RED observed per task: T1 static guard (5 native confirms), T2 7+4 fails, T3 module missing, T4 module missing. Real Postgres probes: 03_storage.sql loads twice; admin can write storage.objects, free user cannot write or read. Chrome CDP end to end on the dev server: the dialog cancels and confirms; a cover upload reloads with "Portada actualizada." and shows in the admin and the catalog; a 3-file upload detected 13/14/15, the title went from 12 to 15 numbers with "3 de 15 con archivo".
+- L5: Gotcha: the demo DB cached on globalThis keeps its old shape across hot reloads, so it now reseeds when SEED_VERSION changes or the MockDb class identity changes.
+- L6: Not done (follow-ups): the remove_file endpoint has no UI yet. Very large videos may need resumable (TUS) uploads instead of one PUT. Reading the files (the reader) is not built yet.
