@@ -22,7 +22,7 @@ Branch: `feat/uploads-and-dialogs` (stacked on `feat/mock-mode-and-fixes`) · De
 | T3 | S3 | inline | done | e4a8b7b |
 | T4 | S2 | inline | done | d2213c0 |
 | T5 | S6 | inline | done | d37bd69 |
-| T6 | S7 | inline | pending | |
+| T6 | S7 | inline | done | cbaa80f |
 
 Route evidence: no Writer trigger (sequential units sharing src/lib/mock and the admin title page); parent writes inline.
 
