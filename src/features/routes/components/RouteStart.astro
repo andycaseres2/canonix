@@ -1,0 +1,25 @@
+---
+// Start / leave band (`#route-start`): login link for visitors, otherwise a start or leave form
+// that FormSwap swaps in place.
+interface Props { routeId: string; slug: string; loggedIn: boolean; startedAt?: string }
+const { routeId, slug, loggedIn, startedAt } = Astro.props;
+const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
+---
+<div class="route-start" id="route-start">
+  {!loggedIn && <a class="btn primary" href={`/login?next=${encodeURIComponent(`/rutas/${slug}`)}`}>Inicia sesión para iniciar la ruta</a>}
+  {loggedIn && !startedAt && (
+    <form data-swap="#route-start" method="post" action="/api/my-routes">
+      <input type="hidden" name="action" value="start" /><input type="hidden" name="route_id" value={routeId} /><input type="hidden" name="slug" value={slug} />
+      <button class="btn primary" type="submit">Iniciar ruta</button>
+    </form>
+  )}
+  {loggedIn && startedAt && (
+    <>
+      <p class="route-started"><b>✓ En tu progreso</b> <span class="muted">desde el {fmt.format(new Date(startedAt))}</span></p>
+      <form data-swap="#route-start" method="post" action="/api/my-routes" data-confirm="Lo que ya marcaste se mantiene en tu historial." data-confirm-title="¿Quitar de Mi progreso?" data-confirm-label="Quitar ruta">
+        <input type="hidden" name="action" value="leave" /><input type="hidden" name="route_id" value={routeId} /><input type="hidden" name="slug" value={slug} />
+        <button class="btn small" type="submit">Quitar de mi progreso</button>
+      </form>
+    </>
+  )}
+</div>

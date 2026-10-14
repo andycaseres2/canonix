@@ -1,0 +1,12 @@
+---
+// Sign-up form: display name, email and password (min. 8 characters).
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+---
+<Panel as="form" class="stack" method="post" action="/api/auth/register">
+  <Field label="Nombre"><input name="display_name" autocomplete="nickname" maxlength="60" required /></Field>
+  <Field label="Correo"><input type="email" name="email" autocomplete="email" required /></Field>
+  <Field label="Contraseña" hint="Mínimo 8 caracteres"><input type="password" name="password" autocomplete="new-password" minlength="8" required /></Field>
+  <button class="btn primary" type="submit">Crear cuenta</button>
+  <p class="muted">¿Ya tienes cuenta? <a href="/login">Entra</a></p>
+</Panel>

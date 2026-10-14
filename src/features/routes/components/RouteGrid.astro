@@ -1,0 +1,13 @@
+---
+// Card grid of routes; completion is shown only when `showProgress` (logged-in viewer).
+import CardGrid from '../../../components/ui/CardGrid.astro';
+import RouteCard from './RouteCard.astro';
+import { completion, type RouteSummary } from '../route-summary';
+interface Props { routes: RouteSummary[]; done: Set<string>; showProgress: boolean; detailed?: boolean }
+const { routes, done, showProgress, detailed = false } = Astro.props;
+---
+<CardGrid>
+  {routes.map((summary) => (
+    <RouteCard summary={summary} detailed={detailed} pct={showProgress ? completion(summary.unitIds, done).pct : undefined} />
+  ))}
+</CardGrid>

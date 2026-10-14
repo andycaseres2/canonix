@@ -1,0 +1,12 @@
+---
+// Danger zone that unlinks every unit from the title (after a confirm dialog).
+import DangerZone from '../../../components/ui/DangerZone.astro';
+interface Props { mediaId: string; unitWord: string }
+const { mediaId, unitWord } = Astro.props;
+---
+<DangerZone title={`Quitar todos los ${unitWord}`} description={`El título queda vacío. Los ${unitWord} siguen en las demás series que los incluyan.`}>
+  <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units" data-confirm={`El título queda sin ${unitWord}. Siguen en las demás series que los incluyan.`} data-confirm-title={`¿Quitar todos los ${unitWord}?`} data-confirm-label="Quitar todos" data-confirm-danger>
+    <input type="hidden" name="action" value="clear" /><input type="hidden" name="media_id" value={mediaId} />
+    <button class="btn small danger" type="submit">Quitar todos</button>
+  </form>
+</DangerZone>

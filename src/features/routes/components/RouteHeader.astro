@@ -1,0 +1,9 @@
+---
+// Route page title, lead description and the draft warning shown to admins.
+import Alert from '../../../components/ui/Alert.astro';
+interface Props { name: string; description: string | null; published: boolean }
+const { name, description, published } = Astro.props;
+---
+<h1>{name}</h1>
+{description && <p class="lead">{description}</p>}
+{!published && <Alert kind="error">Ruta en borrador: solo la ven los admins.</Alert>}

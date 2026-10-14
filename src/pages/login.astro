@@ -1,5 +1,6 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import LoginForm from '../features/auth/components/LoginForm.astro';
 if (Astro.locals.user) return Astro.redirect('/rutas');
 const next = Astro.url.searchParams.get('next') ?? '/rutas';
 ---
@@ -7,12 +8,6 @@ const next = Astro.url.searchParams.get('next') ?? '/rutas';
   <div class="narrow">
     <h1>Entrar</h1>
     <p class="lead">Entra para guardar lo que vas leyendo y viendo.</p>
-    <form class="panel stack" method="post" action="/api/auth/login">
-      <input type="hidden" name="next" value={next} />
-      <label class="field">Correo<input type="email" name="email" autocomplete="email" required /></label>
-      <label class="field">Contraseña<input type="password" name="password" autocomplete="current-password" required /></label>
-      <button class="btn primary" type="submit">Entrar</button>
-      <p class="muted">¿No tienes cuenta? <a href="/registro">Regístrate</a></p>
-    </form>
+    <LoginForm next={next} />
   </div>
 </Layout>

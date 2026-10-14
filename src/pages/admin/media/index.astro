@@ -1,6 +1,8 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import AdminNav from '../../../features/admin/components/AdminNav.astro';
+import TitlesTable from '../../../features/admin-titles/components/TitlesTable.astro';
+import NewTitleCta from '../../../features/admin-titles/components/NewTitleCta.astro';
 const { supabase } = Astro.locals;
 const { data: media } = await supabase.from('media').select('id, slug, kind, universe, title, year_label, media_units(count)').order('kind').order('year_start').order('title');
 ---
@@ -8,36 +10,7 @@ const { data: media } = await supabase.from('media').select('id, slug, kind, uni
   <h1>Catálogo</h1>
   <AdminNav />
   <div class="split">
-    <section>
-      <h2 style="margin-top:0">Títulos ({media?.length ?? 0})</h2>
-      <label class="field" style="margin-bottom:12px">Filtrar<input id="f" type="search" autocomplete="off" /></label>
-      <div class="table-wrap"><table style="min-width:0">
-        <thead><tr><th>Título</th><th>Tipo</th><th>Año</th><th>Unid.</th></tr></thead>
-        <tbody id="rows">
-          {(media ?? []).map((m: any) => (
-            <tr data-s={`${m.title} ${m.universe ?? ''}`.toLowerCase()}>
-              <td><a href={`/admin/media/${m.id}`}><b>{m.title}</b></a><br /><small class="muted">{m.universe} · {m.slug}</small></td>
-              <td><span class={`badge ${m.kind}`}>{m.kind}</span></td>
-              <td>{m.year_label}</td>
-              <td>{m.media_units?.[0]?.count ?? 0}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table></div>
-    </section>
-    <section id="nuevo">
-      <h2 style="margin-top:0">Nuevo cómic o anime</h2>
-      <div class="panel stack">
-        <p style="margin:0">Crea el cómic, manga o anime en una sola pantalla: nombre y datos, portada y sus números o episodios.</p>
-        <a class="btn primary" href="/admin/media/nuevo">Nuevo cómic o anime</a>
-      </div>
-    </section>
+    <TitlesTable titles={media ?? []} />
+    <NewTitleCta />
   </div>
-  <script>
-    const f = document.getElementById('f') as HTMLInputElement;
-    f.addEventListener('input', () => {
-      const v = f.value.trim().toLowerCase();
-      document.querySelectorAll<HTMLElement>('#rows tr').forEach((r) => { r.hidden = !!v && !(r.dataset.s ?? '').includes(v); });
-    });
-  </script>
 </Layout>

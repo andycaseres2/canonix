@@ -1,0 +1,14 @@
+---
+// Email / password login form; `next` is where to go after signing in.
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+interface Props { next: string }
+const { next } = Astro.props;
+---
+<Panel as="form" class="stack" method="post" action="/api/auth/login">
+  <input type="hidden" name="next" value={next} />
+  <Field label="Correo"><input type="email" name="email" autocomplete="email" required /></Field>
+  <Field label="Contraseña"><input type="password" name="password" autocomplete="current-password" required /></Field>
+  <button class="btn primary" type="submit">Entrar</button>
+  <p class="muted">¿No tienes cuenta? <a href="/registro">Regístrate</a></p>
+</Panel>

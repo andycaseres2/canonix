@@ -1,0 +1,13 @@
+---
+// Recently marked units with their date, or an empty-state hint.
+export type HistoryEntry = { completed_at: string; units: { label: string } | null };
+interface Props { entries: HistoryEntry[] }
+const { entries } = Astro.props;
+const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+---
+{entries.length === 0
+  ? <p class="muted">Aún no has marcado nada. Empieza por una <a href="/rutas">ruta</a>.</p>
+  : <div class="table-wrap"><table style="min-width:0">
+      <thead><tr><th>Número / episodio</th><th>Fecha</th></tr></thead>
+      <tbody>{entries.map((r) => <tr><td>{r.units?.label}</td><td class="muted">{fmt.format(new Date(r.completed_at))}</td></tr>)}</tbody>
+    </table></div>}

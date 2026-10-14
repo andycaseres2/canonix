@@ -1,0 +1,12 @@
+---
+// The routes the viewer started (already sorted), or a hint to pick one.
+import CardGrid from '../../../components/ui/CardGrid.astro';
+import StartedRouteCard from './StartedRouteCard.astro';
+import type { RouteSummary } from '../../routes/route-summary';
+interface Props { routes: RouteSummary[]; done: Set<string>; started: Map<string, string> }
+const { routes, done, started } = Astro.props;
+---
+{routes.length === 0 && <p class="muted">Aún no has iniciado ninguna ruta. <a href="/rutas">Elige una</a> y toca «Iniciar ruta».</p>}
+<CardGrid>
+  {routes.map((summary) => <StartedRouteCard summary={summary} done={done} startedAt={started.get(summary.route.id)!} />)}
+</CardGrid>

@@ -1,6 +1,8 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import AdminNav from '../../features/admin/components/AdminNav.astro';
+import AdminStats from '../../features/admin/components/AdminStats.astro';
+import QuickLinks from '../../features/admin/components/QuickLinks.astro';
 const { supabase } = Astro.locals;
 const c = async (t: string, f?: (q: any) => any) => {
   let q = supabase.from(t).select('*', { count: 'exact', head: true });
@@ -16,18 +18,7 @@ const [users, comics, animes, routes, units, week] = await Promise.all([
 <Layout title="Admin">
   <h1>Panel de administración</h1>
   <AdminNav />
-  <div class="stats">
-    <div class="stat"><b>{users}</b>usuarios</div>
-    <div class="stat"><b>{comics}</b>cómics</div>
-    <div class="stat"><b>{animes}</b>animes</div>
-    <div class="stat"><b>{routes}</b>rutas</div>
-    <div class="stat"><b>{units}</b>números y episodios</div>
-    <div class="stat"><b>{week}</b>marcados esta semana</div>
-  </div>
+  <AdminStats users={users} comics={comics} animes={animes} routes={routes} units={units} week={week} />
   <h2>Accesos rápidos</h2>
-  <div class="row" style="max-width:640px">
-    <a class="btn" href="/admin/media/nuevo">Nuevo cómic o anime</a>
-    <a class="btn" href="/admin/rutas#nueva">Crear ruta</a>
-    <a class="btn" href="/admin/usuarios">Ver usuarios</a>
-  </div>
+  <QuickLinks />
 </Layout>

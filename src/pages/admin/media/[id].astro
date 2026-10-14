@@ -1,22 +1,34 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
 import AdminNav from '../../../features/admin/components/AdminNav.astro';
-import UnitUploader from '../../../components/UnitUploader.astro';
-import { formatList } from '../../../lib/uploads';
+import UnitsHeader from '../../../features/admin-titles/components/UnitsHeader.astro';
+import UnitsUploadSection from '../../../features/admin-titles/components/UnitsUploadSection.astro';
+import UnitsList from '../../../features/admin-titles/components/UnitsList.astro';
+import AddRangeForm from '../../../features/admin-titles/components/AddRangeForm.astro';
+import AddUnitForm from '../../../features/admin-titles/components/AddUnitForm.astro';
+import ClearUnitsZone from '../../../features/admin-titles/components/ClearUnitsZone.astro';
+import CoverEditor from '../../../features/admin-titles/components/CoverEditor.astro';
+import TitleDataForm from '../../../features/admin-titles/components/TitleDataForm.astro';
+import DeleteTitleZone from '../../../features/admin-titles/components/DeleteTitleZone.astro';
+import type { TitleRecord, TitleUnit, UnitGroup } from '../../../features/admin-titles/types';
 const { supabase } = Astro.locals;
-const { data: m } = await supabase.from('media').select('*').eq('id', Astro.params.id!).maybeSingle();
-if (!m) return Astro.redirect('/admin/media?error=' + encodeURIComponent('Título no encontrado'));
-const { data: mu } = await supabase.from('media_units').select('unit_id, short, group_name, position, units(label, file_path, file_format)').eq('media_id', m.id).order('position');
-const groups: { name: string | null; units: any[] }[] = [];
-(mu ?? []).forEach((u: any) => {
+const { data } = await supabase.from('media').select('*').eq('id', Astro.params.id!).maybeSingle();
+if (!data) return Astro.redirect('/admin/media?error=' + encodeURIComponent('Título no encontrado'));
+const m = data as TitleRecord;
+const { data: muData } = await supabase.from('media_units').select('unit_id, short, group_name, position, units(label, file_path, file_format)').eq('media_id', m.id).order('position');
+// The units join is to-one at runtime, though the generated types infer an array
+const mu = (muData ?? []) as unknown as TitleUnit[];
+// Consecutive units with the same group name form one group
+const groups: UnitGroup[] = [];
+mu.forEach((u) => {
   const last = groups[groups.length - 1];
   if (!last || last.name !== u.group_name) groups.push({ name: u.group_name, units: [u] });
   else last.units.push(u);
 });
 const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
-const withFile = (mu ?? []).filter((u: any) => u.units?.file_path).length;
+const withFile = mu.filter((u) => u.units?.file_path).length;
 // Prefill the series with the name the existing numbers use ("Batman #404" -> "Batman"), else the title
-const firstLabel: string | undefined = ((mu ?? [])[0] as any)?.units?.label;
+const firstLabel: string | undefined = mu[0]?.units?.label;
 const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+$/ : /^(.*) #\d+$/)?.[1] ?? m.title;
 ---
 <Layout title={`${m.title} · Admin`}>
@@ -25,180 +37,19 @@ const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+
   <AdminNav />
   <div class="split">
     <section>
-      <div id="units-head">
-      <h2 style="margin-top:0">{unitWord[0].toUpperCase() + unitWord.slice(1)} ({mu?.length ?? 0})</h2>
-      <p class="muted" style="margin-top:-6px">{withFile} de {mu?.length ?? 0} con archivo · <span class="file-dot" aria-hidden="true"></span> tiene archivo</p>
-      </div>
-
-      <h3 style="margin-top:0">Subir {unitWord}</h3>
-      <p class="muted" style="margin-top:0">Un archivo ({formatList(m.kind)}) por cada {m.kind === 'anime' ? 'episodio' : 'número'}. El número se toma del nombre del archivo y puedes corregirlo antes de subir.</p>
-      <UnitUploader mediaId={m.id} kind={m.kind} series={seriesGuess} />
-      <div id="units-list">
-
-      {groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Agrégalos con el formulario.</p>}
-      {groups.map((g) => (
-        <div style="margin-bottom:14px">
-          {g.name && <p class="muted" style="margin:0 0 6px;font-weight:700">{g.name}</p>}
-          <div class="chips-admin">
-            {g.units.map((u: any) => (
-              <span class={`chip-admin${u.units?.file_path ? ' has-file' : ''}`} title={u.units?.file_path ? `${u.units?.label} · ${u.units.file_format?.toUpperCase()}` : u.units?.label}>{u.units?.file_path && <span class="file-dot" aria-label="Tiene archivo"></span>}{u.short}
-                <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units">
-                  <input type="hidden" name="action" value="remove" /><input type="hidden" name="media_id" value={m.id} /><input type="hidden" name="unit_id" value={u.unit_id} />
-                  <button type="submit" aria-label={`Quitar ${u.units?.label}`}>×</button>
-                </form>
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-
-      <h3>Agregar un rango sin archivos</h3>
-      <form data-swap="#units-head, #units-list" class="panel stack" method="post" action="/api/admin/units">
-        <input type="hidden" name="action" value="add_range" /><input type="hidden" name="media_id" value={m.id} />
-        <label class="field">Nombre de la serie <small>Ej: Ultimate Spider-Man, Naruto Shippuden</small><input name="prefix" value={m.title} required /></label>
-        <div class="row">
-          <label class="field">Desde<input type="number" name="from" min="0" value="1" required /></label>
-          <label class="field">Hasta<input type="number" name="to" min="0" required /></label>
-          <label class="field">Formato<select name="format">
-            <option value="issue" selected={m.kind === 'comic'}>#5 (números)</option>
-            <option value="episode" selected={m.kind === 'anime'}>Episodio 5</option>
-          </select></label>
-        </div>
-        <label class="field">Grupo <small>opcional: "Temporada 1", "Arco Chunin"…</small><input name="group" /></label>
-        <div class="form-actions">
-          <span class="hint">Se agregan al final, en orden.</span>
-          <button class="btn primary" type="submit">Agregar rango</button>
-        </div>
-      </form>
-
-      <h3>Agregar uno suelto</h3>
-      <form data-swap="#units-head, #units-list" class="panel stack" method="post" action="/api/admin/units">
-        <input type="hidden" name="action" value="add_one" /><input type="hidden" name="media_id" value={m.id} />
-        <div class="row">
-          <label class="field">Nombre completo <small>único, con el título: "Giant-Size X-Men #1", no solo "1"</small><input name="label" required /></label>
-          <label class="field">Texto del botón<input name="short" placeholder="Especial" /></label>
-        </div>
-        <div class="form-actions">
-          <button class="btn" type="submit">Agregar</button>
-        </div>
-      </form>
-      {(mu?.length ?? 0) > 0 && (
-        <div class="danger-zone">
-          <p><b>Quitar todos los {unitWord}</b><small>El título queda vacío. Los {unitWord} siguen en las demás series que los incluyan.</small></p>
-          <form data-swap="#units-head, #units-list" method="post" action="/api/admin/units" data-confirm={`El título queda sin ${unitWord}. Siguen en las demás series que los incluyan.`} data-confirm-title={`¿Quitar todos los ${unitWord}?`} data-confirm-label="Quitar todos" data-confirm-danger>
-            <input type="hidden" name="action" value="clear" /><input type="hidden" name="media_id" value={m.id} />
-            <button class="btn small danger" type="submit">Quitar todos</button>
-          </form>
-        </div>
-      )}
-      </div>
+      <UnitsHeader unitWord={unitWord} total={mu.length} withFile={withFile} />
+      <UnitsUploadSection mediaId={m.id} kind={m.kind} unitWord={unitWord} series={seriesGuess} />
+      <UnitsList mediaId={m.id} unitWord={unitWord} groups={groups}>
+        <AddRangeForm mediaId={m.id} kind={m.kind} title={m.title} />
+        <AddUnitForm mediaId={m.id} />
+        {mu.length > 0 && <ClearUnitsZone mediaId={m.id} unitWord={unitWord} />}
+      </UnitsList>
     </section>
 
     <section>
-      <div class="section-head">
-        <h2>Portada</h2>
-      </div>
-      <div class="panel cover-editor" id="portada" data-media-id={m.id}>
-        <div class="cover-preview">
-          {m.cover_url ? <img src={m.cover_url} alt={`Portada de ${m.title}`} /> : <span class="muted">Sin portada</span>}
-        </div>
-        <div class="stack">
-          <label class="btn primary file-pick">
-            {m.cover_url ? 'Cambiar portada' : 'Subir portada'}
-            <input id="cover-file" type="file" accept="image/*" />
-          </label>
-          <div class="progress" id="cover-progress" hidden><span></span></div>
-          <small class="muted">JPG, PNG o WEBP de hasta 5 MB. Mejor en vertical (2:3).</small>
-          <details class="cover-link">
-            <summary>O usa un link a una imagen</summary>
-            <form id="cover-link-form" class="row" style="margin-top:8px">
-              <input name="url" type="url" placeholder="https://" required aria-label="Link de la portada" />
-              <button class="btn small" type="submit">Usar link</button>
-            </form>
-          </details>
-          {m.cover_url && <button class="btn small danger" type="button" id="cover-remove">Quitar portada</button>}
-        </div>
-      </div>
-      <script>
-        import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../../../scripts/admin-upload';
-        const box = document.getElementById('portada')!;
-        const mediaId = box.dataset.mediaId!;
-        const input = document.getElementById('cover-file') as HTMLInputElement;
-        const progress = document.getElementById('cover-progress')!;
-        const bar = progress.querySelector('span')!;
-        const fail = (e: unknown) => appDialog().alert({ title: 'No se pudo', message: (e as Error).message });
-
-        input.addEventListener('change', async () => {
-          const file = input.files?.[0];
-          input.value = '';
-          if (!file) return;
-          if (!file.type.startsWith('image/')) return fail(new Error('La portada debe ser una imagen (JPG, PNG, WEBP…).'));
-          if (file.size > 5 * 1024 * 1024) return fail(new Error('La portada pesa más de 5 MB.'));
-          progress.hidden = false;
-          bar.style.width = '0%';
-          try {
-            const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'cover', media_id: mediaId, filename: file.name, content_type: file.type, size: file.size });
-            await putFile(target, file, (f) => { bar.style.width = `${Math.round(f * 100)}%`; });
-            await postJson('/api/admin/covers', { action: 'complete', media_id: mediaId, path: target.path });
-            reloadWith('ok', 'Portada actualizada.', '#portada');
-          } catch (e) {
-            progress.hidden = true;
-            fail(e);
-          }
-        });
-
-        document.getElementById('cover-link-form')!.addEventListener('submit', async (e) => {
-          e.preventDefault();
-          const url = new FormData(e.target as HTMLFormElement).get('url');
-          try {
-            await postJson('/api/admin/covers', { action: 'link', media_id: mediaId, url });
-            reloadWith('ok', 'Portada actualizada.', '#portada');
-          } catch (err) { fail(err); }
-        });
-
-        document.getElementById('cover-remove')?.addEventListener('click', async () => {
-          const yes = await appDialog().confirm({ title: '¿Quitar portada?', message: 'El título se queda sin imagen. Puedes subir otra cuando quieras.', confirmLabel: 'Quitar portada', danger: true });
-          if (!yes) return;
-          try {
-            await postJson('/api/admin/covers', { action: 'remove', media_id: mediaId });
-            reloadWith('ok', 'Portada quitada.', '#portada');
-          } catch (err) { fail(err); }
-        });
-      </script>
-
-      <div class="section-head">
-        <h2>Datos</h2>
-        <a class="btn small" href={`/catalogo/${m.slug}`}>Ver página pública ↗</a>
-      </div>
-      <form class="panel stack" method="post" action="/api/admin/media">
-        <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={m.id} />
-        <label class="field">Título<input name="title" value={m.title} required /></label>
-        <label class="field">Slug <small>parte de la URL</small><input name="slug" value={m.slug} required pattern="[a-z0-9-]+" /></label>
-        <div class="row">
-          <label class="field">Tipo<select name="kind"><option value="comic" selected={m.kind === 'comic'}>Cómic</option><option value="anime" selected={m.kind === 'anime'}>Anime</option></select></label>
-          <label class="field">Universo<input name="universe" value={m.universe ?? ''} /></label>
-        </div>
-        <div class="row">
-          <label class="field">Año<input name="year_label" value={m.year_label ?? ''} /></label>
-          <label class="field">Créditos<input name="credits" value={m.credits ?? ''} /></label>
-        </div>
-        <label class="field">Cómo buscarlo<input name="search_hint" value={m.search_hint ?? ''} /></label>
-        <div class="row">
-          <label class="field">Dónde leer/ver<input name="where_label" value={m.where_label ?? ''} /></label>
-          <label class="field">Link oficial<input name="where_url" type="url" value={m.where_url ?? ''} /></label>
-        </div>
-        <label class="field">Descripción<textarea name="description">{m.description ?? ''}</textarea></label>
-        <div class="form-actions">
-          <button class="btn primary" type="submit">Guardar cambios</button>
-        </div>
-      </form>
-      <div class="danger-zone">
-        <p><b>Borrar título</b><small>También sale de todas las rutas. No se puede deshacer.</small></p>
-        <form method="post" action="/api/admin/media" data-confirm="También sale de todas las rutas. No se puede deshacer." data-confirm-title="¿Borrar título?" data-confirm-label="Borrar título" data-confirm-danger>
-          <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={m.id} />
-          <button class="btn small danger" type="submit">Borrar título</button>
-        </form>
-      </div>
+      <CoverEditor mediaId={m.id} title={m.title} coverUrl={m.cover_url} />
+      <TitleDataForm title={m} />
+      <DeleteTitleZone mediaId={m.id} />
     </section>
   </div>
 </Layout>

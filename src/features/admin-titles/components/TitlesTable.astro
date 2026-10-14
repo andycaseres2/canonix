@@ -1,0 +1,33 @@
+---
+// Titles list with a client-side text filter; each row links to the title's admin page.
+import Field from '../../../components/ui/Field.astro';
+import Badge from '../../../components/ui/Badge.astro';
+import type { TitleListItem } from '../types';
+interface Props { titles: TitleListItem[] }
+const { titles } = Astro.props;
+---
+<section>
+  <h2 style="margin-top:0">Títulos ({titles.length})</h2>
+  <Field label="Filtrar" style="margin-bottom:12px"><input id="f" type="search" autocomplete="off" /></Field>
+  <div class="table-wrap"><table style="min-width:0">
+    <thead><tr><th>Título</th><th>Tipo</th><th>Año</th><th>Unid.</th></tr></thead>
+    <tbody id="rows">
+      {titles.map((m) => (
+        <tr data-s={`${m.title} ${m.universe ?? ''}`.toLowerCase()}>
+          <td><a href={`/admin/media/${m.id}`}><b>{m.title}</b></a><br /><small class="muted">{m.universe} · {m.slug}</small></td>
+          <td><Badge kind={m.kind}>{m.kind}</Badge></td>
+          <td>{m.year_label}</td>
+          <td>{m.media_units?.[0]?.count ?? 0}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table></div>
+</section>
+
+<script>
+  const f = document.getElementById('f') as HTMLInputElement;
+  f.addEventListener('input', () => {
+    const v = f.value.trim().toLowerCase();
+    document.querySelectorAll<HTMLElement>('#rows tr').forEach((r) => { r.hidden = !!v && !(r.dataset.s ?? '').includes(v); });
+  });
+</script>

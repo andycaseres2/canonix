@@ -1,6 +1,9 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import Tracker from '../../components/Tracker.astro';
+import RouteHeader from '../../features/routes/components/RouteHeader.astro';
+import RouteStart from '../../features/routes/components/RouteStart.astro';
+import LockedNotice from '../../features/routes/components/LockedNotice.astro';
+import Tracker from '../../features/routes/components/Tracker.astro';
 import { getDoneUnitIds, getRoute, getStartedRoutes } from '../../lib/data';
 const { supabase, user, profile } = Astro.locals;
 const data = await getRoute(supabase, Astro.params.slug!, profile);
@@ -9,34 +12,11 @@ const { route, items, locked } = data;
 const [done, started] = locked
   ? [new Set<string>(), new Map<string, string>()]
   : await Promise.all([getDoneUnitIds(supabase, user?.id), getStartedRoutes(supabase, user?.id)]);
-const startedAt = started.get(route.id);
-const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
 ---
 <Layout title={route.name} description={route.description ?? undefined}>
-  <h1>{route.name}</h1>
-  {route.description && <p class="lead">{route.description}</p>}
-  {!route.published && <p class="alert error">Ruta en borrador: solo la ven los admins.</p>}
-  {!locked && route.published && (
-    <div class="route-start" id="route-start">
-      {!user && <a class="btn primary" href={`/login?next=${encodeURIComponent(`/rutas/${route.slug}`)}`}>Inicia sesión para iniciar la ruta</a>}
-      {user && !startedAt && (
-        <form data-swap="#route-start" method="post" action="/api/my-routes">
-          <input type="hidden" name="action" value="start" /><input type="hidden" name="route_id" value={route.id} /><input type="hidden" name="slug" value={route.slug} />
-          <button class="btn primary" type="submit">Iniciar ruta</button>
-        </form>
-      )}
-      {user && startedAt && (
-        <>
-          <p class="route-started"><b>✓ En tu progreso</b> <span class="muted">desde el {fmt.format(new Date(startedAt))}</span></p>
-          <form data-swap="#route-start" method="post" action="/api/my-routes" data-confirm="Lo que ya marcaste se mantiene en tu historial." data-confirm-title="¿Quitar de Mi progreso?" data-confirm-label="Quitar ruta">
-            <input type="hidden" name="action" value="leave" /><input type="hidden" name="route_id" value={route.id} /><input type="hidden" name="slug" value={route.slug} />
-            <button class="btn small" type="submit">Quitar de mi progreso</button>
-          </form>
-        </>
-      )}
-    </div>
-  )}
+  <RouteHeader name={route.name} description={route.description} published={route.published} />
+  {!locked && route.published && <RouteStart routeId={route.id} slug={route.slug} loggedIn={!!user} startedAt={started.get(route.id)} />}
   {locked
-    ? <p class="panel">Esta ruta es parte del plan premium.</p>
+    ? <LockedNotice />
     : <Tracker items={items} done={[...done]} logged={!!user} />}
 </Layout>

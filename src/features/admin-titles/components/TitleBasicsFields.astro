@@ -1,0 +1,21 @@
+---
+// Name and metadata fields of a new title, with the "where to read/watch" fields folded in a details block.
+import Field from '../../../components/ui/Field.astro';
+---
+<Field label="Nombre"><input name="title" maxlength="200" required placeholder="Ej: Batman: Year One, Naruto" autocomplete="off" /></Field>
+<div class="row">
+  <Field label="Universo" hint="marvel, dc, manga, anime…"><input name="universe" maxlength="40" /></Field>
+  <Field label="Año" hint="2000 o 2000–2009"><input name="year_label" maxlength="20" /></Field>
+</div>
+<Field label="Créditos" hint="autor, estudio"><input name="credits" maxlength="200" /></Field>
+<Field label="Descripción"><textarea name="description" maxlength="4000"></textarea></Field>
+<details>
+  <summary class="details-sum">Más datos (dónde leerlo o verlo)</summary>
+  <div class="stack" style="margin-top:12px">
+    <Field label="Cómo buscarlo" hint="nombre exacto en la plataforma"><input name="search_hint" maxlength="200" /></Field>
+    <div class="row">
+      <Field label="Dónde leer/ver"><input name="where_label" maxlength="80" placeholder="Marvel Unlimited, Crunchyroll…" /></Field>
+      <Field label="Link oficial"><input name="where_url" type="url" placeholder="https://" /></Field>
+    </div>
+  </div>
+</details>

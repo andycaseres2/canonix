@@ -1,0 +1,38 @@
+---
+// One user: name / email, sign-up date, progress, role and plan form, and (with the service key)
+// block / delete forms. Every form swaps `#users-table` in place.
+import type { UserRowData } from '../types';
+interface Props extends UserRowData { canManageAccounts: boolean }
+const { profile: p, stats: s, isSelf: me, banned, canManageAccounts } = Astro.props;
+const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
+---
+<tr data-s={`${p.display_name ?? ''} ${p.email}`.toLowerCase()}>
+  <td><b>{p.display_name}</b>{me && ' (tú)'}<br /><small class="muted">{p.email}</small></td>
+  <td>{fmt.format(new Date(p.created_at))}</td>
+  <td>{s?.units_done ?? 0}<br /><small class="muted">{s?.last_activity ? fmt.format(new Date(s.last_activity)) : 'sin actividad'}</small></td>
+  <td>
+    <form data-swap="#users-table" method="post" action="/api/admin/users" class="row" style="gap:4px;flex-wrap:nowrap">
+      <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={p.id} />
+      <select name="role" aria-label="Rol" disabled={me}><option value="user" selected={p.role === 'user'}>Usuario</option><option value="admin" selected={p.role === 'admin'}>Admin</option></select>
+      <select name="plan" aria-label="Plan"><option value="free" selected={p.plan === 'free'}>Gratis</option><option value="premium" selected={p.plan === 'premium'}>Premium</option></select>
+      <button class="btn small" type="submit">OK</button>
+    </form>
+  </td>
+  <td>
+    <div class="actions">
+    {canManageAccounts && !me && (
+      <>
+        <form data-swap="#users-table" method="post" action="/api/admin/users">
+          <input type="hidden" name="action" value={banned ? 'unban' : 'ban'} /><input type="hidden" name="id" value={p.id} />
+          <button class="btn small" type="submit">{banned ? 'Desbloquear' : 'Bloquear'}</button>
+        </form>
+        <form data-swap="#users-table" method="post" action="/api/admin/users" data-confirm="Se borra su cuenta y todo su progreso. No se puede deshacer." data-confirm-title="¿Borrar usuario?" data-confirm-label="Borrar usuario" data-confirm-danger>
+          <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={p.id} />
+          <button class="btn small danger" type="submit">Borrar</button>
+        </form>
+      </>
+    )}
+    {banned && <small class="muted">Bloqueado</small>}
+    </div>
+  </td>
+</tr>

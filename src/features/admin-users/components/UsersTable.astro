@@ -1,0 +1,21 @@
+---
+// Users table (`#users-table`, the FormSwap target). The script filters `#rows tr` by their `data-s`
+// text as the user types in UsersSearch (`#f`); it sits after the table to keep the original DOM order.
+import UserRow from './UserRow.astro';
+import type { UserRowData } from '../types';
+interface Props { rows: UserRowData[]; canManageAccounts: boolean }
+const { rows, canManageAccounts } = Astro.props;
+---
+<div class="table-wrap" id="users-table"><table>
+  <thead><tr><th>Usuario</th><th>Registro</th><th>Progreso</th><th>Rol y plan</th><th>Cuenta</th></tr></thead>
+  <tbody id="rows">
+    {rows.map((row) => <UserRow {...row} canManageAccounts={canManageAccounts} />)}
+  </tbody>
+</table></div>
+<script>
+  const f = document.getElementById('f') as HTMLInputElement;
+  f.addEventListener('input', () => {
+    const v = f.value.trim().toLowerCase();
+    document.querySelectorAll<HTMLElement>('#rows tr').forEach((r) => { r.hidden = !!v && !(r.dataset.s ?? '').includes(v); });
+  });
+</script>

@@ -1,0 +1,18 @@
+---
+// Title page header: optional cover, kind badge, universe, title, year / credits, description
+// and the published routes that include it ("Está en").
+import KindBadge from './KindBadge.astro';
+import type { RouteLink, TitleInfo } from '../types';
+interface Props { media: TitleInfo & { description: string | null }; routes: RouteLink[] }
+const { media: m, routes } = Astro.props;
+---
+<div class={`title-head${m.cover_url ? ' with-cover' : ''}`}>
+  {m.cover_url && <img class="title-cover" src={m.cover_url} alt={`Portada de ${m.title}`} />}
+  <div>
+    <p><KindBadge kind={m.kind} /> <span class="muted">{m.universe}</span></p>
+    <h1>{m.title}</h1>
+    <p class="lead">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</p>
+    {m.description && <p style="max-width:65ch">{m.description}</p>}
+    {routes.length > 0 && <p class="muted">Está en: {routes.map((r, i) => <>{i > 0 && ', '}<a href={`/rutas/${r.slug}`}>{r.name}</a></>)}</p>}
+  </div>
+</div>

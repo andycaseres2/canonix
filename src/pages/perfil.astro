@@ -1,5 +1,9 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import ProgressStats from '../features/progress/components/ProgressStats.astro';
+import MyRoutes from '../features/progress/components/MyRoutes.astro';
+import HistoryTable, { type HistoryEntry } from '../features/progress/components/HistoryTable.astro';
+import AccountForm from '../features/progress/components/AccountForm.astro';
 import { getDoneUnitIds, getRouteUnitMap, getStartedRoutes } from '../lib/data';
 const { supabase, user, profile } = Astro.locals;
 const [done, allRoutes, started] = await Promise.all([
@@ -9,51 +13,25 @@ const [done, allRoutes, started] = await Promise.all([
 const routes = allRoutes
   .filter((r) => started.has(r.route.id))
   .sort((a, b) => started.get(b.route.id)!.localeCompare(started.get(a.route.id)!));
-const day = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
+const RECENT_LIMIT = 40;
 const { data: recent } = await supabase
   .from('progress').select('completed_at, units(label)').eq('user_id', user!.id)
-  .order('completed_at', { ascending: false }).limit(40);
-const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: 'short' });
+  .order('completed_at', { ascending: false }).limit(RECENT_LIMIT);
+// The generated relation type says `units` is an array, but a many-to-one join returns one object.
+const history = (recent ?? []) as unknown as HistoryEntry[];
 const weekAgo = Date.now() - 7 * 864e5;
-const thisWeek = (recent ?? []).filter((r: any) => new Date(r.completed_at).getTime() > weekAgo).length;
+const thisWeek = history.filter((r) => new Date(r.completed_at).getTime() > weekAgo).length;
 ---
 <Layout title="Mi progreso">
   <h1>Mi progreso</h1>
-  <div class="stats">
-    <div class="stat"><b>{done.size}</b>números y episodios</div>
-    <div class="stat"><b>{thisWeek}{thisWeek === 40 ? '+' : ''}</b>en los últimos 7 días</div>
-    <div class="stat"><b>{profile?.plan === 'premium' ? 'Premium' : 'Gratis'}</b>tu plan</div>
-  </div>
+  <ProgressStats unitsDone={done.size} thisWeek={thisWeek} thisWeekCapped={thisWeek === RECENT_LIMIT} premium={profile?.plan === 'premium'} />
 
   <h2>Mis rutas</h2>
-  {routes.length === 0 && <p class="muted">Aún no has iniciado ninguna ruta. <a href="/rutas">Elige una</a> y toca «Iniciar ruta».</p>}
-  <div class="grid">
-    {routes.map(({ route, unitIds, unitCount }) => {
-      const d = unitIds.filter((id) => done.has(id)).length;
-      const pct = unitIds.length ? Math.round((d / unitIds.length) * 100) : 0;
-      return (
-        <a class="card" href={`/rutas/${route.slug}`}>
-          <span class="t">{route.name}</span>
-          <div class="bar"><span style={`width:${pct}%`}></span></div>
-          <span><b>{pct}%</b> <span class="muted">· {d} de {unitCount}</span></span>
-          <small class="muted">Iniciada el {day.format(new Date(started.get(route.id)!))}</small>
-        </a>
-      );
-    })}
-  </div>
+  <MyRoutes routes={routes} done={done} started={started} />
 
   <h2>Historial</h2>
-  {(recent ?? []).length === 0
-    ? <p class="muted">Aún no has marcado nada. Empieza por una <a href="/rutas">ruta</a>.</p>
-    : <div class="table-wrap"><table style="min-width:0">
-        <thead><tr><th>Número / episodio</th><th>Fecha</th></tr></thead>
-        <tbody>{(recent ?? []).map((r: any) => <tr><td>{r.units?.label}</td><td class="muted">{fmt.format(new Date(r.completed_at))}</td></tr>)}</tbody>
-      </table></div>}
+  <HistoryTable entries={history} />
 
   <h2>Cuenta</h2>
-  <form class="panel stack narrow" method="post" action="/api/profile">
-    <p class="muted" style="margin:0">{profile?.email}</p>
-    <label class="field">Nombre<input name="display_name" value={profile?.display_name ?? ''} maxlength="60" required /></label>
-    <button class="btn" type="submit">Guardar</button>
-  </form>
+  <AccountForm email={profile?.email} displayName={profile?.display_name ?? ''} />
 </Layout>

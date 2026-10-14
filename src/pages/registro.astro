@@ -1,17 +1,12 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import RegisterForm from '../features/auth/components/RegisterForm.astro';
 if (Astro.locals.user) return Astro.redirect('/rutas');
 ---
 <Layout title="Crear cuenta">
   <div class="narrow">
     <h1>Crear cuenta</h1>
     <p class="lead">Es gratis. Tu progreso queda guardado en tu cuenta y lo ves desde cualquier dispositivo.</p>
-    <form class="panel stack" method="post" action="/api/auth/register">
-      <label class="field">Nombre<input name="display_name" autocomplete="nickname" maxlength="60" required /></label>
-      <label class="field">Correo<input type="email" name="email" autocomplete="email" required /></label>
-      <label class="field">Contraseña <small>Mínimo 8 caracteres</small><input type="password" name="password" autocomplete="new-password" minlength="8" required /></label>
-      <button class="btn primary" type="submit">Crear cuenta</button>
-      <p class="muted">¿Ya tienes cuenta? <a href="/login">Entra</a></p>
-    </form>
+    <RegisterForm />
   </div>
 </Layout>

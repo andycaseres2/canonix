@@ -1,5 +1,5 @@
 ---
-import { UNIT_FORMATS, formatList } from '../lib/uploads';
+import { UNIT_FORMATS, formatList } from '../../../lib/uploads';
 interface Props {
   kind: 'comic' | 'anime';
   /** Title id. Without it the uploader only collects files and a parent script calls uploadAll(). */
@@ -35,8 +35,8 @@ const word = kind === 'anime' ? 'episodio' : 'número';
 </div>
 
 <script>
-  import { appDialog, formatBytes, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/admin-upload';
-  import { UNIT_FORMATS, detectNumber, extensionOf, formatList } from '../lib/uploads';
+  import { appDialog, formatBytes, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
+  import { UNIT_FORMATS, detectNumber, extensionOf, formatList } from '../../../lib/uploads';
 
   type Kind = 'comic' | 'anime';
   type Item = { file: File; number: number | null; status: 'pending' | 'uploading' | 'done' | 'error'; progress: number; message: string };

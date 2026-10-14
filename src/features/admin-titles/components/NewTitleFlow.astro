@@ -1,0 +1,170 @@
+---
+// New-title screen: the `form#create` steps, the unit uploader, the create bar and progress dialog, plus the
+// script that creates the title, uploads its cover and files, and then opens the title's admin page.
+import Panel from '../../../components/ui/Panel.astro';
+import CreateStep from './CreateStep.astro';
+import KindPicker from './KindPicker.astro';
+import TitleBasicsFields from './TitleBasicsFields.astro';
+import CoverPicker from './CoverPicker.astro';
+import UnitUploader from './UnitUploader.astro';
+import CreateBar from './CreateBar.astro';
+import CreateProgressDialog from './CreateProgressDialog.astro';
+---
+<form id="create" class="create-flow" novalidate>
+  <CreateStep n={1}>
+    <Fragment slot="title">Tipo y nombre</Fragment>
+    <Panel class="stack">
+      <KindPicker />
+      <TitleBasicsFields />
+    </Panel>
+  </CreateStep>
+
+  <CreateStep n={2}>
+    <Fragment slot="title">Portada <small class="muted">opcional</small></Fragment>
+    <CoverPicker />
+  </CreateStep>
+</form>
+
+<CreateStep n={3}>
+  <Fragment slot="title"><span class="unit-title">Números</span> <small class="muted">opcional, puedes subirlos después</small></Fragment>
+  <UnitUploader kind="comic" />
+</CreateStep>
+
+<CreateBar />
+
+<CreateProgressDialog />
+
+<script>
+  import { appDialog, postJson, putFile, type UploadTarget } from '../scripts/upload';
+
+  type Queue = {
+    ready(): boolean; hasProblems(): boolean; count(): number;
+    setKind(k: 'comic' | 'anime'): void; series: HTMLInputElement;
+    uploadAll(mediaId: string): Promise<{ done: number; failed: number }>;
+  };
+
+  const form = document.getElementById('create') as HTMLFormElement;
+  const uploader = document.getElementById('subir') as HTMLElement & { unitQueue: Queue };
+  const queue = uploader.unitQueue;
+  const titleInput = form.elements.namedItem('title') as HTMLInputElement;
+  const coverInput = document.getElementById('new-cover') as HTMLInputElement;
+  const coverPreview = document.getElementById('new-cover-preview')!;
+  const coverClear = document.getElementById('new-cover-clear')!;
+  const summary = document.getElementById('create-summary')!;
+  const go = document.getElementById('create-go') as HTMLButtonElement;
+  const progress = document.getElementById('create-progress') as HTMLDialogElement;
+  const stepsList = document.getElementById('create-steps')!;
+  let cover: File | null = null;
+  let seriesTouched = false;
+
+  const kind = () => (form.elements.namedItem('kind') as RadioNodeList).value as 'comic' | 'anime';
+  const kindWord = () => (kind() === 'anime' ? 'anime' : 'cómic');
+
+  function refresh() {
+    const n = queue.count();
+    const units = kind() === 'anime' ? 'episodio' : 'número';
+    go.textContent = `Crear ${kindWord()}`;
+    document.querySelector('.unit-title')!.textContent = kind() === 'anime' ? 'Episodios' : 'Números';
+    const parts = [titleInput.value.trim() ? `«${titleInput.value.trim()}»` : 'Falta el nombre'];
+    parts.push(cover ? 'con portada' : 'sin portada');
+    parts.push(n ? `${n} ${units}${n === 1 ? '' : 's'}` : `sin ${units}s por ahora`);
+    summary.textContent = parts.join(' · ');
+  }
+
+  form.addEventListener('change', (e) => {
+    if ((e.target as HTMLInputElement).name === 'kind') queue.setKind(kind());
+    refresh();
+  });
+  titleInput.addEventListener('input', () => {
+    if (!seriesTouched) queue.series.value = titleInput.value; // the series follows the name until edited
+    refresh();
+  });
+  queue.series.addEventListener('input', () => { seriesTouched = true; });
+  uploader.addEventListener('queuechange', refresh);
+
+  coverInput.addEventListener('change', async () => {
+    const file = coverInput.files?.[0];
+    coverInput.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) return appDialog().alert({ title: 'No es una imagen', message: 'La portada debe ser JPG, PNG, WEBP u otra imagen.' });
+    if (file.size > 5 * 1024 * 1024) return appDialog().alert({ title: 'Imagen muy pesada', message: 'La portada pesa más de 5 MB.' });
+    cover = file;
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(file);
+    img.alt = 'Vista previa de la portada';
+    coverPreview.replaceChildren(img);
+    coverClear.hidden = false;
+    refresh();
+  });
+  coverClear.addEventListener('click', () => {
+    cover = null;
+    const empty = document.createElement('span'); empty.className = 'muted'; empty.textContent = 'Sin portada';
+    coverPreview.replaceChildren(empty);
+    coverClear.hidden = true;
+    refresh();
+  });
+
+  function step(text: string) {
+    const li = document.createElement('li');
+    li.textContent = text;
+    li.dataset.state = 'running';
+    stepsList.append(li);
+    return (state: 'done' | 'error', note = '') => { li.dataset.state = state; if (note) li.textContent = `${text}: ${note}`; };
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!titleInput.value.trim()) {
+      await appDialog().alert({ title: 'Falta el nombre', message: `Ponle un nombre al ${kindWord()} antes de crearlo.` });
+      return titleInput.focus();
+    }
+    if (queue.hasProblems()) {
+      return appDialog().alert({ title: 'Revisa los archivos', message: 'Hay archivos con formato no válido, sin número o con números repetidos. Corrígelos o quítalos de la lista.' });
+    }
+    const data = Object.fromEntries(new FormData(form));
+    go.disabled = true;
+    stepsList.replaceChildren();
+    progress.showModal();
+    progress.addEventListener('cancel', (ev) => ev.preventDefault()); // keep it open while working
+
+    const created = step(`Crear «${String(data.title).trim()}»`);
+    let media: { id: string; slug: string };
+    try {
+      media = await postJson('/api/admin/titles', data);
+      created('done');
+    } catch (err) {
+      created('error', (err as Error).message);
+      go.disabled = false;
+      progress.close();
+      return appDialog().alert({ title: 'No se pudo crear', message: (err as Error).message });
+    }
+
+    const problems: string[] = [];
+    if (cover) {
+      const s = step('Subir la portada');
+      try {
+        const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'cover', media_id: media.id, filename: cover.name, content_type: cover.type, size: cover.size });
+        await putFile(target, cover, () => {});
+        await postJson('/api/admin/covers', { action: 'complete', media_id: media.id, path: target.path });
+        s('done');
+      } catch (err) {
+        s('error', (err as Error).message);
+        problems.push('la portada');
+      }
+    }
+    const n = queue.count();
+    if (n) {
+      const s = step(`Subir ${n} archivo${n === 1 ? '' : 's'}`);
+      const { failed } = await queue.uploadAll(media.id);
+      s(failed ? 'error' : 'done', failed ? `fallaron ${failed}` : '');
+      if (failed) problems.push(`${failed} archivo${failed === 1 ? '' : 's'}`);
+    }
+
+    const to = new URL(`/admin/media/${media.id}`, location.origin);
+    if (problems.length) to.searchParams.set('error', `Se creó el ${kindWord()}, pero falló la subida de ${problems.join(' y ')}. Vuelve a intentarlo desde aquí.`);
+    else to.searchParams.set('ok', `${kindWord()[0].toUpperCase()}${kindWord().slice(1)} creado${n || cover ? ' con todo subido' : ''}.`);
+    location.assign(to.toString());
+  });
+
+  refresh();
+</script>

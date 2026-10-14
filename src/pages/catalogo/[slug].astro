@@ -1,25 +1,18 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import Tracker from '../../components/Tracker.astro';
+import TitleHero from '../../features/catalog/components/TitleHero.astro';
+import Tracker from '../../features/routes/components/Tracker.astro';
 import { getDoneUnitIds, getMedia, toTrackerItem } from '../../lib/data';
+import type { RouteLink } from '../../features/catalog/types';
 const { supabase, user } = Astro.locals;
 const m = await getMedia(supabase, Astro.params.slug!);
 if (!m) return new Response('Título no encontrado', { status: 404 });
 const item = toTrackerItem(m);
 const done = await getDoneUnitIds(supabase, user?.id);
 const { data: inRoutes } = await supabase.from('route_items').select('routes(slug, name, published)').eq('media_id', m.id);
-const routes = (inRoutes ?? []).map((r: any) => r.routes).filter((r: any) => r?.published);
+const routes: RouteLink[] = (inRoutes ?? []).map((r: any) => r.routes).filter((r: any) => r?.published);
 ---
 <Layout title={m.title} description={m.description ?? undefined}>
-  <div class={`title-head${m.cover_url ? ' with-cover' : ''}`}>
-    {m.cover_url && <img class="title-cover" src={m.cover_url} alt={`Portada de ${m.title}`} />}
-    <div>
-      <p><span class={`badge ${m.kind}`}>{m.kind === 'anime' ? 'Anime' : 'Cómic'}</span> <span class="muted">{m.universe}</span></p>
-      <h1>{m.title}</h1>
-      <p class="lead">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</p>
-      {m.description && <p style="max-width:65ch">{m.description}</p>}
-      {routes.length > 0 && <p class="muted">Está en: {routes.map((r: any, i: number) => <>{i > 0 && ', '}<a href={`/rutas/${r.slug}`}>{r.name}</a></>)}</p>}
-    </div>
-  </div>
+  <TitleHero media={m} routes={routes} />
   <Tracker items={[item]} done={[...done]} logged={!!user} openFirst showHero={false} />
 </Layout>

@@ -1,0 +1,13 @@
+---
+// "Mi progreso" big numbers: units done, units marked in the last 7 days (`+` when the recent
+// list was capped) and the viewer's plan.
+import StatGrid from '../../../components/ui/StatGrid.astro';
+import Stat from '../../../components/ui/Stat.astro';
+interface Props { unitsDone: number; thisWeek: number; thisWeekCapped: boolean; premium: boolean }
+const { unitsDone, thisWeek, thisWeekCapped, premium } = Astro.props;
+---
+<StatGrid>
+  <Stat value={unitsDone}>números y episodios</Stat>
+  <Stat value={`${thisWeek}${thisWeekCapped ? '+' : ''}`}>en los últimos 7 días</Stat>
+  <Stat value={premium ? 'Premium' : 'Gratis'}>tu plan</Stat>
+</StatGrid>

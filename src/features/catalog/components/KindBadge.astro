@@ -1,0 +1,7 @@
+---
+// Kind badge with its label: "Anime" or "Cómic".
+import Badge from '../../../components/ui/Badge.astro';
+interface Props { kind: string }
+const { kind } = Astro.props;
+---
+<Badge kind={kind}>{kind === 'anime' ? 'Anime' : 'Cómic'}</Badge>

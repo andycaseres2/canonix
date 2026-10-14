@@ -1,0 +1,15 @@
+---
+// Local cover choice for a title not created yet (`#new-cover*`); NewTitleFlow previews and uploads it.
+import Panel from '../../../components/ui/Panel.astro';
+---
+<Panel class="cover-editor">
+  <div class="cover-preview" id="new-cover-preview"><span class="muted">Sin portada</span></div>
+  <div class="stack">
+    <label class="btn file-pick">
+      Elegir imagen
+      <input id="new-cover" type="file" accept="image/*" />
+    </label>
+    <small class="muted">JPG, PNG o WEBP de hasta 5 MB. Mejor en vertical (2:3).</small>
+    <button class="btn small" type="button" id="new-cover-clear" hidden>Quitar imagen</button>
+  </div>
+</Panel>

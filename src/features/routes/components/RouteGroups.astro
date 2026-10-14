@@ -1,0 +1,14 @@
+---
+// Routes grouped by universe, one heading and card grid per universe, in first-seen order.
+import RouteGrid from './RouteGrid.astro';
+import type { RouteSummary } from '../route-summary';
+interface Props { routes: RouteSummary[]; done: Set<string>; showProgress: boolean }
+const { routes, done, showProgress } = Astro.props;
+const universes = [...new Set(routes.map((r) => r.route.universe))];
+---
+{universes.map((universe) => (
+  <>
+    <h2 style="text-transform:capitalize">{universe}</h2>
+    <RouteGrid routes={routes.filter((r) => r.route.universe === universe)} done={done} showProgress={showProgress} />
+  </>
+))}

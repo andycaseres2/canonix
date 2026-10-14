@@ -1,0 +1,9 @@
+---
+// Numbered step of the new-title screen (`section.create-step`): heading text in the `title` slot, body in the default slot.
+interface Props { n: number }
+const { n } = Astro.props;
+---
+<section class="create-step">
+  <h2><span class="step-n">{n}</span> <slot name="title" /></h2>
+  <slot />
+</section>

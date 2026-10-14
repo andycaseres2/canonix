@@ -1,0 +1,17 @@
+---
+// Catalog title card: optional cover, kind badge, universe, title, year / credits and unit count.
+// `data-s` holds the lowercase text CatalogSearch matches against.
+import KindBadge from './KindBadge.astro';
+import type { CatalogMedia } from '../types';
+interface Props { media: CatalogMedia }
+const { media: m } = Astro.props;
+---
+<a class={`card${m.cover_url ? ' with-cover' : ''}`} href={`/catalogo/${m.slug}`} data-s={`${m.title} ${m.credits ?? ''} ${m.universe ?? ''}`.toLowerCase()}>
+  {m.cover_url && <img class="card-thumb" src={m.cover_url} alt="" loading="lazy" />}
+  <span class="card-body">
+    <span><KindBadge kind={m.kind} /> <span class="muted">{m.universe}</span></span>
+    <span class="t">{m.title}</span>
+    <span class="muted">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</span>
+    <span class="muted">{m.media_units?.[0]?.count ?? 0} {m.kind === 'anime' ? 'episodios' : 'números'}</span>
+  </span>
+</a>

@@ -1,0 +1,15 @@
+---
+// Card for a route the viewer started: name, completion bar, done / total units and start date.
+import ProgressBar from '../../../components/ui/ProgressBar.astro';
+import { completion, type RouteSummary } from '../../routes/route-summary';
+interface Props { summary: RouteSummary; done: Set<string>; startedAt: string }
+const { summary: { route, unitIds, unitCount }, done, startedAt } = Astro.props;
+const { doneCount, pct } = completion(unitIds, done);
+const day = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
+---
+<a class="card" href={`/rutas/${route.slug}`}>
+  <span class="t">{route.name}</span>
+  <ProgressBar pct={pct} />
+  <span><b>{pct}%</b> <span class="muted">· {doneCount} de {unitCount}</span></span>
+  <small class="muted">Iniciada el {day.format(new Date(startedAt))}</small>
+</a>

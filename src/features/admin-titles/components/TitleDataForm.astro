@@ -1,0 +1,35 @@
+---
+// "Datos" section: link to the public page and the form that edits the title's fields.
+import SectionHead from '../../../components/ui/SectionHead.astro';
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+import FormActions from '../../../components/ui/FormActions.astro';
+import type { TitleRecord } from '../types';
+interface Props { title: TitleRecord }
+const { title: m } = Astro.props;
+---
+<SectionHead title="Datos">
+  <a class="btn small" href={`/catalogo/${m.slug}`}>Ver página pública ↗</a>
+</SectionHead>
+<Panel as="form" class="stack" method="post" action="/api/admin/media">
+  <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={m.id} />
+  <Field label="Título"><input name="title" value={m.title} required /></Field>
+  <Field label="Slug" hint="parte de la URL"><input name="slug" value={m.slug} required pattern="[a-z0-9-]+" /></Field>
+  <div class="row">
+    <Field label="Tipo"><select name="kind"><option value="comic" selected={m.kind === 'comic'}>Cómic</option><option value="anime" selected={m.kind === 'anime'}>Anime</option></select></Field>
+    <Field label="Universo"><input name="universe" value={m.universe ?? ''} /></Field>
+  </div>
+  <div class="row">
+    <Field label="Año"><input name="year_label" value={m.year_label ?? ''} /></Field>
+    <Field label="Créditos"><input name="credits" value={m.credits ?? ''} /></Field>
+  </div>
+  <Field label="Cómo buscarlo"><input name="search_hint" value={m.search_hint ?? ''} /></Field>
+  <div class="row">
+    <Field label="Dónde leer/ver"><input name="where_label" value={m.where_label ?? ''} /></Field>
+    <Field label="Link oficial"><input name="where_url" type="url" value={m.where_url ?? ''} /></Field>
+  </div>
+  <Field label="Descripción"><textarea name="description">{m.description ?? ''}</textarea></Field>
+  <FormActions>
+    <button class="btn primary" type="submit">Guardar cambios</button>
+  </FormActions>
+</Panel>

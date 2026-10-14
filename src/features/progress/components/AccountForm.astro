@@ -1,0 +1,12 @@
+---
+// Account form: shows the email and edits the display name.
+import Panel from '../../../components/ui/Panel.astro';
+import Field from '../../../components/ui/Field.astro';
+interface Props { email?: string; displayName: string }
+const { email, displayName } = Astro.props;
+---
+<Panel as="form" class="stack narrow" method="post" action="/api/profile">
+  <p class="muted" style="margin:0">{email}</p>
+  <Field label="Nombre"><input name="display_name" value={displayName} maxlength="60" required /></Field>
+  <button class="btn" type="submit">Guardar</button>
+</Panel>

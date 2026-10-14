@@ -1,0 +1,15 @@
+---
+// Admin home totals: users, comics, animes, routes, units and units marked this week.
+import StatGrid from '../../../components/ui/StatGrid.astro';
+import Stat from '../../../components/ui/Stat.astro';
+interface Props { users: number; comics: number; animes: number; routes: number; units: number; week: number }
+const { users, comics, animes, routes, units, week } = Astro.props;
+---
+<StatGrid>
+  <Stat value={users}>usuarios</Stat>
+  <Stat value={comics}>cómics</Stat>
+  <Stat value={animes}>animes</Stat>
+  <Stat value={routes}>rutas</Stat>
+  <Stat value={units}>números y episodios</Stat>
+  <Stat value={week}>marcados esta semana</Stat>
+</StatGrid>

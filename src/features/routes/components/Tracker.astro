@@ -1,5 +1,5 @@
 ---
-import type { TrackerItem } from '../lib/types';
+import type { TrackerItem } from '../../../lib/types';
 interface Props { items: TrackerItem[]; done: string[]; logged: boolean; openFirst?: boolean; showHero?: boolean }
 const { items, done, logged, openFirst = false, showHero = true } = Astro.props;
 const payload = JSON.stringify({ items, done, logged, openFirst, showHero }).replace(/</g, '\\u003c');
