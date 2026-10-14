@@ -103,7 +103,8 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       count: urls.length,
       async draw(i) {
         const img = load(i);
-        await img.decode().catch(() => { if (!img.naturalWidth) throw new Error('page'); });
+        // A page that failed is forgotten, so coming back to it tries again
+        await img.decode().catch(() => { if (!img.naturalWidth) { loaded.delete(i); throw new Error('page'); } });
         [i + 1, i + 2].filter((j) => j < urls.length).forEach(load);
         // Keep decoded images only around the current page; the browser cache still has the bytes
         for (const j of loaded.keys()) if (j < i - 2 || j > i + 3) loaded.delete(j);

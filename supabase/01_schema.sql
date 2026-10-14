@@ -84,6 +84,12 @@ alter table public.units add column if not exists file_size bigint;
 create index if not exists units_file_path_idx on public.units (file_path);
 -- Cómics guardados por páginas: file_path es la carpeta del número ("slug/00005-123/") y pages sus imágenes en orden
 alter table public.units add column if not exists pages text[];
+-- Las páginas son nombres simples ("001.jpg") dentro de una carpeta terminada en "/"; un archivo único nunca termina en "/"
+alter table public.units drop constraint if exists units_pages_shape;
+alter table public.units add constraint units_pages_shape check (
+  case when pages is null then file_path is null or file_path !~ '/$'
+  else cardinality(pages) > 0 and file_path ~ '/$'
+    and array_to_string(pages, '/') ~ '^[0-9]{3,4}\.[a-z]{3,4}(/[0-9]{3,4}\.[a-z]{3,4})*$' end);
 
 create table if not exists public.media_units (
   media_id uuid not null references public.media(id) on delete cascade,
