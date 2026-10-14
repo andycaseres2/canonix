@@ -63,12 +63,13 @@ export class MockStorage {
   }
 
   /** Files directly inside a folder whose name contains `search`, like Storage's list(). */
-  list(bucket: string, dir: string, search: string, limit: number) {
+  list(bucket: string, dir: string, search: string, limit: number, offset = 0) {
     const prefix = `${bucket}/${dir ? `${dir}/` : ''}`;
     return [...this.files.entries()]
       .map(([key, f]) => ({ name: key.slice(prefix.length), f, key }))
       .filter(({ key, name }) => key.startsWith(prefix) && !name.includes('/') && name.includes(search))
-      .slice(0, limit)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .slice(offset, offset + limit)
       .map(({ name, f }) => ({ name, metadata: { size: f.size, mimetype: f.contentType } }));
   }
 

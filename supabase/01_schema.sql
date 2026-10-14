@@ -82,6 +82,8 @@ alter table public.units add column if not exists file_path text;
 alter table public.units add column if not exists file_format text;
 alter table public.units add column if not exists file_size bigint;
 create index if not exists units_file_path_idx on public.units (file_path);
+-- Cómics guardados por páginas: file_path es la carpeta del número ("slug/00005-123/") y pages sus imágenes en orden
+alter table public.units add column if not exists pages text[];
 
 create table if not exists public.media_units (
   media_id uuid not null references public.media(id) on delete cascade,
@@ -224,13 +226,17 @@ $$;
 
 -- ¿Puede el usuario actual leer este archivo del bucket content? Con cuenta y dentro del plan
 -- de algún título que incluya el número, o admin. Lo usa la política de lectura de Storage.
+-- El archivo es el del número (file_path) o, si está guardado por páginas, una de sus páginas listadas.
 create or replace function public.can_read_unit_file(path text)
 returns boolean language sql stable security definer set search_path = public as $$
   select public.is_admin() or (auth.uid() is not null and exists (
     select 1 from public.units u
     join public.media_units mu on mu.unit_id = u.id
     join public.media m on m.id = mu.media_id
-    where u.file_path = path
+    where ((u.pages is null and u.file_path = path)
+        or (u.pages is not null
+          and u.file_path = regexp_replace(path, '[^/]+$', '')
+          and regexp_replace(path, '^.*/', '') = any (u.pages)))
       and (m.requires_plan = 'free'
         or exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'premium'))
   ));

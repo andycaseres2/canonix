@@ -76,4 +76,32 @@ describe('mock storage', () => {
     expect(await sign(PREMIUM, 'orphan/x.cbz')).toBe(false);
     expect(await sign(ADMIN, 'orphan/x.cbz')).toBe(true);
   });
+
+  it('readers sign only the listed pages of a paged unit, within the plan, in one batch', async () => {
+    const db = fixture();
+    Object.assign(db.tables.units.find((u) => u.id === 'u1')!, { file_path: 'asm/00001-1/', pages: ['001.jpg', '002.jpg'] });
+    Object.assign(db.tables.units.find((u) => u.id === 'u4')!, { file_path: 'naruto/00001-1/', pages: ['001.jpg'] });
+    const sign = async (uid: string | null, path: string) => (await as(db, uid).storage.from('content').createSignedUrl(path, 60)).error === null;
+    expect(await sign(READER, 'asm/00001-1/002.jpg')).toBe(true);
+    expect(await sign(READER, 'asm/00001-1/extra.jpg')).toBe(false);
+    expect(await sign(READER, 'asm/00001-1/')).toBe(false);
+    expect(await sign(READER, 'naruto/00001-1/001.jpg')).toBe(false);
+    expect(await sign(PREMIUM, 'naruto/00001-1/001.jpg')).toBe(true);
+    expect(await sign(null, 'asm/00001-1/001.jpg')).toBe(false);
+
+    const { data, error } = await as(db, READER).storage.from('content').createSignedUrls(['asm/00001-1/001.jpg', 'naruto/00001-1/001.jpg'], 60);
+    expect(error).toBeNull();
+    expect(data!.map((d) => [d.path, d.error === null, !!d.signedUrl])).toEqual([['asm/00001-1/001.jpg', true, true], ['naruto/00001-1/001.jpg', false, false]]);
+  });
+
+  it('lists a folder page by page with limit and offset', async () => {
+    const db = fixture();
+    for (const n of ['001', '002', '003']) {
+      const { data } = await as(db, ADMIN).storage.from('content').createSignedUploadUrl(`asm/x/${n}.jpg`);
+      db.storage.acceptUpload(data!.token, bytes(n), 'image/jpeg');
+    }
+    const page = async (offset: number) => (await as(db, ADMIN).storage.from('content').list('asm/x', { limit: 2, offset })).data!.map((f) => f.name);
+    expect(await page(0)).toEqual(['001.jpg', '002.jpg']);
+    expect(await page(2)).toEqual(['003.jpg']);
+  });
 });

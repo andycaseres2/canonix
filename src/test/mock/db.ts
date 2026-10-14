@@ -52,7 +52,7 @@ const DEFAULTS: Record<TableName, () => Row> = {
     id: uuid(), universe: null, credits: null, year_label: null, year_start: null, description: null, search_hint: null,
     cover_url: null, where_label: null, where_url: null, requires_plan: 'free', created_at: now(),
   }),
-  units: () => ({ id: uuid(), file_path: null, file_format: null, file_size: null }),
+  units: () => ({ id: uuid(), file_path: null, file_format: null, file_size: null, pages: null }),
   media_units: () => ({ group_name: null }),
   routes: () => ({ id: uuid(), kind: 'comic', description: null, published: false, requires_plan: 'free', position: 0, created_at: now() }),
   route_sections: () => ({ id: uuid(), description: null }),
@@ -162,7 +162,10 @@ export class Policies {
     if (!this.uid) return false;
     const premium = this.db.profile(this.uid)?.plan === 'premium';
     const t = this.db.tables;
-    return t.units.filter((u) => u.file_path === path).some((u) =>
+    const slash = path.lastIndexOf('/');
+    const dir = path.slice(0, slash + 1), name = path.slice(slash + 1);
+    const holds = (u: Row) => (!Array.isArray(u.pages) && u.file_path === path) || (Array.isArray(u.pages) && u.file_path === dir && u.pages.includes(name));
+    return t.units.filter(holds).some((u) =>
       t.media_units.filter((mu) => mu.unit_id === u.id).some((mu) => {
         const media = t.media.find((m) => m.id === mu.media_id);
         return media && (media.requires_plan !== 'premium' || premium);

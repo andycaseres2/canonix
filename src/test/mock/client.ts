@@ -52,9 +52,20 @@ export function createMockClient(db: MockDb, session: SessionStore) {
           if (!policies.isAdmin && !(bucket === 'content' && policies.canReadUnitFile(path))) return { data: null, error: denied };
           return { data: { signedUrl: signedObjectUrl(bucket, path, db.storage.issueReadToken(bucket, path, seconds)) }, error: null };
         },
-        async list(dir: string, opts: { search?: string; limit?: number } = {}) {
+        async createSignedUrls(paths: string[], seconds: number) {
+          // Like Supabase: one entry per path, with its own error when the policy refuses it
+          const policies = rls();
+          const data = paths.map((path) => {
+            const ok = policies.isAdmin || (bucket === 'content' && policies.canReadUnitFile(path));
+            return ok
+              ? { path, error: null, signedUrl: signedObjectUrl(bucket, path, db.storage.issueReadToken(bucket, path, seconds)) }
+              : { path, error: 'Either the object does not exist or you do not have access to it', signedUrl: '' };
+          });
+          return { data, error: null };
+        },
+        async list(dir: string, opts: { search?: string; limit?: number; offset?: number } = {}) {
           if (!rls().isAdmin) return { data: [], error: null };
-          return { data: db.storage.list(bucket, dir, opts.search ?? '', opts.limit ?? 100), error: null };
+          return { data: db.storage.list(bucket, dir, opts.search ?? '', opts.limit ?? 100, opts.offset ?? 0), error: null };
         },
         async remove(paths: string[]) {
           if (!rls().isAdmin) return { data: [], error: null };
