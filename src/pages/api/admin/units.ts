@@ -1,7 +1,7 @@
 import type { APIRoute } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { back } from '../../../lib/data';
-import { int, str } from '../../../lib/form';
+import { int, isGenericLabel, str } from '../../../lib/form';
 
 type NewUnit = { label: string; short: string; group: string | null };
 
@@ -47,6 +47,9 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   if (action === 'add_one') {
     const label = str(f, 'label', 200);
     if (!label) return redirect(back(to, { error: 'Falta el nombre.' }));
+    if (isGenericLabel(label)) {
+      return redirect(back(to, { error: 'Usa un nombre que identifique el número, por ejemplo "Watchmen #5". Un nombre genérico como "5" comparte el progreso con otros títulos.' }));
+    }
     const err = await attach(sb, mediaId, [{ label, short: str(f, 'short', 40) ?? label, group: null }]);
     return redirect(back(to, err ? { error: err } : { ok: 'Agregado.' }));
   }
