@@ -35,10 +35,10 @@ Branch: `refactor/components` (stacked on `feat/smooth-ui`) · Delivery: ask-on-
 
 | ID | Specs | Route | Status | Commit |
 |----|-------|-------|--------|--------|
-| T1 | S1–S3 | delegated (foundation: ui/, shell/, AdminNav, Layout, styles split) | pending | |
-| T2 | S1–S3 | delegated, parallel (admin-routes) | pending | |
-| T3 | S1–S3 | delegated, parallel (admin-titles) | pending | |
-| T4 | S1–S3 | delegated, parallel (public pages, progress, auth, admin home, users) | pending | |
+| T1 | S1–S3 | delegated (foundation: ui/, shell/, AdminNav, Layout, styles split) | done | 75a100d |
+| T2 | S1–S3 | delegated, parallel (admin-routes) | done | 4e461c6 |
+| T3 | S1–S3 | delegated, parallel (admin-titles) | done |  |
+| T4 | S1–S3 | delegated, parallel (public pages, progress, auth, admin home, users) | done | c897b44 |
 
 Route evidence: Writer trigger (a) parallel units T2–T4 with disjoint edit surfaces after the shared foundation T1, and (b) the long-session context backstop. The parent owns git, the pixel diff and the end-to-end checks.
 
@@ -46,3 +46,5 @@ Route evidence: Writer trigger (a) parallel units T2–T4 with disjoint edit sur
 
 - L1 (2026-10-13, user, verbatim): "componetiza cada elemento bien y bien ordenado porfavoer"
 - L2: Baseline: 28 screenshots captured from the user's dev server (4321) as the demo admin. A second capture with no code change differed by 0 pixels on every page.
+- L3: Seam check by the parent after T2–T4: every writer stayed inside its surface; vitest 122/122; astro check 0 errors, 0 warnings (145 files); the 28 screenshots differ from the baseline by 0 pixels. Chrome end to end after the refactor: route editor in place (stage create/update/delete with the dialog, picker adds 2 in order, item move, delete route navigates), title chip remove, users plan change, Iniciar ruta, cover upload twice, unit upload twice, hidden queue, alert without Cancel, catalog search, and the full new-title flow ("Anime creado con todo subido.", 2 of 2 with file, cover). Page sizes went down, e.g. admin/rutas/[id] 216→45 lines, admin/media/nuevo 208→12, admin/media/[id] 204→55.
+- L4: Promotion candidates noted by the writers (not done, no duplication harm yet): KindBadge to ui/, a shared "filter list by data-s" script for catalog and users, CreateStep, a Field hint slot to avoid quote escaping.
