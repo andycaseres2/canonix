@@ -12,6 +12,6 @@ export const GET: APIRoute = async ({ url }) => {
   const file = storage.read(bucket, path);
   if (!file) return new Response('Not found', { status: 404 });
   return new Response(file.bytes, {
-    headers: { 'Content-Type': file.contentType || 'application/octet-stream', 'Content-Length': String(file.size), 'Cache-Control': 'private, max-age=300' },
+    headers: { 'Content-Type': file.contentType || 'application/octet-stream', 'Content-Length': String(file.size), 'Cache-Control': 'no-store' },
   });
 };

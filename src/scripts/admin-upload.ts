@@ -43,5 +43,11 @@ export function reloadWith(kind: 'ok' | 'error', message: string, hash = '') {
   u.searchParams.delete('error');
   u.searchParams.set(kind, message);
   u.hash = hash;
-  location.assign(u.toString());
+  // Same path and query only scrolls to the hash, so force the reload in that case
+  if (u.pathname + u.search === location.pathname + location.search) {
+    history.replaceState(null, '', u);
+    location.reload();
+  } else {
+    location.assign(u.toString());
+  }
 }
