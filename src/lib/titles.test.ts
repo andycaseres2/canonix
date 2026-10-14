@@ -33,6 +33,18 @@ describe('POST /api/admin/titles', () => {
     expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({ kind: 'comic', where_url: null });
   });
 
+  it('stores the access plan, free unless premium is chosen', async () => {
+    const db = fixture();
+    const plan = async (requires_plan?: string) => {
+      const { body } = await json(db, { title: `T ${requires_plan}`, requires_plan });
+      return db.tables.media.find((m) => m.id === body.id)!.requires_plan;
+    };
+    expect(await plan('premium')).toBe('premium');
+    expect(await plan('free')).toBe('free');
+    expect(await plan(undefined)).toBe('free');
+    expect(await plan('gold')).toBe('free');
+  });
+
   it('gives a duplicate name a unique slug', async () => {
     const db = fixture();
     const a = await json(db, { title: 'Repetido' });

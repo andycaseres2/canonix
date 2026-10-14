@@ -50,7 +50,7 @@ const DEFAULTS: Record<TableName, () => Row> = {
   profiles: () => ({ display_name: null, role: 'user', plan: 'free', created_at: now() }),
   media: () => ({
     id: uuid(), universe: null, credits: null, year_label: null, year_start: null, description: null, search_hint: null,
-    cover_url: null, where_label: null, where_url: null, created_at: now(),
+    cover_url: null, where_label: null, where_url: null, requires_plan: 'free', created_at: now(),
   }),
   units: () => ({ id: uuid(), file_path: null, file_format: null, file_size: null }),
   media_units: () => ({ group_name: null }),
@@ -154,6 +154,19 @@ export class Policies {
     const route = this.db.tables.routes.find((r) => r.id === routeId);
     if (!route?.published) return false;
     return route.requires_plan === 'free' || this.db.profile(this.uid)?.plan === 'premium';
+  }
+
+  /** public.can_read_unit_file(): signed in and within the plan of a title that has the file, or admin. */
+  canReadUnitFile(path: string) {
+    if (this.isAdmin) return true;
+    if (!this.uid) return false;
+    const premium = this.db.profile(this.uid)?.plan === 'premium';
+    const t = this.db.tables;
+    return t.units.filter((u) => u.file_path === path).some((u) =>
+      t.media_units.filter((mu) => mu.unit_id === u.id).some((mu) => {
+        const media = t.media.find((m) => m.id === mu.media_id);
+        return media && (media.requires_plan !== 'premium' || premium);
+      }));
   }
 
   canInsert(table: TableName, row: Row): boolean {

@@ -18,9 +18,9 @@ export function fixture() {
   db.addUser({ id: PREMIUM, email: 'premium@demo.com', password: 'demo1234', plan: 'premium' });
   const t = db.tables;
   t.media.push(
-    { id: 'm1', slug: 'asm', kind: 'comic', title: 'Spider-Man', year_start: 1962 },
-    { id: 'm2', slug: 'ff', kind: 'comic', title: 'Fantastic Four', year_start: 1961 },
-    { id: 'm3', slug: 'naruto', kind: 'anime', title: 'Naruto', year_start: 2002 },
+    { id: 'm1', slug: 'asm', kind: 'comic', title: 'Spider-Man', year_start: 1962, requires_plan: 'free' },
+    { id: 'm2', slug: 'ff', kind: 'comic', title: 'Fantastic Four', year_start: 1961, requires_plan: 'free' },
+    { id: 'm3', slug: 'naruto', kind: 'anime', title: 'Naruto', year_start: 2002, requires_plan: 'premium' },
   );
   t.units.push({ id: 'u1', label: 'ASM #1' }, { id: 'u2', label: 'ASM #2' }, { id: 'u3', label: 'FF #1' }, { id: 'u4', label: 'Naruto - Episodio 1' });
   t.media_units.push(

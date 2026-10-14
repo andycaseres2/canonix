@@ -27,6 +27,7 @@ export type TitleRecord = {
   where_url: string | null;
   description: string | null;
   cover_url: string | null;
+  requires_plan: 'free' | 'premium';
 };
 
 /** A unit linked to a title (media_units joined with units). */

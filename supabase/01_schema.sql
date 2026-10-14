@@ -68,6 +68,8 @@ create table if not exists public.media (
   where_url text,
   created_at timestamptz not null default now()
 );
+-- Quién puede leer los archivos del título: 'free' cualquier usuario con cuenta, 'premium' solo premium
+alter table public.media add column if not exists requires_plan text not null default 'free' check (requires_plan in ('free','premium'));
 
 -- Unidad de lectura/visionado: un número de cómic o un episodio.
 -- La etiqueta es única para que el mismo número cuente en todos los títulos que lo incluyen.
@@ -79,6 +81,7 @@ create table if not exists public.units (
 alter table public.units add column if not exists file_path text;
 alter table public.units add column if not exists file_format text;
 alter table public.units add column if not exists file_size bigint;
+create index if not exists units_file_path_idx on public.units (file_path);
 
 create table if not exists public.media_units (
   media_id uuid not null references public.media(id) on delete cascade,
@@ -217,6 +220,20 @@ returns boolean language sql stable security definer set search_path = public as
       and (r.requires_plan = 'free'
         or exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'premium'))
   );
+$$;
+
+-- ¿Puede el usuario actual leer este archivo del bucket content? Con cuenta y dentro del plan
+-- de algún título que incluya el número, o admin. Lo usa la política de lectura de Storage.
+create or replace function public.can_read_unit_file(path text)
+returns boolean language sql stable security definer set search_path = public as $$
+  select public.is_admin() or (auth.uid() is not null and exists (
+    select 1 from public.units u
+    join public.media_units mu on mu.unit_id = u.id
+    join public.media m on m.id = mu.media_id
+    where u.file_path = path
+      and (m.requires_plan = 'free'
+        or exists (select 1 from public.profiles p where p.id = auth.uid() and p.plan = 'premium'))
+  ));
 $$;
 
 -- Ítems de ruta: el candado premium vive aquí, no solo en la página

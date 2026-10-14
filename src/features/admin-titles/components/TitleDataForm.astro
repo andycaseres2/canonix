@@ -19,6 +19,7 @@ const { title: m } = Astro.props;
     <Field label="Tipo"><select name="kind"><option value="comic" selected={m.kind === 'comic'}>Cómic</option><option value="anime" selected={m.kind === 'anime'}>Anime</option></select></Field>
     <Field label="Universo"><input name="universe" value={m.universe ?? ''} /></Field>
   </div>
+  <Field label="Acceso" hint="quién puede leer o ver sus archivos"><select name="requires_plan"><option value="free" selected={m.requires_plan !== 'premium'}>Gratis: cualquier usuario con cuenta</option><option value="premium" selected={m.requires_plan === 'premium'}>Premium: solo usuarios premium</option></select></Field>
   <div class="row">
     <Field label="Año"><input name="year_label" value={m.year_label ?? ''} /></Field>
     <Field label="Créditos"><input name="credits" value={m.credits ?? ''} /></Field>

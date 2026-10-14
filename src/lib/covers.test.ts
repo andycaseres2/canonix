@@ -114,6 +114,13 @@ describe('POST /api/admin/covers', () => {
 });
 
 describe('POST /api/admin/media update', () => {
+  it('saves the access plan', async () => {
+    const db = fixture();
+    const params = await form(media, db, { action: 'update', id: 'm1', title: 'Spider-Man', slug: 'asm', kind: 'comic', requires_plan: 'premium' });
+    expect(params.get('ok')).toBe('Guardado.');
+    expect(db.tables.media.find((m) => m.id === 'm1')!.requires_plan).toBe('premium');
+  });
+
   it('saving the data form keeps the uploaded cover', async () => {
     const db = fixture();
     await uploadCover(db);

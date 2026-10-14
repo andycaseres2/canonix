@@ -7,7 +7,10 @@ import Field from '../../../components/ui/Field.astro';
   <Field label="Universo" hint="marvel, dc, manga, anime…"><input name="universe" maxlength="40" /></Field>
   <Field label="Año" hint="2000 o 2000–2009"><input name="year_label" maxlength="20" /></Field>
 </div>
-<Field label="Créditos" hint="autor, estudio"><input name="credits" maxlength="200" /></Field>
+<div class="row">
+  <Field label="Créditos" hint="autor, estudio"><input name="credits" maxlength="200" /></Field>
+  <Field label="Acceso" hint="quién puede leer o ver sus archivos"><select name="requires_plan"><option value="free">Gratis</option><option value="premium">Premium</option></select></Field>
+</div>
 <Field label="Descripción"><textarea name="description" maxlength="4000"></textarea></Field>
 <details>
   <summary class="details-sum">Más datos (dónde leerlo o verlo)</summary>

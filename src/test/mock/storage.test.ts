@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ADMIN, READER, as, fixture } from './fixture';
+import { ADMIN, PREMIUM, READER, as, fixture } from './fixture';
 
 const bytes = (s: string) => new TextEncoder().encode(s);
 
@@ -62,5 +62,18 @@ describe('mock storage', () => {
     const db = fixture();
     const { data } = await as(db, ADMIN).storage.from('covers').createSignedUploadUrl('x.pdf');
     expect(db.storage.acceptUpload(data!.token, bytes('%PDF'), 'application/pdf')).toMatch(/not allowed/i);
+  });
+
+  it('readers sign content files only within the plan of a title that has them (rutas_content_read)', async () => {
+    const db = fixture();
+    db.tables.units.find((u) => u.id === 'u1')!.file_path = 'asm/00001-1.cbz';
+    db.tables.units.find((u) => u.id === 'u4')!.file_path = 'naruto/00001-1.mp4';
+    const sign = async (uid: string | null, path: string) => (await as(db, uid).storage.from('content').createSignedUrl(path, 60)).error === null;
+    expect(await sign(READER, 'asm/00001-1.cbz')).toBe(true);
+    expect(await sign(READER, 'naruto/00001-1.mp4')).toBe(false);
+    expect(await sign(PREMIUM, 'naruto/00001-1.mp4')).toBe(true);
+    expect(await sign(null, 'asm/00001-1.cbz')).toBe(false);
+    expect(await sign(PREMIUM, 'orphan/x.cbz')).toBe(false);
+    expect(await sign(ADMIN, 'orphan/x.cbz')).toBe(true);
   });
 });

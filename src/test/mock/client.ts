@@ -47,7 +47,9 @@ export function createMockClient(db: MockDb, session: SessionStore) {
         },
         getPublicUrl: (path: string) => ({ data: { publicUrl: publicObjectUrl(bucket, path) } }),
         async createSignedUrl(path: string, seconds: number) {
-          if (!rls().isAdmin) return { data: null, error: denied };
+          // rutas_storage_admin, plus rutas_content_read for readers
+          const policies = rls();
+          if (!policies.isAdmin && !(bucket === 'content' && policies.canReadUnitFile(path))) return { data: null, error: denied };
           return { data: { signedUrl: signedObjectUrl(bucket, path, db.storage.issueReadToken(bucket, path, seconds)) }, error: null };
         },
         async list(dir: string, opts: { search?: string; limit?: number } = {}) {
