@@ -1,6 +1,5 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import AdminNav from '../../../features/admin/components/AdminNav.astro';
 import UnitsHeader from '../../../features/admin-titles/components/UnitsHeader.astro';
 import UnitsUploadSection from '../../../features/admin-titles/components/UnitsUploadSection.astro';
 import UnitsList from '../../../features/admin-titles/components/UnitsList.astro';
@@ -29,9 +28,8 @@ const firstLabel: string | undefined = mu[0]?.units?.label;
 const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+$/ : /^(.*) #\d+$/)?.[1] ?? m.title;
 ---
 <Layout title={`${m.title} · Admin`}>
-  <p><a href="/admin/media">← Catálogo</a></p>
+  <p class="back-link"><a href="/admin/media">← Catálogo</a></p>
   <h1>{m.title}</h1>
-  <AdminNav />
   <div class="split">
     <section>
       <UnitsHeader unitWord={unitWord} total={mu.length} withFile={withFile} />

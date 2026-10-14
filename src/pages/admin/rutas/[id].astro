@@ -1,6 +1,5 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import AdminNav from '../../../features/admin/components/AdminNav.astro';
 import SectionHead from '../../../components/ui/SectionHead.astro';
 import RouteForm from '../../../features/admin-routes/components/RouteForm.astro';
 import StageCard from '../../../features/admin-routes/components/StageCard.astro';
@@ -24,9 +23,8 @@ const used = new Set((items ?? []).map((i: any) => i.media?.id));
 const options: PickerOption[] = (allMedia ?? []).filter((m) => !used.has(m.id)).map((m) => ({ id: m.id, t: m.title, y: m.year_label, u: m.universe, k: m.kind, c: m.cover_url }));
 ---
 <Layout title={`${r.name} · Admin`}>
-  <p><a href="/admin/rutas">← Rutas</a></p>
+  <p class="back-link"><a href="/admin/rutas">← Rutas</a></p>
   <h1>{r.name}</h1>
-  <AdminNav />
 
   <div class="route-editor" id="route-page">
     <SectionHead title="Ruta"><a class="btn small" href={`/rutas/${r.slug}`}>Ver ruta ↗</a></SectionHead>

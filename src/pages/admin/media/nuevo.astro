@@ -1,12 +1,10 @@
 ---
 import Layout from '../../../layouts/Layout.astro';
-import AdminNav from '../../../features/admin/components/AdminNav.astro';
 import NewTitleFlow from '../../../features/admin-titles/components/NewTitleFlow.astro';
 ---
 <Layout title="Nuevo cómic o anime · Admin">
-  <p><a href="/admin/media">← Catálogo</a></p>
+  <p class="back-link"><a href="/admin/media">← Catálogo</a></p>
   <h1>Nuevo cómic o anime</h1>
-  <AdminNav />
 
   <NewTitleFlow />
 </Layout>

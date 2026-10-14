@@ -3,6 +3,8 @@
 .admin-nav { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
 .admin-nav a { font-weight: 700; text-decoration: none; padding: 8px 12px; border: 2px solid var(--line); }
 .admin-nav a[aria-current="page"] { background: var(--ink); color: var(--paper); }
+/* Detail pages: a back link instead of the admin nav, so the title keeps the nav's spacing */
+.back-link + h1 { margin-bottom: 24px; }
 .split { display: grid; gap: 24px; grid-template-columns: 1fr; }
 .split > * { min-width: 0; } /* let wide tables scroll inside their wrapper instead of stretching the page */
 @media (min-width: 860px) { .split { grid-template-columns: 1.2fr 1fr; } }
