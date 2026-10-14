@@ -1,0 +1,82 @@
+---
+/**
+ * One styled modal for the whole app, replacing the browser's native confirm and alert boxes.
+ * - Forms with data-confirm="message" ask before submitting
+ *   (optional data-confirm-title, data-confirm-label, data-confirm-danger).
+ * - Scripts can call window.appDialog.confirm({...}) and window.appDialog.alert({...}).
+ */
+---
+<dialog id="app-dialog" class="app-dialog" aria-labelledby="app-dialog-title" aria-describedby="app-dialog-message">
+  <form method="dialog" class="app-dialog-body">
+    <h2 id="app-dialog-title" class="app-dialog-title"></h2>
+    <p id="app-dialog-message" class="app-dialog-message"></p>
+    <div class="app-dialog-actions">
+      <button class="btn" value="cancel" data-role="cancel">Cancelar</button>
+      <button class="btn primary" value="ok" data-role="ok">Aceptar</button>
+    </div>
+  </form>
+</dialog>
+
+<style is:global>
+.app-dialog { width: min(440px, calc(100vw - 32px)); padding: 0; border: 3px solid var(--line); background: var(--panel); color: var(--ink); box-shadow: 8px 8px 0 var(--red); }
+.app-dialog::backdrop { background: rgba(17, 22, 42, .6); }
+.app-dialog[open] { animation: app-dialog-in .14s ease-out; }
+@keyframes app-dialog-in { from { transform: translate(0, 8px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .app-dialog[open] { animation: none; } }
+.app-dialog-body { display: grid; gap: 12px; padding: 20px; }
+.app-dialog-title { margin: 0; font-size: 1.7rem; }
+.app-dialog-message { margin: 0; color: var(--muted); white-space: pre-line; }
+.app-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 2px dashed var(--muted); }
+.app-dialog-actions .btn.danger-fill { background: var(--red); color: #fff; border-color: var(--line); }
+@media (max-width: 520px) { .app-dialog-actions .btn { flex: 1 1 100%; } }
+</style>
+
+<script>
+  type Options = { title?: string; message: string; confirmLabel?: string; cancelLabel?: string; danger?: boolean };
+
+  const dialog = document.getElementById('app-dialog') as HTMLDialogElement;
+  const title = document.getElementById('app-dialog-title')!;
+  const message = document.getElementById('app-dialog-message')!;
+  const ok = dialog.querySelector<HTMLButtonElement>('[data-role=ok]')!;
+  const cancel = dialog.querySelector<HTMLButtonElement>('[data-role=cancel]')!;
+
+  function open(opts: Options, withCancel: boolean) {
+    title.textContent = opts.title ?? (withCancel ? '¿Seguro?' : 'Aviso');
+    message.textContent = opts.message;
+    ok.textContent = opts.confirmLabel ?? 'Aceptar';
+    cancel.textContent = opts.cancelLabel ?? 'Cancelar';
+    cancel.hidden = !withCancel;
+    ok.classList.toggle('danger-fill', !!opts.danger);
+    ok.classList.toggle('primary', !opts.danger);
+    dialog.returnValue = '';
+    dialog.showModal();
+    (withCancel ? cancel : ok).focus(); // destructive actions never get default focus
+    return new Promise<boolean>((resolve) => dialog.addEventListener('close', () => resolve(dialog.returnValue === 'ok'), { once: true }));
+  }
+
+  const appDialog = {
+    confirm: (opts: Options) => open(opts, true),
+    alert: (opts: Options) => open(opts, false).then(() => undefined),
+  };
+  (window as any).appDialog = appDialog;
+
+  // Clicking the backdrop cancels
+  dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close('cancel'); });
+
+  // Forms that ask before submitting
+  document.addEventListener('submit', async (e) => {
+    const form = e.target as HTMLFormElement;
+    const text = form.dataset.confirm;
+    if (!text || form.dataset.confirmed === 'yes') return;
+    e.preventDefault();
+    const yes = await appDialog.confirm({
+      title: form.dataset.confirmTitle,
+      message: text,
+      confirmLabel: form.dataset.confirmLabel,
+      danger: form.dataset.confirmDanger !== undefined,
+    });
+    if (!yes) return;
+    form.dataset.confirmed = 'yes';
+    form.requestSubmit((e as SubmitEvent).submitter as HTMLElement | null);
+  });
+</script>

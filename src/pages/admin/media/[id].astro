@@ -70,7 +70,7 @@ const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
       {(mu?.length ?? 0) > 0 && (
         <div class="danger-zone">
           <p><b>Quitar todos los {unitWord}</b><small>El título queda vacío. Los {unitWord} siguen en las demás series que los incluyan.</small></p>
-          <form method="post" action="/api/admin/units" onsubmit="return confirm('¿Quitar todos los números/episodios de este título?')">
+          <form method="post" action="/api/admin/units" data-confirm={`El título queda sin ${unitWord}. Siguen en las demás series que los incluyan.`} data-confirm-title={`¿Quitar todos los ${unitWord}?`} data-confirm-label="Quitar todos" data-confirm-danger>
             <input type="hidden" name="action" value="clear" /><input type="hidden" name="media_id" value={m.id} />
             <button class="btn small danger" type="submit">Quitar todos</button>
           </form>
@@ -108,7 +108,7 @@ const unitWord = m.kind === 'anime' ? 'episodios' : 'números';
       </form>
       <div class="danger-zone">
         <p><b>Borrar título</b><small>También sale de todas las rutas. No se puede deshacer.</small></p>
-        <form method="post" action="/api/admin/media" onsubmit="return confirm('¿Borrar este título? También sale de las rutas.')">
+        <form method="post" action="/api/admin/media" data-confirm="También sale de todas las rutas. No se puede deshacer." data-confirm-title="¿Borrar título?" data-confirm-label="Borrar título" data-confirm-danger>
           <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={m.id} />
           <button class="btn small danger" type="submit">Borrar título</button>
         </form>

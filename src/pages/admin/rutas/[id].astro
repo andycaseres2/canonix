@@ -121,7 +121,7 @@ const sections = [...new Set((items ?? []).map((i: any) => i.section).filter(Boo
       </form>
       <div class="danger-zone">
         <p><b>Borrar ruta</b><small>Los títulos siguen en el catálogo. No se puede deshacer.</small></p>
-        <form method="post" action="/api/admin/routes" onsubmit="return confirm('¿Borrar esta ruta? Los títulos siguen en el catálogo.')">
+        <form method="post" action="/api/admin/routes" data-confirm="Los títulos siguen en el catálogo. No se puede deshacer." data-confirm-title="¿Borrar ruta?" data-confirm-label="Borrar ruta" data-confirm-danger>
           <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={r.id} />
           <button class="btn small danger" type="submit">Borrar ruta</button>
         </form>

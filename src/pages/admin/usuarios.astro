@@ -46,7 +46,7 @@ const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
                     <input type="hidden" name="action" value={banned.has(p.id) ? 'unban' : 'ban'} /><input type="hidden" name="id" value={p.id} />
                     <button class="btn small" type="submit">{banned.has(p.id) ? 'Desbloquear' : 'Bloquear'}</button>
                   </form>
-                  <form method="post" action="/api/admin/users" onsubmit="return confirm('¿Borrar este usuario y todo su progreso? No se puede deshacer.')">
+                  <form method="post" action="/api/admin/users" data-confirm="Se borra su cuenta y todo su progreso. No se puede deshacer." data-confirm-title="¿Borrar usuario?" data-confirm-label="Borrar usuario" data-confirm-danger>
                     <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={p.id} />
                     <button class="btn small danger" type="submit">Borrar</button>
                   </form>

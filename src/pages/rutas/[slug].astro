@@ -28,7 +28,7 @@ const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' });
       {user && startedAt && (
         <>
           <p class="route-started"><b>✓ En tu progreso</b> <span class="muted">desde el {fmt.format(new Date(startedAt))}</span></p>
-          <form method="post" action="/api/my-routes" onsubmit="return confirm('¿Quitar esta ruta de Mi progreso? Lo que ya marcaste se mantiene.')">
+          <form method="post" action="/api/my-routes" data-confirm="Lo que ya marcaste se mantiene en tu historial." data-confirm-title="¿Quitar de Mi progreso?" data-confirm-label="Quitar ruta">
             <input type="hidden" name="action" value="leave" /><input type="hidden" name="route_id" value={route.id} /><input type="hidden" name="slug" value={route.slug} />
             <button class="btn small" type="submit">Quitar de mi progreso</button>
           </form>
