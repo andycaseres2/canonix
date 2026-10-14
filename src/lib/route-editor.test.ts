@@ -6,9 +6,9 @@ import { ADMIN, as, fixture } from './mock/fixture';
 
 const ORIGIN = 'http://x';
 
-async function post(handler: any, db: MockDb, fields: Record<string, string>) {
+async function post(handler: any, db: MockDb, fields: Record<string, string | string[]>) {
   const body = new FormData();
-  Object.entries(fields).forEach(([k, v]) => body.set(k, v));
+  Object.entries(fields).forEach(([k, v]) => (Array.isArray(v) ? v : [v]).forEach((x) => body.append(k, x)));
   const request = new Request(`${ORIGIN}/api`, { method: 'POST', body });
   const res: Response = await handler({
     request, url: new URL(request.url), locals: { supabase: as(db, ADMIN) },
@@ -94,6 +94,24 @@ describe('titles inside a stage', () => {
     const db = fixture();
     expect((await post(items, db, { action: 'item_add', route_id: 'r1', section_id: 's1', media_id: 'm1' })).error).toBe('Ese título ya está en la ruta.');
     expect((await post(items, db, { action: 'item_add', route_id: 'r1', section_id: 's3', media_id: 'm3' })).error).toBe('Etapa no encontrada.');
+  });
+
+  it('adds several picked titles at once, in the order they were picked', async () => {
+    const db = fixture();
+    db.tables.media.push({ id: 'm4', slug: 'xmen', kind: 'comic', title: 'X-Men', year_start: 1963 });
+    await post(items, db, { action: 'section_create', route_id: 'r3', title: 'Extra' });
+    const extra = stagesOf(db, 'r3')[1].id;
+    const res = await post(items, db, { action: 'item_add', route_id: 'r3', section_id: extra, media_id: ['m4', 'm1', 'm2'] });
+    expect(res.ok).toBe('Se agregaron 3.');
+    expect(itemsOf(db, extra)).toEqual(['m4', 'm1', 'm2']);
+  });
+
+  it('skips picked titles that are already in the route and says so', async () => {
+    const db = fixture();
+    db.tables.media.push({ id: 'm4', slug: 'xmen', kind: 'comic', title: 'X-Men', year_start: 1963 });
+    const res = await post(items, db, { action: 'item_add', route_id: 'r1', section_id: 's1', media_id: ['m1', 'm4'] });
+    expect(res.ok).toBe('Agregado. 1 ya estaba en la ruta.');
+    expect(itemsOf(db, 's1')).toEqual(['m2', 'm1', 'm4']);
   });
 
   it('moves a title inside its stage and removes it', async () => {

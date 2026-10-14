@@ -42,15 +42,24 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
 
   // ---------- Titles inside a stage ----------
   if (action === 'item_add') {
-    const sectionId = str(f, 'section_id', 40), mediaId = str(f, 'media_id', 40);
+    // One or several titles picked from the list, added in the order they were picked
+    const sectionId = str(f, 'section_id', 40);
+    const mediaIds = [...new Set(f.getAll('media_id').map(String).filter((v) => /^[\w-]{1,40}$/.test(v)))].slice(0, 300);
     const { data: stage } = await sb.from('route_sections').select('id').eq('id', sectionId ?? '').eq('route_id', routeId).maybeSingle();
-    if (!stage || !mediaId) return go({ error: 'Etapa no encontrada.' });
-    const { data: dup } = await sb.from('route_items').select('id').eq('route_id', routeId).eq('media_id', mediaId).maybeSingle();
-    if (dup) return go({ error: 'Ese título ya está en la ruta.' }, `#etapa-${stage.id}`);
+    if (!stage || !mediaIds.length) return go({ error: 'Etapa no encontrada.' });
+    const { data: present } = await sb.from('route_items').select('media_id').eq('route_id', routeId).in('media_id', mediaIds);
+    const already = new Set((present ?? []).map((p) => p.media_id));
+    const fresh = mediaIds.filter((m) => !already.has(m));
+    const hash = `#etapa-${stage.id}`;
+    if (!fresh.length) return go({ error: mediaIds.length === 1 ? 'Ese título ya está en la ruta.' : 'Esos títulos ya están en la ruta.' }, hash);
     const { data: last } = await sb.from('route_items').select('position').eq('route_id', routeId).order('position', { ascending: false }).limit(1).maybeSingle();
-    const { error } = await sb.from('route_items').insert({ route_id: routeId, section_id: stage.id, media_id: mediaId, position: (last?.position ?? 0) + 1 });
-    if (!error) await refreshRouteMeta(sb, routeId);
-    return go(error ? { error: error.message } : { ok: 'Agregado.' }, `#etapa-${stage.id}`);
+    let pos = last?.position ?? 0;
+    const { error } = await sb.from('route_items').insert(fresh.map((media_id) => ({ route_id: routeId, section_id: stage.id, media_id, position: ++pos })));
+    if (error) return go({ error: error.message }, hash);
+    await refreshRouteMeta(sb, routeId);
+    const skipped = mediaIds.length - fresh.length;
+    const ok = (fresh.length === 1 ? 'Agregado.' : `Se agregaron ${fresh.length}.`) + (skipped ? ` ${skipped} ya estaba${skipped === 1 ? '' : 'n'} en la ruta.` : '');
+    return go({ ok }, hash);
   }
   if (action === 'item_move' && id) {
     const { data: item } = await sb.from('route_items').select('section_id').eq('id', id).eq('route_id', routeId).maybeSingle();
