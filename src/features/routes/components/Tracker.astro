@@ -47,7 +47,7 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
 
 <script>
   type Unit = { id: string; label: string; short: string; group: string | null; file: boolean };
-  type Item = { slug: string; kind: 'comic' | 'anime'; premium: boolean; title: string; credits: string | null; year: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
+  type Item = { slug: string; kind: string; premium: boolean; title: string; credits: string | null; year: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
 
   const root = document.getElementById('tracker')!;
   const data = JSON.parse(document.getElementById('tracker-data')!.textContent || '{}') as {
@@ -67,8 +67,7 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
   function readLink(it: Item, unit = toRead(it)) {
     if (!unit) return '';
     if (it.premium && !data.premium) return '<span class="locked-tag">Premium</span>';
-    const verb = it.kind === 'anime' ? 'Ver ep.' : 'Leer #';
-    return `<a class="btn small primary" href="/leer/${esc(it.slug)}/${encodeURIComponent(unit.short)}">${verb}${esc(unit.short)} ›</a>`;
+    return `<a class="btn small primary" href="/leer/${esc(it.slug)}/${encodeURIComponent(unit.short)}">Leer #${esc(unit.short)} ›</a>`;
   }
 
   function setUnits(ids: string[], on: boolean) {

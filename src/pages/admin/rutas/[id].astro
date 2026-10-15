@@ -31,7 +31,7 @@ const options: PickerOption[] = (allMedia ?? []).filter((m) => !used.has(m.id)).
     <RouteForm route={r} />
 
     <h2>Etapas ({stages?.length ?? 0})</h2>
-    {stageList.length === 0 && <p class="muted">Crea la primera etapa, por ejemplo «Años 60», y agrégale cómics o animes.</p>}
+    {stageList.length === 0 && <p class="muted">Crea la primera etapa, por ejemplo «Años 60», y agrégale cómics o mangas.</p>}
     {stageList.map((s, i) => <StageCard routeId={r.id} stage={s} index={i} total={stageList.length} items={byStage.get(s.id) ?? []} />)}
 
     <NewStageForm routeId={r.id} />

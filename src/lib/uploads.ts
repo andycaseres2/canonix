@@ -44,24 +44,24 @@ export async function findFile(sb: SupabaseClient, bucket: string, path: string)
   return file ? { size: Number(file.metadata?.size ?? 0) } : null;
 }
 
-/** One file per issue/episode. The content type comes from the extension: browsers leave it empty for CBZ/CBR. */
-export const UNIT_FORMATS: Record<'comic' | 'anime', Record<string, string>> = {
-  comic: { cbz: 'application/vnd.comicbook+zip', pdf: 'application/pdf' },
-  anime: { mp4: 'video/mp4', webm: 'video/webm', mkv: 'video/x-matroska' },
-};
+/**
+ * One file per issue/volume, the same for comics and mangas. The content type comes from the extension:
+ * browsers leave it empty for CBZ/CBR. (The reader still plays mp4/webm/mkv for a future anime kind.)
+ */
+export const UNIT_FORMATS: Record<string, string> = { cbz: 'application/vnd.comicbook+zip', pdf: 'application/pdf' };
 /** Extensions the admin can pick: the stored formats plus CBR, which the browser converts to CBZ before uploading. */
-export const pickExtensions = (kind: 'comic' | 'anime') => (kind === 'comic' ? ['cbz', 'cbr', 'pdf'] : Object.keys(UNIT_FORMATS[kind]));
-export const formatList = (kind: 'comic' | 'anime') => pickExtensions(kind).map((f) => f.toUpperCase()).join(', ').replace(/, (\w+)$/, ' o $1');
+export const UNIT_PICK_EXTENSIONS = ['cbz', 'cbr', 'pdf'];
+export const UNIT_FORMAT_LIST = 'CBZ, CBR o PDF';
 export const MAX_UNIT_NUMBER = 99999;
 export const isUnitNumber = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_UNIT_NUMBER;
 
 /**
- * Labels look like "<series> #5" or "<series> - Episodio 5", so an uploaded file joins the
+ * Labels look like "<series> #5", so an uploaded file joins the
  * unit that already exists with that label. The series defaults to the title.
  */
 export const unitLabel = (media: { title: string; kind: string }, n: number, series?: unknown) => {
   const name = (typeof series === 'string' && series.trim() ? series.trim() : media.title).slice(0, 150);
-  return media.kind === 'anime' ? `${name} - Episodio ${n}` : `${name} #${n}`;
+  return `${name} #${n}`;
 };
 
 export const formatBytes = (n: number) =>

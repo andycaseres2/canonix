@@ -19,7 +19,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
       name, slug, description: str(f, 'description', 2000), universe: 'otros', kind: 'comic', position: (last?.position ?? 0) + 1,
     }).select('id').single();
     if (error) return redirect(back('/admin/rutas', { error: error.message }));
-    return redirect(back(`/admin/rutas/${row.id}`, { ok: 'Ruta creada. Ahora crea sus etapas y agrégales cómics o animes.' }));
+    return redirect(back(`/admin/rutas/${row.id}`, { ok: 'Ruta creada. Ahora crea sus etapas y agrégales cómics o mangas.' }));
   }
 
   const id = str(f, 'id', 40);

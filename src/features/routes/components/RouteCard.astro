@@ -6,10 +6,9 @@ import ProgressBar from '../../../components/ui/ProgressBar.astro';
 import type { RouteSummary } from '../route-summary';
 interface Props { summary: RouteSummary; pct?: number; detailed?: boolean }
 const { summary: { route, count, unitCount }, pct, detailed = false } = Astro.props;
-const isAnime = route.kind === 'anime';
 ---
 <a class="card" href={`/rutas/${route.slug}`}>
-  {detailed && <span><Badge kind={isAnime ? 'anime' : 'comic'}>{route.universe}</Badge></span>}
+  {detailed && <span><Badge kind={route.kind === 'manga' ? 'manga' : 'comic'}>{route.universe}</Badge></span>}
   <span class="t">{route.name}</span>
   <span class="muted">{route.description}</span>
   {detailed

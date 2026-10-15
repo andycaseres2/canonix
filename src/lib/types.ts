@@ -1,3 +1,5 @@
+import type { Kind } from './kinds';
+
 export type Profile = {
   id: string;
   email: string;
@@ -11,7 +13,7 @@ export type TrackerUnit = { id: string; label: string; short: string; group: str
 
 export type TrackerItem = {
   slug: string;
-  kind: 'comic' | 'anime';
+  kind: Kind;
   title: string;
   credits: string | null;
   year: string | null;

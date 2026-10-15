@@ -2,13 +2,13 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * A route's universe and kind come from its titles: the most common universe,
- * and comic / anime / mixed. Called after titles are added or removed.
+ * and comic / manga / mixed. Called after titles are added or removed.
  */
 export async function refreshRouteMeta(sb: SupabaseClient, routeId: string) {
   const { data } = await sb.from('route_items').select('media:media_id(kind, universe)').eq('route_id', routeId);
   const media = (data ?? []).map((r: any) => r.media).filter(Boolean) as { kind: string; universe: string | null }[];
   const kinds = new Set(media.map((m) => m.kind));
-  const kind = kinds.size > 1 ? 'mixed' : kinds.has('anime') ? 'anime' : 'comic';
+  const kind = kinds.size > 1 ? 'mixed' : kinds.has('manga') ? 'manga' : 'comic';
   const counts = new Map<string, number>();
   media.forEach((m) => { if (m.universe) counts.set(m.universe, (counts.get(m.universe) ?? 0) + 1); });
   const universe = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? 'otros';

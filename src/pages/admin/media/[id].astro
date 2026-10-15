@@ -24,14 +24,14 @@ const unitWord = 'episodios';
 const withFile = mu.filter((u) => u.units?.file_path).length;
 // Prefill the series with the name the existing numbers use ("Batman #404" -> "Batman"), else the title
 const firstLabel: string | undefined = mu[0]?.units?.label;
-const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+$/ : /^(.*) #\d+$/)?.[1] ?? m.title;
+const seriesGuess = firstLabel?.match(/^(.*) #\d+$/)?.[1] ?? m.title;
 ---
 <Layout title={`${m.title} · Admin`}>
   <p class="back-link"><a href="/admin/media">← Catálogo</a></p>
   <h1>{m.title}</h1>
   <div class="split">
     <section>
-      <UnitsUploadSection mediaId={m.id} kind={m.kind} unitWord={unitWord} series={seriesGuess} />
+      <UnitsUploadSection mediaId={m.id} unitWord={unitWord} series={seriesGuess} />
       <UnitsHeader unitWord={unitWord} total={mu.length} withFile={withFile} />
       <UnitsList mediaId={m.id} unitWord={unitWord} groups={groups} />
     </section>

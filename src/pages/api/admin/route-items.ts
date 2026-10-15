@@ -3,7 +3,7 @@ import { back } from '../../../lib/data';
 import { str } from '../../../lib/form';
 import { refreshRouteMeta, swapWithNeighbour } from '../../../lib/routes';
 
-/** Stages of a route (title + description) and the comics/animes inside each stage. */
+/** Stages of a route (title + description) and the comics/mangas inside each stage. */
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const sb = locals.supabase;
   const f = await request.formData();

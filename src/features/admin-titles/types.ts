@@ -1,6 +1,8 @@
 /** Shapes the catalog admin pages pass to their components (rows come untyped from Supabase). */
 
-export type TitleKind = 'comic' | 'anime';
+import type { Kind } from '../../lib/kinds';
+
+export type TitleKind = Kind;
 
 /** One row of the titles table. */
 export type TitleListItem = {

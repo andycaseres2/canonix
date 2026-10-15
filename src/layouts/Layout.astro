@@ -6,7 +6,7 @@ import ListFilter from '../components/shell/ListFilter.astro';
 import SiteHeader from '../components/shell/SiteHeader.astro';
 import FlashMessages from '../components/shell/FlashMessages.astro';
 interface Props { title: string; description?: string }
-const { title, description = 'Canonix: rutas de lectura de cómics y guías de anime, con tu progreso guardado.' } = Astro.props;
+const { title, description = 'Canonix: rutas de lectura de cómics y mangas, con tu progreso guardado.' } = Astro.props;
 const { profile, user } = Astro.locals;
 const ok = Astro.url.searchParams.get('ok');
 const error = Astro.url.searchParams.get('error');

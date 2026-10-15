@@ -18,5 +18,5 @@ const viewer = user && profile ? { id: user.id, plan: profile.plan, role: profil
 ---
 <Layout title={m.title} description={m.description ?? undefined}>
   <TitleHero media={m} routes={routes} />
-  <EpisodeList slug={m.slug} kind={m.kind} units={units} done={[...done]} logged={!!user} locked={!!user && isTitleLocked(m, viewer)} />
+  <EpisodeList slug={m.slug} units={units} done={[...done]} logged={!!user} locked={!!user && isTitleLocked(m, viewer)} />
 </Layout>

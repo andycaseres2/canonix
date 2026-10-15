@@ -10,15 +10,15 @@ const c = async (t: string, f?: (q: any) => any) => {
   return (await q).count ?? 0;
 };
 const since = new Date(Date.now() - 7 * 864e5).toISOString();
-const [users, comics, animes, routes, units, week] = await Promise.all([
-  c('profiles'), c('media', (q) => q.eq('kind', 'comic')), c('media', (q) => q.eq('kind', 'anime')),
+const [users, comics, mangas, routes, units, week] = await Promise.all([
+  c('profiles'), c('media', (q) => q.eq('kind', 'comic')), c('media', (q) => q.eq('kind', 'manga')),
   c('routes'), c('units'), c('progress', (q) => q.gte('completed_at', since)),
 ]);
 ---
 <Layout title="Admin">
   <h1>Panel de administración</h1>
   <AdminNav />
-  <AdminStats users={users} comics={comics} animes={animes} routes={routes} units={units} week={week} />
+  <AdminStats users={users} comics={comics} mangas={mangas} routes={routes} units={units} week={week} />
   <h2>Accesos rápidos</h2>
   <QuickLinks />
 </Layout>

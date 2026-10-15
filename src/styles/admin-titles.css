@@ -33,7 +33,7 @@ table.queue { min-width: 0; table-layout: fixed; }
 .unit-remove { border: 0; background: none; color: var(--red); font-size: 1.3rem; font-weight: 700; line-height: 1; cursor: pointer; padding: 6px 8px; min-height: 0; }
 .unit-remove:hover { background: color-mix(in srgb, var(--red) 12%, transparent); }
 
-/* "Nuevo cómic o anime" screen */
+/* "Nuevo título" screen */
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .create-flow { display: grid; gap: 8px; }
 .kind-pick { display: flex; flex-wrap: wrap; gap: 10px; border: 0; padding: 0; margin: 0; }

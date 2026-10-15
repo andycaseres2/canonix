@@ -2,6 +2,7 @@
 // Titles list with a text filter on `#rows tr` (shell/ListFilter); each row links to the title's admin page.
 import Field from '../../../components/ui/Field.astro';
 import Badge from '../../../components/ui/Badge.astro';
+import { kindLabel } from '../../../lib/kinds';
 import type { TitleListItem } from '../types';
 interface Props { titles: TitleListItem[] }
 const { titles } = Astro.props;
@@ -15,7 +16,7 @@ const { titles } = Astro.props;
       {titles.map((m) => (
         <tr data-s={`${m.title} ${m.universe ?? ''}`.toLowerCase()}>
           <td><a href={`/admin/media/${m.id}`}><b>{m.title}</b></a><br /><small class="muted">{m.universe} · {m.slug}</small></td>
-          <td><Badge kind={m.kind}>{m.kind}</Badge></td>
+          <td><Badge kind={m.kind}>{kindLabel(m.kind)}</Badge></td>
           <td>{m.year_label}</td>
           <td>{m.media_units?.[0]?.count ?? 0}</td>
         </tr>

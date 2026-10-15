@@ -1,7 +1,8 @@
 ---
-// Kind badge with its label ("Anime" / "Cómic") for a title's kind.
+// Kind badge with its label ("Cómic" / "Manga") for a title's kind.
 import Badge from './Badge.astro';
+import { kindLabel } from '../../lib/kinds';
 interface Props { kind: string }
 const { kind } = Astro.props;
 ---
-<Badge kind={kind}>{kind === 'anime' ? 'Anime' : 'Cómic'}</Badge>
+<Badge kind={kind}>{kindLabel(kind)}</Badge>

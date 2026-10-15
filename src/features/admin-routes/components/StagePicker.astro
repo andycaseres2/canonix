@@ -13,7 +13,7 @@ const { routeId } = Astro.props;
       <div class="picker-tabs" role="group" aria-label="Tipo">
         <button class="btn small" type="button" data-kind="" aria-pressed="true">Todos</button>
         <button class="btn small" type="button" data-kind="comic" aria-pressed="false">Cómics</button>
-        <button class="btn small" type="button" data-kind="anime" aria-pressed="false">Anime</button>
+        <button class="btn small" type="button" data-kind="manga" aria-pressed="false">Mangas</button>
       </div>
       <input type="search" id="picker-filter" placeholder="Filtrar (opcional)" aria-label="Filtrar la lista" autocomplete="off" />
     </div>
@@ -62,7 +62,7 @@ const { routeId } = Astro.props;
       const thumb = m.c ? el('img', { className: 'stage-thumb', src: m.c, alt: '', loading: 'lazy' }) : el('span', { className: 'stage-thumb empty' });
       return el('li', { className: order >= 0 ? 'on' : '' },
         el('label', {}, box, thumb,
-          el('span', { className: 'picker-text' }, el('b', { textContent: m.t }), el('small', { className: 'muted', textContent: [...new Set([m.y, m.u, m.k === 'anime' ? 'anime' : 'cómic'].filter(Boolean))].join(' · ') })),
+          el('span', { className: 'picker-text' }, el('b', { textContent: m.t }), el('small', { className: 'muted', textContent: [...new Set([m.y, m.u, m.k === 'manga' ? 'manga' : 'cómic'].filter(Boolean))].join(' · ') })),
           order >= 0 ? el('span', { className: 'picker-order', textContent: String(order + 1) }) : ''));
     }));
     empty.hidden = shown.length > 0;

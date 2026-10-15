@@ -27,7 +27,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
 
 <NumberedStep n={3}>
   <Fragment slot="title"><span class="unit-title">Episodios</span> <small class="muted">opcional, puedes subirlos después</small></Fragment>
-  <UnitUploader kind="comic" />
+  <UnitUploader />
 </NumberedStep>
 
 <CreateBar />
@@ -36,10 +36,11 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
 
 <script>
   import { appDialog, postJson, putFile, type UploadTarget } from '../scripts/upload';
+  import { kindWord as wordFor } from '../../../lib/kinds';
 
   type Queue = {
     ready(): boolean; hasProblems(): boolean; count(): number;
-    setKind(k: 'comic' | 'anime'): void; series: HTMLInputElement;
+    series: HTMLInputElement;
     uploadAll(mediaId: string): Promise<{ done: number; failed: number }>;
   };
 
@@ -57,8 +58,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
   let cover: File | null = null;
   let seriesTouched = false;
 
-  const kind = () => (form.elements.namedItem('kind') as RadioNodeList).value as 'comic' | 'anime';
-  const kindWord = () => (kind() === 'anime' ? 'anime' : 'cómic');
+  const kindWord = () => wordFor((form.elements.namedItem('kind') as RadioNodeList).value);
 
   function refresh() {
     const n = queue.count();
@@ -69,10 +69,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
     summary.textContent = parts.join(' · ');
   }
 
-  form.addEventListener('change', (e) => {
-    if ((e.target as HTMLInputElement).name === 'kind') queue.setKind(kind());
-    refresh();
-  });
+  form.addEventListener('change', refresh);
   titleInput.addEventListener('input', () => {
     if (!seriesTouched) queue.series.value = titleInput.value; // the series follows the name until edited
     refresh();

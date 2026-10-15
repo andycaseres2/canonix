@@ -1,6 +1,8 @@
+import type { Kind } from '../../lib/kinds';
+
 /** What the catalog shows about a title (card and title page header). */
 export type TitleInfo = {
-  kind: 'comic' | 'anime';
+  kind: Kind;
   universe: string | null;
   title: string;
   credits: string | null;

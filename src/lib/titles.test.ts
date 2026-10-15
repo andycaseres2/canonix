@@ -16,13 +16,13 @@ describe('POST /api/admin/titles', () => {
   it('creates a title from JSON and returns its id and slug', async () => {
     const db = fixture();
     const { status, body } = await json(db, {
-      title: '  Saga de prueba ', kind: 'anime', universe: 'Anime', year_label: '2002–2007', credits: 'Studio X',
+      title: '  Saga de prueba ', kind: 'manga', universe: 'Manga', year_label: '2002–2007', credits: 'Studio X',
       description: 'Una saga.', search_hint: 'Saga', where_label: 'Crunchyroll', where_url: 'https://www.crunchyroll.com',
     });
     expect(status).toBe(200);
     expect(body.slug).toBe('saga-de-prueba-2002-2007');
     expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({
-      title: 'Saga de prueba', kind: 'anime', universe: 'anime', year_start: 2002, cover_url: null,
+      title: 'Saga de prueba', kind: 'manga', universe: 'manga', year_start: 2002, cover_url: null,
     });
     // "Cómo buscarlo", "Dónde leer/ver" and "Link oficial" are no longer part of a title
     expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({ search_hint: null, where_label: null, where_url: null });
@@ -31,8 +31,10 @@ describe('POST /api/admin/titles', () => {
   it('requires a name and defaults the kind to comic', async () => {
     const db = fixture();
     expect((await json(db, { title: '   ' })).status).toBe(400);
-    const { body } = await json(db, { title: 'Otro', kind: 'video' });
-    expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({ kind: 'comic' });
+    for (const kind of ['video', 'anime']) {
+      const { body } = await json(db, { title: `Otro ${kind}`, kind });
+      expect(db.tables.media.find((m) => m.id === body.id)).toMatchObject({ kind: 'comic' });
+    }
   });
 
   it('stores the access plan, free unless premium is chosen', async () => {
@@ -69,5 +71,17 @@ describe('POST /api/admin/media create (form) still works', () => {
     const created = db.tables.media.find((m) => m.title === 'Desde formulario')!;
     expect(created).toMatchObject({ slug: 'desde-formulario-1986', universe: 'dc', year_start: 1986 });
     expect(res.headers.get('Location')).toContain(`/admin/media/${created.id}`);
+  });
+
+  it('update stores the manga kind', async () => {
+    const db = fixture();
+    const body = new FormData();
+    Object.entries({ action: 'update', id: 'm1', title: 'Spider-Man', slug: 'asm', kind: 'manga' }).forEach(([k, v]) => body.set(k, v));
+    const request = new Request(`${ORIGIN}/api`, { method: 'POST', body });
+    await media({
+      request, url: new URL(request.url), locals: { supabase: as(db, ADMIN) },
+      redirect: (to: string) => new Response(null, { status: 302, headers: { Location: to } }),
+    } as any);
+    expect(db.tables.media.find((m) => m.id === 'm1')).toMatchObject({ kind: 'manga' });
   });
 });

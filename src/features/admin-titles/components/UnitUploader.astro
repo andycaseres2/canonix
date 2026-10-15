@@ -1,20 +1,19 @@
 ---
-import { formatList, pickExtensions } from '../../../lib/uploads';
+import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS } from '../../../lib/uploads';
 interface Props {
-  kind: 'comic' | 'anime';
   /** Title id. Without it the uploader only collects files and a parent script calls uploadAll(). */
   mediaId?: string;
   series?: string;
 }
-const { mediaId, kind, series = '' } = Astro.props;
+const { mediaId, series = '' } = Astro.props;
 ---
-<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''} data-kind={kind}>
+<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''}>
   <div class="dropzone" id="unit-drop">
     <label class="btn primary file-pick">
       Elegir archivos
-      <input id="unit-files" type="file" multiple accept={pickExtensions(kind).map((e) => `.${e}`).join(',')} />
+      <input id="unit-files" type="file" multiple accept={UNIT_PICK_EXTENSIONS.map((e) => `.${e}`).join(',')} />
     </label>
-    <p class="muted">o arrástralos aquí · <span id="unit-formats">{formatList(kind)}</span> · un archivo por episodio</p>
+    <p class="muted">o arrástralos aquí · {UNIT_FORMAT_LIST} · un archivo por episodio</p>
   </div>
   <div class="row">
     <label class="field">Nombre de la serie <small>así se nombra cada uno: "Batman #404"</small><input id="unit-series" maxlength="150" value={series} /></label>
@@ -36,9 +35,8 @@ const { mediaId, kind, series = '' } = Astro.props;
 <script>
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
   import { extractPages, isComicArchive, type Page } from '../scripts/archive';
-  import { detectNumber, extensionOf, formatBytes, formatList, mapLimit, pickExtensions } from '../../../lib/uploads';
+  import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS, detectNumber, extensionOf, formatBytes, mapLimit } from '../../../lib/uploads';
 
-  type Kind = 'comic' | 'anime';
   type Item = { file: File; number: number | null; status: 'pending' | 'converting' | 'uploading' | 'done' | 'error'; progress: number; message: string };
 
   const box = document.getElementById('subir')!;
@@ -51,11 +49,8 @@ const { mediaId, kind, series = '' } = Astro.props;
   const groupInput = document.getElementById('unit-group') as HTMLInputElement;
   const startBtn = document.getElementById('unit-start') as HTMLButtonElement | null;
   const clearBtn = document.getElementById('unit-clear') as HTMLButtonElement;
-  let kind = box.dataset.kind as Kind;
   let items: Item[] = [];
   let busy = false;
-
-  const exts = () => pickExtensions(kind);
 
   /** Small DOM builder; text always goes in as text, never as HTML. */
   function el(tag: string, props: Record<string, unknown> = {}, ...children: (Node | string)[]): HTMLElement {
@@ -74,7 +69,7 @@ const { mediaId, kind, series = '' } = Astro.props;
     const seen = new Map<number, number>();
     items.forEach((it) => { if (it.number !== null) seen.set(it.number, (seen.get(it.number) ?? 0) + 1); });
     return items.map((it) =>
-      !exts().includes(extensionOf(it.file.name)) ? `Formato no válido: usa ${formatList(kind)}`
+      !UNIT_PICK_EXTENSIONS.includes(extensionOf(it.file.name)) ? `Formato no válido: usa ${UNIT_FORMAT_LIST}`
       : it.number === null ? 'Falta el episodio'
       : seen.get(it.number)! > 1 ? 'Número repetido'
       : '');
@@ -174,12 +169,6 @@ const { mediaId, kind, series = '' } = Astro.props;
     ready: () => items.length > 0 && issues().every((p, i) => !p || items[i].status === 'done'),
     hasProblems: () => issues().some((p, i) => p && items[i].status !== 'done'),
     count: () => items.filter((it) => it.status !== 'done').length,
-    setKind(next: Kind) {
-      kind = next;
-      input.accept = exts().map((e) => `.${e}`).join(',');
-      document.getElementById('unit-formats')!.textContent = formatList(kind);
-      render();
-    },
     series: seriesInput,
     async uploadAll(mediaId: string) {
       busy = true; render();

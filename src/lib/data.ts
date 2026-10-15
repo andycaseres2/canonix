@@ -1,11 +1,12 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Profile, TrackerItem } from './types';
+import type { Kind } from './kinds';
 
 const MEDIA_FIELDS =
   'id, slug, kind, title, credits, year_label, requires_plan, media_units(short, group_name, position, unit_id, units(label, file_path))';
 
 type MediaRow = {
-  id: string; slug: string; kind: 'comic' | 'anime'; title: string; credits: string | null; year_label: string | null;
+  id: string; slug: string; kind: Kind; title: string; credits: string | null; year_label: string | null;
   requires_plan: 'free' | 'premium';
   media_units: { short: string; group_name: string | null; position: number; unit_id: string; units: { label: string; file_path: string | null } | null }[];
 };

@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
-import { COVER_MAX_BYTES, UNIT_FORMATS, checkPages, coverPath, extensionOf, formatList, isUnitNumber, jsonError, mapLimit, readJson, signUpload, unitFolder, unitLabel, unitPath } from '../../../lib/uploads';
+import { kindWord } from '../../../lib/kinds';
+import { COVER_MAX_BYTES, UNIT_FORMATS, UNIT_FORMAT_LIST, checkPages, coverPath, extensionOf, isUnitNumber, jsonError, mapLimit, readJson, signUpload, unitFolder, unitLabel, unitPath } from '../../../lib/uploads';
 
 /** Step 1 of an upload: validate the file and hand the browser a signed Storage URL. */
 export const POST: APIRoute = async ({ request, url, locals }) => {
@@ -9,10 +10,9 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const sb = locals.supabase;
 
   if (kind === 'unit-pages') {
-    if (typeof media_id !== 'string') return jsonError(400, 'Faltan datos del cómic.');
+    if (typeof media_id !== 'string') return jsonError(400, 'Faltan datos del título.');
     const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', media_id).maybeSingle();
     if (!media) return jsonError(404, 'Título no encontrado.');
-    if (media.kind !== 'comic') return jsonError(400, 'Solo un cómic se sube por páginas.');
     const number = body.data.number;
     if (!isUnitNumber(number)) return jsonError(400, 'Indica un número entero válido para el archivo.');
     const checked = checkPages(body.data.pages);
@@ -43,8 +43,8 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     const number = body.data.number;
     if (!isUnitNumber(number)) return jsonError(400, 'Indica un número entero válido para el archivo.');
     if (extensionOf(filename) === 'cbr') return jsonError(400, 'Los CBR se convierten a CBZ en el navegador antes de subir. Vuelve a elegir el archivo desde el panel.');
-    const contentType = UNIT_FORMATS[media.kind as 'comic' | 'anime'][extensionOf(filename)];
-    if (!contentType) return jsonError(400, `Para ${media.kind === 'anime' ? 'un anime' : 'un cómic'} sube archivos ${formatList(media.kind)}.`);
+    const contentType = UNIT_FORMATS[extensionOf(filename)];
+    if (!contentType) return jsonError(400, `Para un ${kindWord(media.kind)} sube archivos ${UNIT_FORMAT_LIST}.`);
     const label = unitLabel(media, number, body.data.series);
     const { data: unit } = await sb.from('units').select('file_path').eq('label', label).maybeSingle();
     const target = await signUpload(sb, 'content', unitPath(media.slug, number, filename), contentType);

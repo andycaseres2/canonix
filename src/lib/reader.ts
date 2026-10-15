@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Profile } from './types';
+import type { Kind } from './kinds';
 
 /** Signed reader links outlive a long episode but not a forgotten tab. */
 export const READ_URL_SECONDS = 3 * 60 * 60;
@@ -9,7 +10,7 @@ export type ReaderState = 'ready' | 'login' | 'locked' | 'nofile' | 'error';
 export type ReaderUnit = { id: string; short: string; label: string; file_path: string | null; file_format: string | null; file_size: number | null; pages: string[] | null };
 
 type Row = {
-  id: string; slug: string; title: string; kind: 'comic' | 'anime'; requires_plan: 'free' | 'premium'; cover_url: string | null;
+  id: string; slug: string; title: string; kind: Kind; requires_plan: 'free' | 'premium'; cover_url: string | null;
   media_units: { short: string; position: number; unit_id: string; units: Omit<ReaderUnit, 'id' | 'short'> | null }[];
 };
 

@@ -1,11 +1,10 @@
 ---
 // "Agregar episodios" heading, format hint and the file uploader for an existing title.
 import UnitUploader from './UnitUploader.astro';
-import { formatList } from '../../../lib/uploads';
-import type { TitleKind } from '../types';
-interface Props { mediaId: string; kind: TitleKind; unitWord: string; series: string }
-const { mediaId, kind, unitWord, series } = Astro.props;
+import { UNIT_FORMAT_LIST } from '../../../lib/uploads';
+interface Props { mediaId: string; unitWord: string; series: string }
+const { mediaId, unitWord, series } = Astro.props;
 ---
 <h2 style="margin-top:0">Agregar {unitWord}</h2>
-<p class="muted" style="margin-top:0">Un archivo ({formatList(kind)}) por cada episodio. El número se toma del nombre del archivo y puedes corregirlo antes de subir.</p>
-<UnitUploader mediaId={mediaId} kind={kind} series={series} />
+<p class="muted" style="margin-top:0">Un archivo ({UNIT_FORMAT_LIST}) por cada episodio. El número se toma del nombre del archivo y puedes corregirlo antes de subir.</p>
+<UnitUploader mediaId={mediaId} series={series} />

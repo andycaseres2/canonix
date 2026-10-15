@@ -2,10 +2,10 @@
 // Home cards linking to the catalog filtered by kind, with the number of titles of each.
 import Badge from '../../../components/ui/Badge.astro';
 import CardGrid from '../../../components/ui/CardGrid.astro';
-interface Props { comics: number; animes: number }
-const { comics, animes } = Astro.props;
+interface Props { comics: number; mangas: number }
+const { comics, mangas } = Astro.props;
 ---
 <CardGrid>
   <a class="card" href="/catalogo?tipo=comic"><Badge kind="comic">Cómics</Badge><span class="t">{comics} títulos</span></a>
-  <a class="card" href="/catalogo?tipo=anime"><Badge kind="anime">Anime</Badge><span class="t">{animes} títulos</span></a>
+  <a class="card" href="/catalogo?tipo=manga"><Badge kind="manga">Mangas</Badge><span class="t">{mangas} títulos</span></a>
 </CardGrid>

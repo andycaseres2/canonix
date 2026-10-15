@@ -64,9 +64,9 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   if (!isUnitNumber(number)) return jsonError(400, 'Episodio inválido.');
 
   if (body.data.folder !== undefined) {
-    // A comic uploaded page by page: every listed page must be in its folder
+    // A comic or manga uploaded page by page: every listed page must be in its folder
     const folder = String(body.data.folder);
-    if (media.kind !== 'comic' || !new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'No encontramos las páginas subidas.');
+    if (!new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'No encontramos las páginas subidas.');
     const checked = checkPages((Array.isArray(body.data.pages) ? body.data.pages : []).map((name: unknown) => ({ name, size: 1 })));
     if ('error' in checked) return jsonError(400, checked.error);
     const uploaded = await listFolder(sb, 'content', folder);
@@ -80,7 +80,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const path = String(body.data.path ?? '');
   const ext = extensionOf(path);
   const ownFile = new RegExp(`${ownPrefix(media, number)}\\.[a-z0-9]{1,5}$`);
-  const file = ownFile.test(path) && UNIT_FORMATS[media.kind as 'comic' | 'anime'][ext] ? await findFile(sb, 'content', path) : null;
+  const file = ownFile.test(path) && UNIT_FORMATS[ext] ? await findFile(sb, 'content', path) : null;
   if (!file) return jsonError(400, 'No encontramos el archivo subido.');
   return attach(sb, media, number, body.data, { file_path: path, file_format: ext, file_size: file.size, pages: null });
 };

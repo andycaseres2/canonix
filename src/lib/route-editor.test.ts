@@ -128,10 +128,18 @@ describe('universe and kind are derived from the titles', () => {
     const db = fixture();
     db.tables.media.find((m) => m.id === 'm1')!.universe = 'marvel';
     db.tables.media.find((m) => m.id === 'm2')!.universe = 'marvel';
-    db.tables.media.find((m) => m.id === 'm3')!.universe = 'anime';
+    db.tables.media.find((m) => m.id === 'm3')!.universe = 'manga';
     await post(items, db, { action: 'item_remove', route_id: 'r1', id: 'i2' });
     expect(route(db, 'r1')).toMatchObject({ universe: 'marvel', kind: 'comic' });
     await post(items, db, { action: 'item_add', route_id: 'r1', section_id: 's1', media_id: 'm3' });
     expect(route(db, 'r1')).toMatchObject({ kind: 'mixed' });
+  });
+
+  it('a route with only mangas is a manga route', async () => {
+    const db = fixture();
+    await post(items, db, { action: 'item_remove', route_id: 'r1', id: 'i1' });
+    await post(items, db, { action: 'item_remove', route_id: 'r1', id: 'i2' });
+    await post(items, db, { action: 'item_add', route_id: 'r1', section_id: 's1', media_id: 'm3' });
+    expect(route(db, 'r1')).toMatchObject({ kind: 'manga' });
   });
 });
