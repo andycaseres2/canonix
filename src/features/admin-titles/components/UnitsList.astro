@@ -6,7 +6,7 @@ interface Props { mediaId: string; unitWord: string; groups: UnitGroup[] }
 const { mediaId, unitWord, groups } = Astro.props;
 ---
 <div id="units-list">
-{groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Súbelos abajo.</p>}
+{groups.length === 0 && <p class="muted">Aún no tiene {unitWord}. Súbelos arriba.</p>}
 {groups.map((g) => (
   <div style="margin-bottom:14px">
     {g.name && <p class="muted" style="margin:0 0 6px;font-weight:700">{g.name}</p>}

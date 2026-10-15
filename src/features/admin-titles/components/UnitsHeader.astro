@@ -4,6 +4,6 @@ interface Props { unitWord: string; total: number; withFile: number }
 const { unitWord, total, withFile } = Astro.props;
 ---
 <div id="units-head">
-<h2 style="margin-top:0">{unitWord[0].toUpperCase() + unitWord.slice(1)} ({total})</h2>
+<h2>{unitWord[0].toUpperCase() + unitWord.slice(1)} ({total})</h2>
 <p class="muted" style="margin-top:-6px">{withFile} de {total} con archivo</p>
 </div>
