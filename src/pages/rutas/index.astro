@@ -1,13 +1,18 @@
 ---
 import Layout from '../../layouts/Layout.astro';
 import RouteGroups from '../../features/routes/components/RouteGroups.astro';
+import KindTabs from '../../components/ui/KindTabs.astro';
 import { getDoneUnitIds, getRouteUnitMap } from '../../lib/data';
+import { kindFilter, routesOfKind } from '../../features/routes/route-summary';
 const { supabase, user } = Astro.locals;
-const [routes, done] = await Promise.all([getRouteUnitMap(supabase), getDoneUnitIds(supabase, user?.id)]);
+const tipo = kindFilter(Astro.url.searchParams.get('tipo'));
+const [all, done] = await Promise.all([getRouteUnitMap(supabase), getDoneUnitIds(supabase, user?.id)]);
+const routes = routesOfKind(all, tipo);
 ---
 <Layout title="Rutas">
   <h1>Rutas</h1>
-  <p class="lead">Elige una ruta y sigue el orden. Cada ruta te dice qué te toca leer o ver.</p>
+  <p class="lead">Elige una ruta y sigue el orden. Cada ruta te dice qué te toca leer.</p>
+  <KindTabs base="/rutas" current={tipo ?? ''} />
   <RouteGroups routes={routes} done={done} showProgress={!!user} />
-  {routes.length === 0 && <p class="muted">Todavía no hay rutas publicadas.</p>}
+  {routes.length === 0 && <p class="muted">{all.length && tipo ? `No hay rutas de ${tipo === 'manga' ? 'mangas' : 'cómics'} todavía.` : 'Todavía no hay rutas publicadas.'}</p>}
 </Layout>

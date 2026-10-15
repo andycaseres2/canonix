@@ -7,6 +7,9 @@ export const toKind = (value: unknown): Kind => (value === 'manga' ? 'manga' : '
 /** "Cómic" / "Manga" for badges and pickers. */
 export const kindLabel = (kind: string) => (kind === 'manga' ? 'Manga' : 'Cómic');
 
+/** A route's kind: "Cómic" / "Manga", or "Mixta" when it has both. */
+export const routeKindLabel = (kind: string) => (kind === 'mixed' ? 'Mixta' : kindLabel(kind));
+
 /** Lowercase noun for running text: "un cómic", "el manga". */
 export const kindWord = (kind: string) => (kind === 'manga' ? 'manga' : 'cómic');
 

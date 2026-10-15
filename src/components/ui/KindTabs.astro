@@ -1,0 +1,9 @@
+---
+// "Todo / Cómics / Mangas" filter tabs of a list page; `current` is the active `tipo` ('' for all).
+interface Props { base: string; current: string }
+const { base, current } = Astro.props;
+const tabs = [['', 'Todo'], ['comic', 'Cómics'], ['manga', 'Mangas']];
+---
+<div class="admin-nav" role="tablist">
+  {tabs.map(([value, label]) => <a href={value ? `${base}?tipo=${value}` : base} aria-current={current === value ? 'page' : undefined}>{label}</a>)}
+</div>

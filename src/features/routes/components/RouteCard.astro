@@ -1,14 +1,15 @@
 ---
-// Route card linking to the route page. `detailed` adds the universe badge and unit count (home);
+// Route card linking to the route page, with its kind badge. `detailed` adds the universe and unit count (home);
 // `pct` shows the completion bar when the viewer is logged in.
 import Badge from '../../../components/ui/Badge.astro';
+import { routeKindLabel } from '../../../lib/kinds';
 import ProgressBar from '../../../components/ui/ProgressBar.astro';
 import type { RouteSummary } from '../route-summary';
 interface Props { summary: RouteSummary; pct?: number; detailed?: boolean }
 const { summary: { route, count, unitCount }, pct, detailed = false } = Astro.props;
 ---
 <a class="card" href={`/rutas/${route.slug}`}>
-  {detailed && <span><Badge kind={route.kind === 'manga' ? 'manga' : 'comic'}>{route.universe}</Badge></span>}
+  <span><Badge kind={route.kind}>{routeKindLabel(route.kind)}</Badge>{detailed && <span class="muted"> {route.universe}</span>}</span>
   <span class="t">{route.name}</span>
   <span class="muted">{route.description}</span>
   {detailed

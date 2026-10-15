@@ -47,7 +47,7 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
 
 <script>
   type Unit = { id: string; label: string; short: string; group: string | null; file: boolean };
-  import { unitWords } from '../../../lib/kinds';
+  import { kindLabel, unitWords } from '../../../lib/kinds';
 
   type Item = { slug: string; kind: string; unitType: string; premium: boolean; title: string; credits: string | null; year: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
 
@@ -56,6 +56,8 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
     items: Item[]; done: string[]; logged: boolean; premium: boolean; openFirst: boolean; showHero: boolean;
   };
   const done = new Set<string>(data.done);
+  // A route with comics and mangas tags each title with its kind, like the catalog cards
+  const mixed = new Set(data.items.map((i) => i.kind)).size > 1;
   const open = new Set<string>(data.openFirst && data.items[0] ? [data.items[0].slug] : []);
   const pendingAdd = new Set<string>(), pendingRemove = new Set<string>();
   let timer: number | undefined, status = '';
@@ -103,7 +105,8 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
     const dis = data.logged ? '' : ' disabled';
     let h = `<li class="comic${all ? ' is-done' : ''}" id="c-${esc(it.slug)}"><div class="item"><span class="num">${n}</span><span class="txt">`;
     h += `<a class="t" href="/catalogo/${esc(it.slug)}">${esc(it.title)}</a>`;
-    h += `<span class="d">${it.year ? `<b class="yr">${esc(it.year)}</b>` : ''}${esc(it.credits)}</span>`;
+    const badge = mixed ? `<span class="badge ${it.kind === 'manga' ? 'manga' : 'comic'}">${kindLabel(it.kind)}</span> ` : '';
+    h += `<span class="d">${badge}${it.year ? `<b class="yr">${esc(it.year)}</b>` : ''}${esc(it.credits)}</span>`;
     if (multi) h += `<span class="mini"><span class="minibar"><span style="width:${(c / tot) * 100}%"></span></span>${c} de ${tot}</span>`;
     const read = readLink(it);
     if (read) h += `<span class="read-row">${read}</span>`;
