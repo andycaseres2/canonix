@@ -18,12 +18,20 @@ type Row = {
 export const isTitleLocked = (media: { requires_plan: string }, viewer: ReaderViewer) =>
   media.requires_plan === 'premium' && viewer?.plan !== 'premium' && viewer?.role !== 'admin';
 
+/** Pages signed per request: the reader page ships the first batch, the viewer asks for the rest as it goes. */
+export const PAGE_BATCH = 20;
+export const PAGE_BATCH_MAX = 50;
+
+/** The reader's viewer from the middleware's locals. */
+export const readerViewer = (user: { id: string } | null, profile: Pick<Profile, 'plan' | 'role'> | null): ReaderViewer =>
+  user && profile ? { id: user.id, plan: profile.plan, role: profile.role } : null;
+
 /**
- * One issue/episode of a title for the reader: when the viewer may read it, the signed url of its file or,
- * for a comic stored by pages, of every page (signed in one request). Also the previous/next units that
- * have a file. Storage RLS (rutas_content_read) has the final say.
+ * Who may read one issue/episode of a title, without signing anything: the unit, its previous/next units
+ * that have a file, and the state ('ready' when the viewer may open its file). Shared by the reader page and
+ * the endpoint that signs more links, so both refuse exactly the same viewers.
  */
-export async function getReader(sb: SupabaseClient, slug: string, short: string, viewer: ReaderViewer) {
+export async function getReaderAccess(sb: SupabaseClient, slug: string, short: string, viewer: ReaderViewer) {
   const { data, error } = await sb
     .from('media')
     .select('id, slug, title, kind, unit_type, requires_plan, cover_url, media_units(short, position, unit_id, units(label, file_path, file_format, file_size, pages))')
@@ -40,23 +48,47 @@ export async function getReader(sb: SupabaseClient, slug: string, short: string,
 
   const withFile = units.filter((u) => u.file_path);
   const at = withFile.indexOf(unit);
-  const base = {
-    media, unit, format: unit.file_format,
+  const state: Exclude<ReaderState, 'error'> = !viewer ? 'login' : isTitleLocked(media, viewer) ? 'locked' : !unit.file_path ? 'nofile' : 'ready';
+  return {
+    media, unit, format: unit.file_format, state,
     prev: at > 0 ? withFile[at - 1] : null,
     next: at >= 0 && at < withFile.length - 1 ? withFile[at + 1] : null,
   };
-  const result = (state: ReaderState, url: string | null = null, pages: string[] | null = null) => ({ ...base, state, url, pages });
+}
 
-  if (!viewer) return result('login');
-  if (isTitleLocked(media, viewer)) return result('locked');
-  if (!unit.file_path) return result('nofile');
-  if (unit.pages) {
-    const { data: signed, error: signError } = await sb.storage.from('content').createSignedUrls(unit.pages.map((p) => `${unit.file_path}${p}`), READ_URL_SECONDS);
-    const urls = (signed ?? []).map((s) => (s.error ? '' : (s.signedUrl ?? '')));
-    return !signError && urls.length === unit.pages.length && urls.every(Boolean) ? result('ready', null, urls) : result('error');
+/** Signed links for pages `from`..`from + count` of a paged unit, or null when storage refuses any of them. */
+export async function signPages(sb: SupabaseClient, unit: ReaderUnit, from: number, count: number) {
+  const names = (unit.pages ?? []).slice(from, from + count);
+  if (!unit.file_path || !names.length) return null;
+  const { data, error } = await sb.storage.from('content').createSignedUrls(names.map((p) => `${unit.file_path}${p}`), READ_URL_SECONDS);
+  const urls = (data ?? []).map((s) => (s.error ? '' : (s.signedUrl ?? '')));
+  return !error && urls.length === names.length && urls.every(Boolean) ? urls : null;
+}
+
+/** Signed link for a unit stored as one file (PDF, video, older CBZ), or null when storage refuses it. */
+export async function signFile(sb: SupabaseClient, unit: ReaderUnit) {
+  if (!unit.file_path) return null;
+  const { data } = await sb.storage.from('content').createSignedUrl(unit.file_path, READ_URL_SECONDS);
+  return data?.signedUrl ?? null;
+}
+
+/**
+ * One issue/episode of a title for the reader page: when the viewer may read it, the signed url of its file or,
+ * for a comic stored by pages, the page count and the first batch of signed pages. Storage RLS
+ * (rutas_content_read) has the final say.
+ */
+export async function getReader(sb: SupabaseClient, slug: string, short: string, viewer: ReaderViewer) {
+  const access = await getReaderAccess(sb, slug, short, viewer);
+  if (!access) return null;
+  const result = (state: ReaderState, url: string | null = null, pages: string[] | null = null) =>
+    ({ ...access, state, url, pages, pageCount: access.unit.pages?.length ?? 0 });
+  if (access.state !== 'ready') return result(access.state);
+  if (access.unit.pages) {
+    const urls = await signPages(sb, access.unit, 0, PAGE_BATCH);
+    return urls ? result('ready', null, urls) : result('error');
   }
-  const { data: signed } = await sb.storage.from('content').createSignedUrl(unit.file_path, READ_URL_SECONDS);
-  return signed?.signedUrl ? result('ready', signed.signedUrl) : result('error');
+  const url = await signFile(sb, access.unit);
+  return url ? result('ready', url) : result('error');
 }
 
 export type TitleUnitView = { id: string; short: string; label: string; group: string | null; has_file: boolean; file_format: string | null; file_size: number | null };

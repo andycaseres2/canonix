@@ -3,20 +3,21 @@ import Layout from '../../../layouts/Layout.astro';
 import ReaderBar from '../../../features/reader/components/ReaderBar.astro';
 import ReaderNotice from '../../../features/reader/components/ReaderNotice.astro';
 import ReaderViewer from '../../../features/reader/components/ReaderViewer.astro';
-import { getReader } from '../../../lib/reader';
+import { getReader, readerViewer } from '../../../lib/reader';
 const { supabase, user, profile } = Astro.locals;
-const viewer = user && profile ? { id: user.id, plan: profile.plan, role: profile.role } : null;
-const r = await getReader(supabase, Astro.params.slug!, Astro.params.n!, viewer);
+const r = await getReader(supabase, Astro.params.slug!, Astro.params.n!, readerViewer(user, profile));
 if (!r) return new Response('No encontrado', { status: 404 });
 if (r.state === 'login') return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
 // Signed links are personal and short lived: keep them out of shared caches
 Astro.response.headers.set('Cache-Control', 'private, no-store');
 const { data: progress } = await supabase.from('progress').select('unit_id').eq('user_id', user!.id).eq('unit_id', r.unit.id).maybeSingle();
+// The viewer asks this endpoint for the rest of the pages, and for fresh links once these expire
+const endpoint = `/api/reader/${encodeURIComponent(r.media.slug)}/${encodeURIComponent(r.unit.short)}`;
 const nextHref = r.next ? `/leer/${r.media.slug}/${encodeURIComponent(r.next.short)}` : null;
 ---
 <Layout title={`${r.unit.label} · Leer`}>
   <ReaderBar slug={r.media.slug} title={r.media.title} unitType={r.media.unit_type} unit={r.unit} prev={r.prev} next={r.next} done={!!progress} canMark={r.state === 'ready'} />
   {r.state === 'ready'
-    ? <ReaderViewer url={r.url} pages={r.pages} format={r.format ?? ''} storageKey={`reader-page:${r.unit.id}`} nextHref={nextHref} nextLabel={r.next?.label ?? null} />
+    ? <ReaderViewer url={r.url} pages={r.pages} pageCount={r.pageCount} endpoint={endpoint} format={r.format ?? ''} storageKey={`reader-page:${r.unit.id}`} nextHref={nextHref} nextLabel={r.next?.label ?? null} />
     : <ReaderNotice state={r.state} slug={r.media.slug} unitType={r.media.unit_type} />}
 </Layout>
