@@ -37,7 +37,7 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
 
 <script>
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
-  import { extractPages, isComicArchive, type Page } from '../scripts/archive';
+  import { extractPages, isPagedSource, renderPdfPages, type Page } from '../scripts/archive';
   import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS, detectNumber, extensionOf, formatBytes, mapLimit } from '../../../lib/uploads';
   import { unitWords } from '../../../lib/kinds';
 
@@ -88,7 +88,7 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
       num.setAttribute('aria-label', `Número de ${it.file.name}`);
       num.addEventListener('change', () => { it.number = num.value === '' ? null : Math.trunc(Number(num.value)); render(); });
       let status: Node;
-      if (it.status === 'converting') status = el('span', { className: 'muted' }, 'Preparando páginas…');
+      if (it.status === 'converting') status = el('span', { className: 'muted' }, it.message || 'Preparando páginas…');
       else if (it.status === 'uploading') {
         const bar = el('span'); bar.style.width = `${Math.round(it.progress * 100)}%`;
         status = el('div', { className: 'progress' }, bar);
@@ -117,7 +117,7 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
   async function uploadOne(mediaId: string, it: Item) {
     const series = seriesInput.value;
     try {
-      if (isComicArchive(it.file)) {
+      if (isPagedSource(it.file)) {
         await uploadPages(mediaId, it, series);
         it.status = 'done';
         render();
@@ -134,11 +134,15 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
     render();
   }
 
-  /** A CBZ/CBR is stored one image per page, so the reader shows page 1 without downloading the whole comic. */
+  /** A CBZ/CBR/PDF is stored one image per page, so the reader shows page 1 without downloading the whole comic. */
   async function uploadPages(mediaId: string, it: Item, series: string) {
-    it.status = 'converting'; render();
-    const pages: Page[] = await extractPages(it.file);
-    const source = extensionOf(it.file.name) === 'cbr' ? 'cbr' : 'cbz';
+    it.status = 'converting'; it.message = ''; render();
+    const ext = extensionOf(it.file.name);
+    const pages: Page[] = ext === 'pdf'
+      ? await renderPdfPages(it.file, (done, total) => { it.message = `Convirtiendo página ${done} de ${total}…`; render(); })
+      : await extractPages(it.file);
+    it.message = '';
+    const source = ext === 'cbr' || ext === 'pdf' ? ext : 'cbz';
     const signed = await postJson<{ folder: string; targets: (UploadTarget & { name: string })[] }>('/api/admin/uploads', {
       kind: 'unit-pages', media_id: mediaId, number: it.number, series, source,
       pages: pages.map((p) => ({ name: p.name, content_type: p.blob.type, size: p.blob.size })),

@@ -180,16 +180,16 @@ describe('POST /api/admin/episodes', () => {
 const pageList = (n: number, ext = 'jpg') => Array.from({ length: n }, (_, i) => ({ name: `${String(i + 1).padStart(3, '0')}.${ext}`, content_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`, size: 3 }));
 
 /** Sign, upload and register a comic split into pages, the way the admin page does. `skip` leaves pages out of the upload. */
-async function uploadPages(db: MockDb, media_id: string, number: number, count: number, skip: string[] = []) {
+async function uploadPages(db: MockDb, media_id: string, number: number, count: number, skip: string[] = [], source = 'cbz') {
   const pages = pageList(count);
-  const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source: 'cbz', pages });
+  const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source, pages });
   if (signed.status !== 200) return { signed, done: signed };
   for (const t of signed.body.targets) {
     if (skip.includes(t.name)) continue;
     const token = new URL(t.uploadUrl, ORIGIN).searchParams.get('token')!;
     expect(db.storage.acceptUpload(token, new Uint8Array(3), t.headers['Content-Type'])).toBeNull();
   }
-  const done = await json(episodes, db, { action: 'complete', media_id, number, folder: signed.body.folder, pages: pages.map((p) => p.name), source: 'cbz' });
+  const done = await json(episodes, db, { action: 'complete', media_id, number, folder: signed.body.folder, pages: pages.map((p) => p.name), source });
   return { signed, done };
 }
 
@@ -303,5 +303,22 @@ describe('POST /api/admin/episodes (pages)', () => {
     expect(unit).toMatchObject({ file_path: null, pages: null, file_format: null, file_size: null });
     expect(db.storage.read('content', `${signed.body.folder}001.jpg`)).toBeNull();
     expect(db.storage.read('content', `${signed.body.folder}002.jpg`)).toBeNull();
+  });
+});
+
+describe('pages converted from a PDF', () => {
+  it('records a PDF split into pages with its source format', async () => {
+    const db = fixture();
+    const { done } = await uploadPages(db, 'm1', 7, 3, [], 'pdf');
+    expect(done.status).toBe(200);
+    const unit = db.tables.units.find((u) => u.label === 'Spider-Man #7')!;
+    expect(unit).toMatchObject({ file_format: 'pdf', pages: ['001.jpg', '002.jpg', '003.jpg'] });
+    expect(unit.file_path).toMatch(/^asm\/00007-\d+\/$/);
+  });
+
+  it('still records an unknown source as CBZ', async () => {
+    const db = fixture();
+    await uploadPages(db, 'm1', 8, 2, [], 'zip');
+    expect(db.tables.units.find((u) => u.label === 'Spider-Man #8')).toMatchObject({ file_format: 'cbz' });
   });
 });

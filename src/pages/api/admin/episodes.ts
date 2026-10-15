@@ -73,7 +73,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     const uploaded = await listFolder(sb, 'content', folder);
     const missing = checked.pages.filter((p) => !uploaded.has(p.name)).length;
     if (missing) return jsonError(400, `Faltan ${missing} página${missing === 1 ? '' : 's'} por subir. Vuelve a intentarlo.`);
-    const source = body.data.source === 'cbr' ? 'cbr' : 'cbz';
+    const source = body.data.source === 'cbr' || body.data.source === 'pdf' ? body.data.source : 'cbz';
     const size = checked.pages.reduce((sum, p) => sum + uploaded.get(p.name)!, 0);
     return attach(sb, media, number, body.data, { file_path: folder, file_format: source, file_size: size, pages: checked.pages.map((p) => p.name) });
   }
