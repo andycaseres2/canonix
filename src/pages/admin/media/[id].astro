@@ -8,6 +8,7 @@ import TitleDataForm from '../../../features/admin-titles/components/TitleDataFo
 import DeleteTitleZone from '../../../features/admin-titles/components/DeleteTitleZone.astro';
 import type { TitleRecord, TitleUnit, UnitGroup } from '../../../features/admin-titles/types';
 import { unitWords } from '../../../lib/kinds';
+import { parseUnitLabel } from '../../../lib/uploads';
 const { supabase } = Astro.locals;
 const { data } = await supabase.from('media').select('*').eq('id', Astro.params.id!).maybeSingle();
 if (!data) return Astro.redirect('/admin/media?error=' + encodeURIComponent('Título no encontrado'));
@@ -26,7 +27,7 @@ const words = unitWords(m.unit_type);
 const withFile = mu.filter((u) => u.units?.file_path).length;
 // Prefill the series with the name the existing numbers use ("Batman #404" or "Berserk - Tomo 3"), else the title
 const firstLabel: string | undefined = mu[0]?.units?.label;
-const seriesGuess = firstLabel?.match(/^(.*?)(?: #| - Tomo )\d+$/)?.[1] ?? m.title;
+const seriesGuess = (firstLabel && parseUnitLabel(firstLabel)?.series) || m.title;
 ---
 <Layout title={`${m.title} · Admin`}>
   <p class="back-link"><a href="/admin/media">← Catálogo</a></p>

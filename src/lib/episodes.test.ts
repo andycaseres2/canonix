@@ -3,7 +3,7 @@ import { POST as uploads } from '../pages/api/admin/uploads';
 import { POST as episodes } from '../pages/api/admin/episodes';
 import type { MockDb, Row } from '../test/mock/db';
 import { ADMIN, as, fixture } from '../test/mock/fixture';
-import { UNIT_FORMATS, UNIT_PICK_EXTENSIONS, UNIT_FORMAT_LIST, detectNumber, unitFileMeta, unitLabel } from './uploads';
+import { UNIT_FORMATS, UNIT_PICK_EXTENSIONS, UNIT_FORMAT_LIST, detectNumber, parseUnitLabel, unitFileMeta, unitLabel } from './uploads';
 
 const ORIGIN = 'http://x';
 
@@ -378,5 +378,15 @@ describe('POST /api/admin/episodes (discard_folder)', () => {
     const folder = await partial(db, 'm1', 8, 1, 1);
     expect((await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 9, folder })).body).toEqual({ error: 'Carpeta no válida.' });
     expect(stored(db, folder, 1)).toEqual([true]);
+  });
+});
+
+describe('parseUnitLabel', () => {
+  it('reads back the labels unitLabel builds and nothing else', () => {
+    expect(parseUnitLabel('Batman #404')).toEqual({ series: 'Batman', n: 404, type: 'episodio' });
+    expect(parseUnitLabel('Berserk - Tomo 3')).toEqual({ series: 'Berserk', n: 3, type: 'tomo' });
+    expect(parseUnitLabel('X-Men - Tomo 2 #5')).toEqual({ series: 'X-Men - Tomo 2', n: 5, type: 'episodio' });
+    expect(parseUnitLabel('ASM Annual')).toBeNull();
+    expect(parseUnitLabel('Naruto - Episodio 4')).toBeNull();
   });
 });

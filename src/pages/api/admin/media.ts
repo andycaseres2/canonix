@@ -3,9 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { back, slugify } from '../../../lib/data';
 import { createMedia, mediaFields } from '../../../lib/media';
 import { str } from '../../../lib/form';
-import { coverStoragePath, removeStored } from '../../../lib/uploads';
+import { coverStoragePath, parseUnitLabel, removeStored, unitLabel } from '../../../lib/uploads';
 import { refreshRouteMeta } from '../../../lib/routes';
-import { unitWords } from '../../../lib/kinds';
+import { toUnitType, unitWords, type UnitType } from '../../../lib/kinds';
 
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const sb = locals.supabase;
@@ -28,12 +28,56 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
   if (action === 'update') {
     const slug = slugify(str(f, 'slug', 120) ?? '');
     if (!slug) return redirect(back(`/admin/media/${id}`, { error: 'Slug inválido.' }));
-    const { error } = await sb.from('media').update({ ...fields(), slug }).eq('id', id);
-    return redirect(back(`/admin/media/${id}`, error ? { error: error.message } : { ok: 'Guardado.' }));
+    const data = fields();
+    const { data: before } = await sb.from('media').select('unit_type').eq('id', id).maybeSingle();
+    const { error } = await sb.from('media').update({ ...data, slug }).eq('id', id);
+    if (error) return redirect(back(`/admin/media/${id}`, { error: error.message }));
+    const switched = before && toUnitType(before.unit_type) !== data.unit_type;
+    const relabelled = switched ? await relabelUnits(sb, id, data.unit_type) : '';
+    return redirect(back(`/admin/media/${id}`, { ok: `Guardado.${relabelled}` }));
   }
   if (action === 'delete') return deleteTitle(sb, id, redirect);
   return redirect('/admin/media');
 };
+
+/**
+ * After a title switches between episodes and volumes, its units labelled the old way ("X #N" ↔ "X - Tomo N")
+ * take the new format, so later uploads join them instead of creating new units. Labels are unique: a unit whose
+ * new label is taken is skipped, and so is one that another title also uses. Returns the sentence for the message.
+ */
+async function relabelUnits(sb: SupabaseClient, mediaId: string, type: UnitType) {
+  const { data: links, error } = await sb.from('media_units').select('unit_id, units(id, label)').eq('media_id', mediaId);
+  if (error) return ' No se pudieron renombrar sus entregas.';
+  const old = (links ?? []).flatMap((l: any) => {
+    const parsed = l.units ? parseUnitLabel(l.units.label) : null;
+    return parsed && parsed.type !== type ? [{ id: l.unit_id as string, label: unitLabel({ title: parsed.series, kind: '', unit_type: type }, parsed.n, parsed.series) }] : [];
+  });
+  if (!old.length) return '';
+
+  const ids = old.map((u) => u.id);
+  const [shared, taken] = await Promise.all([
+    sb.from('media_units').select('unit_id, media_id').in('unit_id', ids),
+    sb.from('units').select('label').in('label', old.map((u) => u.label)),
+  ]);
+  if (shared.error || taken.error) return ' No se pudieron renombrar sus entregas.';
+  const elsewhere = new Set((shared.data ?? []).filter((l) => l.media_id !== mediaId).map((l) => l.unit_id as string));
+  const labels = new Set((taken.data ?? []).map((u) => u.label as string));
+  let renamed = 0, collided = 0, kept = 0;
+  for (const unit of old) {
+    if (elsewhere.has(unit.id)) { kept++; continue; }
+    if (labels.has(unit.label)) { collided++; continue; }
+    const { error: renameError } = await sb.from('units').update({ label: unit.label }).eq('id', unit.id);
+    if (renameError) { collided++; continue; }
+    labels.add(unit.label);
+    renamed++;
+  }
+  const words = unitWords(type);
+  return [
+    renamed ? ` ${renamed} ${renamed === 1 ? `${words.one} renombrado` : `${words.many} renombrados`}.` : '',
+    collided ? ` ${collided} no se ${collided === 1 ? 'renombró' : 'renombraron'} porque ya existe una entrega con ese nombre.` : '',
+    kept ? ` ${kept} se ${kept === 1 ? 'dejó igual porque también está' : 'dejaron igual porque también están'} en otro título.` : '',
+  ].join('');
+}
 
 /**
  * Deletes a title: its links and route items go with it (on delete cascade). Then each of its units that no

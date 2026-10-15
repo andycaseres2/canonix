@@ -65,6 +65,13 @@ export const unitLabel = (media: { title: string; kind: string; unit_type?: stri
   return toUnitType(media.unit_type) === 'tomo' ? `${name} - Tomo ${n}` : `${name} #${n}`;
 };
 
+/** The parts of a label unitLabel built: "Berserk - Tomo 3" → { series: 'Berserk', n: 3, type: 'tomo' }; null for any other label. */
+export function parseUnitLabel(label: string): { series: string; n: number; type: 'episodio' | 'tomo' } | null {
+  const m = label.match(/^(.+?)(?: #| - Tomo )(\d+)$/);
+  if (!m) return null;
+  return { series: m[1], n: Number(m[2]), type: label.slice(m[1].length).startsWith(' #') ? 'episodio' : 'tomo' };
+}
+
 export const formatBytes = (n: number) =>
   n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : n < 1024 ** 3 ? `${(n / 1024 / 1024).toFixed(1)} MB` : `${(n / 1024 ** 3).toFixed(2)} GB`;
 

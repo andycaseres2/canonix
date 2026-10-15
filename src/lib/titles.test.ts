@@ -109,7 +109,7 @@ describe('POST /api/admin/media create (form) still works', () => {
       } as any);
       return { unit_type: db.tables.media.find((m) => m.id === 'm1')!.unit_type, ok: new URL(res.headers.get('Location')!, ORIGIN).searchParams.get('ok') };
     };
-    expect(await update('tomo')).toEqual({ unit_type: 'tomo', ok: 'Guardado.' });
+    expect(await update('tomo')).toEqual({ unit_type: 'tomo', ok: 'Guardado. 2 tomos renombrados.' });
     expect((await update('volumen')).unit_type).toBe('episodio');
   });
 
@@ -124,5 +124,51 @@ describe('POST /api/admin/media create (form) still works', () => {
     } as any);
     expect(db.tables.media.find((m) => m.title === 'Berserk')).toMatchObject({ kind: 'manga', unit_type: 'tomo' });
     expect(new URL(res.headers.get('Location')!, ORIGIN).searchParams.get('ok')).toBe('Título creado. Ahora agrega sus tomos.');
+  });
+});
+
+describe('POST /api/admin/media update relabels units when the unit type changes', () => {
+  async function update(db: MockDb, unit_type: string) {
+    const body = new FormData();
+    Object.entries({ action: 'update', id: 'm1', title: 'Spider-Man', slug: 'asm', kind: 'comic', unit_type }).forEach(([k, v]) => body.set(k, v));
+    const request = new Request(`${ORIGIN}/api`, { method: 'POST', body });
+    const res: Response = await media({
+      request, url: new URL(request.url), locals: { supabase: as(db, ADMIN) },
+      redirect: (to: string) => new Response(null, { status: 302, headers: { Location: to } }),
+    } as any);
+    const params = new URL(res.headers.get('Location')!, ORIGIN).searchParams;
+    return params.get('ok') ?? `error: ${params.get('error')}`;
+  }
+  const label = (db: MockDb, id: string) => db.tables.units.find((u) => u.id === id)!.label;
+  const labels = (db: MockDb) => Object.fromEntries(db.tables.units.map((u) => [u.id, u.label]));
+
+  it('switches "X #N" to "X - Tomo N" and back, leaving other titles alone', async () => {
+    const db = fixture();
+    db.tables.units.push({ id: 'u5', label: 'ASM Annual' });
+    db.tables.media_units.push({ media_id: 'm1', unit_id: 'u5', short: 'A', group_name: null, position: 3 });
+    expect(await update(db, 'tomo')).toBe('Guardado. 2 tomos renombrados.');
+    expect(labels(db)).toEqual({ u1: 'ASM - Tomo 1', u2: 'ASM - Tomo 2', u3: 'FF #1', u4: 'Naruto #1', u5: 'ASM Annual' });
+    expect(await update(db, 'episodio')).toBe('Guardado. 2 episodios renombrados.');
+    expect(labels(db)).toEqual({ u1: 'ASM #1', u2: 'ASM #2', u3: 'FF #1', u4: 'Naruto #1', u5: 'ASM Annual' });
+  });
+
+  it('skips a unit whose new label already exists and says how many', async () => {
+    const db = fixture();
+    db.tables.units.push({ id: 'u9', label: 'ASM - Tomo 2' });
+    expect(await update(db, 'tomo')).toBe('Guardado. 1 tomo renombrado. 1 no se renombró porque ya existe una entrega con ese nombre.');
+    expect([label(db, 'u1'), label(db, 'u2'), label(db, 'u9')]).toEqual(['ASM - Tomo 1', 'ASM #2', 'ASM - Tomo 2']);
+  });
+
+  it('keeps the label of a unit another title also uses', async () => {
+    const db = fixture();
+    db.tables.media_units.push({ media_id: 'm1', unit_id: 'u3', short: '1b', group_name: null, position: 3 });
+    expect(await update(db, 'tomo')).toBe('Guardado. 2 tomos renombrados. 1 se dejó igual porque también está en otro título.');
+    expect(label(db, 'u3')).toBe('FF #1');
+  });
+
+  it('renames nothing when the unit type stays the same', async () => {
+    const db = fixture();
+    expect(await update(db, 'episodio')).toBe('Guardado.');
+    expect(labels(db)).toEqual({ u1: 'ASM #1', u2: 'ASM #2', u3: 'FF #1', u4: 'Naruto #1' });
   });
 });
