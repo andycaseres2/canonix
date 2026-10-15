@@ -22,12 +22,20 @@
 .viewer-stage { height: calc(100dvh - var(--viewer-chrome, 230px)); min-height: 280px; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
 /* A page shorter than the box sits in its middle; a taller one starts at the top and scrolls */
 .viewer-page { display: block; flex: none; width: 100%; height: auto; margin-block: auto; }
+/* Our own double tap zooms, so the browser's must not */
+.viewer-stage { touch-action: manipulation; overflow-x: auto; }
+.viewer[data-zoom="on"] .viewer-page { width: 200%; max-width: none; }
+#viewer-zoom[aria-pressed="true"] { background: var(--red); color: #fff; }
 .viewer:fullscreen .viewer-stage { flex: 1; height: auto; min-height: 0; }
 .viewer-page-error { color: #fff; margin: 0; padding: 24px; }
 .viewer-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: var(--panel); border-top: 3px solid var(--line); position: sticky; bottom: 0; z-index: 2; }
 .viewer-count { min-width: 4.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .reader-video video { display: block; width: 100%; max-height: calc(100dvh - 200px); background: #000; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
-@media (max-width: 400px) {
+#viewer-full .label-short { display: none; }
+@media (max-width: 480px) {
   .viewer-controls { gap: 6px; padding: 8px 6px; }
+  .viewer-count { min-width: 3.8em; }
+  #viewer-full .label-long { display: none; }
+  #viewer-full .label-short { display: inline; }
 }
