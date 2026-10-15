@@ -26,7 +26,7 @@ Branch: `feat/improvements` (from main 8606165). Delivery: single-pr. Runner: `p
 - [x] T1 — S1 kind rename (SQL migration, lib, API, UI, tests). Route: delegated (context backstop: long parent session). Commit: d3afbe6. RED: 10 tests (episodes manga formats/pages, titles manga kind, route manga kind) failed; GREEN: 156/156, astro check 0 errors.
 - [x] T2 — S2 unit_type per title (SQL column, forms, wording, labels, tests). Route: delegated, same writer after T1. Commit: 7645e2c. RED: 10 tests (titles unit_type create/update/message, unitLabel tomo, tomo uploads, episodes/units messages, detectNumber tomo/vol) failed; GREEN: 166/166, astro check 0 errors.
 - [x] T3 — S3 title delete (endpoint cleanup, route recompute, danger zone UI, tests). Route: delegated, same writer after T2. Commit: `feat(admin): delete a title with its own units and files` 3a3c635. RED: 7 of 9 tests in `src/lib/title-delete.test.ts` failed; GREEN: 175/175, astro check 0 errors.
-- [ ] T4 — Independent verification (high risk: migration, deletion of stored data). Route: delegated verifier. Commit: —
+- [x] T4 — Independent verification (high risk: migration, deletion of stored data). Route: delegated verifier. Verdict: S1 PASS, S2 PASS, S3 PASS, no blockers (see L7).
 
 ## Log
 
