@@ -170,12 +170,10 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     stage.hidden = false;
     controls.hidden = false;
 
-    // Size the page box to what the sticky header and the controls leave free, then bring the viewer just under the header
-    const header = document.querySelector<HTMLElement>('.site-header');
-    const fitScreen = () => root.style.setProperty('--viewer-chrome', `${(header?.offsetHeight ?? 0) + controls.offsetHeight + 12}px`);
+    // Size the page box to what is left below the reader bar (title, back link) and above the controls, so the whole reader fits the screen
+    const fitScreen = () => root.style.setProperty('--viewer-chrome', `${Math.round(root.getBoundingClientRect().top + scrollY) + controls.offsetHeight + 12}px`);
     fitScreen();
     addEventListener('resize', fitScreen);
-    scrollTo({ top: root.getBoundingClientRect().top + scrollY - (header?.offsetHeight ?? 0) - 6 });
 
     let page = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
     let drawing = 0;
