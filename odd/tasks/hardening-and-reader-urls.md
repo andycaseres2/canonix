@@ -32,8 +32,8 @@ Branch: `feat/improvements` (continues after 8bc680b). Delivery: single-pr. Runn
 
 ## Tasks
 
-- [x] T1 — S1 + S2 security. Route: delegated writer (context backstop). Commit: `fix(security): same-site login redirects and an origin guard for API writes` (hash recorded in T2). RED: `src/lib/request-guards.test.ts` (module missing) and 2 of 5 in `src/middleware.test.ts` (cross-origin and no-Origin JSON POST got 200); GREEN: 219/219, astro check 0 errors.
-- [ ] T2 — S3 orphan cleanup. Route: delegated, same writer. Commit: —
+- [x] T1 — S1 + S2 security. Route: delegated writer (context backstop). Commit: `fix(security): same-site login redirects and an origin guard for API writes` eeeeb2d. RED: `src/lib/request-guards.test.ts` (module missing) and 2 of 5 in `src/middleware.test.ts` (cross-origin and no-Origin JSON POST got 200); GREEN: 219/219, astro check 0 errors.
+- [x] T2 — S3 orphan cleanup. Route: delegated, same writer. Commit: `fix(uploads): discard the pages of a page upload that failed halfway` (hash recorded in T3). RED: 5 of 6 `discard_folder` tests in `src/lib/episodes.test.ts` failed ('Acción desconocida.'); GREEN: 225/225, astro check 0 errors.
 - [ ] T3 — S4 + S5 reader signed URLs on demand. Route: delegated, same writer. Commit: —
 - [ ] T4 — S6 relabel on unit_type change. Route: delegated, same writer. Commit: —
 - [ ] T5 — S7 README, lockfile, CI. Route: delegated, same writer. Commit: —
@@ -44,3 +44,4 @@ Branch: `feat/improvements` (continues after 8bc680b). Delivery: single-pr. Runn
 - L1 (2026-10-14, user): "aregla todas las mejoras pendientes y el punto 5 de seguridad". This refers to the list given to the user: 5 (security), 6 (orphan pages), 7 (3 h links), 8 (2000-page signing), 9 (episodes→tomos switch), 10 (README, package-lock, CI).
 - L2: `astro.config.mjs:8` already has `security: { checkOrigin: true }`, which does not cover JSON bodies. CI lives in `.github/workflows/ci.yml`.
 - L3 (T1): `safeNext` and `isForeignWrite` live in `src/lib/request-guards.ts`. `safeNext` decodes up to 5 times and rejects `//`, backslashes, control characters, non-`/` starts and malformed encodings, then checks the URL resolves to the same origin; the only caller is `src/pages/api/auth/login.ts`. The middleware refuses with 403 any non-GET/HEAD `/api/*` request with a foreign Origin, or a JSON body with no Origin, before creating the Supabase client. `src/middleware.test.ts` mocks `astro:middleware` and `./lib/supabase` to run the real middleware.
+- L4 (T2): `POST /api/admin/episodes` gained `action: 'discard_folder'` (`media_id`, `number`, `folder`). The folder must match `ownPrefix(media, number)` plus `/` ('Carpeta no válida.', 400); a unit whose `file_path` equals it gives 409 'Esa carpeta está en uso.'; otherwise every listed object is removed and the reply is `{ ok: true, removed: n }`. The uploader stops starting pages after a failure, waits for the in-flight ones, then posts `discard_folder` (also when `complete` fails) and still shows the original error.

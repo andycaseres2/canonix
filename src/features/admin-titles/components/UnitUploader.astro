@@ -156,18 +156,28 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
       const progress = sent.reduce((a, b) => a + b, 0) / total;
       if (progress - last >= 0.01 || progress === 1) { last = progress; it.progress = progress; render(); }
     };
-    await mapLimit(pages.map((p, i) => ({ p, i, target: signed.targets[i] })), 4, async ({ p, i, target }) => {
-      for (let attempt = 1; ; attempt++) {
-        try {
-          await putFile(target, p.blob, (f) => { sent[i] = f * p.blob.size; report(); });
-          sent[i] = p.blob.size; report();
-          return;
-        } catch (e) {
-          if (attempt >= 2) throw new Error(`No se pudo subir la página ${i + 1}: ${(e as Error).message}`);
+    try {
+      // After a failure no new page starts, and the folder is discarded only once the pages in flight settle
+      let failed = null as Error | null;
+      await mapLimit(pages.map((p, i) => ({ p, i, target: signed.targets[i] })), 4, async ({ p, i, target }) => {
+        for (let attempt = 1; !failed; attempt++) {
+          try {
+            await putFile(target, p.blob, (f) => { sent[i] = f * p.blob.size; report(); });
+            sent[i] = p.blob.size; report();
+            return;
+          } catch (e) {
+            if (attempt >= 2) failed = new Error(`No se pudo subir la página ${i + 1}: ${(e as Error).message}`);
+          }
         }
-      }
-    });
-    await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, folder: signed.folder, pages: pages.map((p) => p.name), source, group: groupInput.value });
+      });
+      if (failed) throw failed;
+      await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, folder: signed.folder, pages: pages.map((p) => p.name), source, group: groupInput.value });
+    } catch (e) {
+      // Best effort: the server refuses when a unit already uses the folder
+      await postJson('/api/admin/episodes', { action: 'discard_folder', media_id: mediaId, number: it.number, folder: signed.folder })
+        .catch((err) => console.warn('[uploader] pages left in storage', signed.folder, err));
+      throw e;
+    }
   }
 
   const warnLeave = (e: BeforeUnloadEvent) => { e.preventDefault(); };

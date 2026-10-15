@@ -322,3 +322,61 @@ describe('pages converted from a PDF', () => {
     expect(db.tables.units.find((u) => u.label === 'Spider-Man #8')).toMatchObject({ file_format: 'cbz' });
   });
 });
+
+describe('POST /api/admin/episodes (discard_folder)', () => {
+  /** Signs `count` pages and uploads only the first `uploaded`, like an upload that failed halfway. */
+  async function partial(db: MockDb, media_id: string, number: number, count: number, uploaded: number) {
+    const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source: 'cbz', pages: pageList(count) });
+    for (const t of signed.body.targets.slice(0, uploaded)) {
+      const token = new URL(t.uploadUrl, ORIGIN).searchParams.get('token')!;
+      expect(db.storage.acceptUpload(token, new Uint8Array(3), t.headers['Content-Type'])).toBeNull();
+    }
+    return signed.body.folder as string;
+  }
+  const stored = (db: MockDb, folder: string, n: number) =>
+    pageList(n).map((p) => db.storage.read('content', `${folder}${p.name}`) !== null);
+
+  it('deletes the pages of the title\'s own folder that no unit uses', async () => {
+    const db = fixture();
+    const folder = await partial(db, 'm1', 8, 3, 2);
+    await new Promise((r) => setTimeout(r, 2));
+    const other = await partial(db, 'm1', 8, 1, 1);
+    expect(stored(db, folder, 2)).toEqual([true, true]);
+    const { status, body } = await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 8, folder });
+    expect(status).toBe(200);
+    expect(body).toEqual({ ok: true, removed: 2 });
+    expect(stored(db, folder, 3)).toEqual([false, false, false]);
+    expect(stored(db, other, 1)).toEqual([true]);
+    expect(db.tables.units.some((u) => u.label === 'Spider-Man #8')).toBe(false);
+  });
+
+  it('refuses a folder a unit points at and leaves its pages', async () => {
+    const db = fixture();
+    const { signed } = await uploadPages(db, 'm1', 9, 2);
+    const { status, body } = await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 9, folder: signed.body.folder });
+    expect(status).toBe(409);
+    expect(body.error).toBe('Esa carpeta está en uso.');
+    expect(stored(db, signed.body.folder, 2)).toEqual([true, true]);
+    expect(db.tables.units.find((u) => u.label === 'Spider-Man #9')).toMatchObject({ file_path: signed.body.folder, pages: ['001.jpg', '002.jpg'] });
+  });
+
+  it.each([
+    ['another title', (f: string) => f],
+    ['a path that climbs out', (f: string) => `asm/00008-1/../../${f}`],
+    ['the folder without its trailing slash', (f: string) => f.replace(/\/$/, '')],
+  ])('refuses %s and leaves its pages', async (_, make) => {
+    const db = fixture();
+    const foreign = await partial(db, 'm2', 8, 2, 2);
+    const { status, body } = await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 8, folder: make(foreign) });
+    expect(status).toBe(400);
+    expect(body.error).toBe('Carpeta no válida.');
+    expect(stored(db, foreign, 2)).toEqual([true, true]);
+  });
+
+  it('refuses a folder of another number of the same title', async () => {
+    const db = fixture();
+    const folder = await partial(db, 'm1', 8, 1, 1);
+    expect((await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 9, folder })).body).toEqual({ error: 'Carpeta no válida.' });
+    expect(stored(db, folder, 1)).toEqual([true]);
+  });
+});

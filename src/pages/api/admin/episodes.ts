@@ -41,7 +41,8 @@ async function attach(sb: SupabaseClient, media: Media, number: number, body: an
 
 /**
  * Step 2 of an issue/episode/volume upload: the uploaded file (or the folder of a comic's pages) becomes
- * (or joins) the unit with that number, so the title's count follows its files. Also removes a unit's file.
+ * (or joins) the unit with that number, so the title's count follows its files. Also removes a unit's file,
+ * and discards the folder of a page upload that failed halfway.
  */
 export const POST: APIRoute = async ({ request, url, locals }) => {
   const body = await readJson(request, url);
@@ -57,12 +58,28 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     await removeStored(sb, unit).catch((e) => console.error('[episodes.remove_file] files left in storage', unit.file_path, e));
     return Response.json({ ok: true });
   }
-  if (action !== 'complete') return jsonError(400, 'Acción desconocida.');
+  if (action !== 'complete' && action !== 'discard_folder') return jsonError(400, 'Acción desconocida.');
 
   const { data: media } = await sb.from('media').select('id, slug, kind, unit_type, title').eq('id', String(body.data.media_id)).maybeSingle();
   if (!media) return jsonError(404, 'Título no encontrado.');
   const number = body.data.number;
   if (!isUnitNumber(number)) return jsonError(400, `${unitWords(media.unit_type).One} inválido.`);
+
+  if (action === 'discard_folder') {
+    // An upload that failed halfway: drop the pages that made it, unless a unit already uses the folder
+    const folder = String(body.data.folder ?? '');
+    if (!new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'Carpeta no válida.');
+    const { data: used, error } = await sb.from('units').select('id').eq('file_path', folder).limit(1);
+    if (error) return jsonError(500, error.message);
+    if (used?.length) return jsonError(409, 'Esa carpeta está en uso.');
+    try {
+      const names = [...(await listFolder(sb, 'content', folder)).keys()];
+      await removeStored(sb, { file_path: folder, pages: names });
+      return Response.json({ ok: true, removed: names.length });
+    } catch (e) {
+      return jsonError(500, (e as Error).message);
+    }
+  }
 
   if (body.data.folder !== undefined) {
     // A comic or manga uploaded page by page: every listed page must be in its folder
