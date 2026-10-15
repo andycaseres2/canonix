@@ -18,16 +18,11 @@
 .viewer-status p { margin: 0; }
 .viewer-status .progress { width: min(320px, 100%); }
 .viewer-status.failed .progress { display: none; }
-.viewer-stage { position: relative; display: flex; align-items: center; justify-content: center; }
-.viewer[data-fit="height"] .viewer-stage { height: calc(100dvh - 230px); min-height: 320px; overflow: hidden; }
-.viewer[data-fit="height"] .viewer-page { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
-.viewer[data-fit="width"] .viewer-page { display: block; width: 100%; height: auto; }
-.viewer:fullscreen .viewer-stage { flex: 1; height: auto; }
-/* Tap the left or right third to turn the page */
+/* --viewer-chrome (site header + controls) is measured by the viewer script, so the reader fills the screen at any size */
+.viewer-stage { height: calc(100dvh - var(--viewer-chrome, 230px)); min-height: 280px; overflow-y: auto; overscroll-behavior: contain; }
+.viewer-page { display: block; width: 100%; height: auto; }
+.viewer:fullscreen .viewer-stage { flex: 1; height: auto; min-height: 0; }
 .viewer-page-error { color: #fff; margin: 0; padding: 24px; }
-.viewer-hit { position: absolute; top: 0; bottom: 0; width: 33%; border: 0; background: none; min-height: 0; cursor: pointer; z-index: 1; }
-.viewer-hit.prev { left: 0; cursor: w-resize; }
-.viewer-hit.next { right: 0; cursor: e-resize; }
 .viewer-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: var(--panel); border-top: 3px solid var(--line); position: sticky; bottom: 0; z-index: 2; }
 .viewer-count { min-width: 5.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 
