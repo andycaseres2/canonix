@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { unitWords } from '../../../lib/kinds';
 import { UNIT_FORMATS, checkPages, extensionOf, findFile, isUnitNumber, jsonError, listFolder, readJson, removeStored, unitLabel } from '../../../lib/uploads';
 
-type Media = { id: string; slug: string; kind: string; title: string };
+type Media = { id: string; slug: string; kind: string; unit_type: string; title: string };
 type Stored = { file_path: string; file_format: string; file_size: number; pages: string[] | null };
 
 /** "<slug>/00005-<stamp>" as a regex source: uploads of a title and number always start like this. */
@@ -39,7 +40,7 @@ async function attach(sb: SupabaseClient, media: Media, number: number, body: an
 }
 
 /**
- * Step 2 of an issue/episode upload: the uploaded file (or the folder of a comic's pages) becomes
+ * Step 2 of an issue/episode/volume upload: the uploaded file (or the folder of a comic's pages) becomes
  * (or joins) the unit with that number, so the title's count follows its files. Also removes a unit's file.
  */
 export const POST: APIRoute = async ({ request, url, locals }) => {
@@ -50,7 +51,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 
   if (action === 'remove_file') {
     const { data: unit } = await sb.from('units').select('id, file_path, pages').eq('id', String(body.data.unit_id)).maybeSingle();
-    if (!unit) return jsonError(404, 'Episodio no encontrado.');
+    if (!unit) return jsonError(404, 'Entrega no encontrada.');
     const { error } = await sb.from('units').update({ file_path: null, file_format: null, file_size: null, pages: null }).eq('id', unit.id);
     if (error) return jsonError(500, error.message);
     await removeStored(sb, unit).catch((e) => console.error('[episodes.remove_file] files left in storage', unit.file_path, e));
@@ -58,10 +59,10 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   }
   if (action !== 'complete') return jsonError(400, 'Acción desconocida.');
 
-  const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', String(body.data.media_id)).maybeSingle();
+  const { data: media } = await sb.from('media').select('id, slug, kind, unit_type, title').eq('id', String(body.data.media_id)).maybeSingle();
   if (!media) return jsonError(404, 'Título no encontrado.');
   const number = body.data.number;
-  if (!isUnitNumber(number)) return jsonError(400, 'Episodio inválido.');
+  if (!isUnitNumber(number)) return jsonError(400, `${unitWords(media.unit_type).One} inválido.`);
 
   if (body.data.folder !== undefined) {
     // A comic or manga uploaded page by page: every listed page must be in its folder

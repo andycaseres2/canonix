@@ -1,8 +1,9 @@
-import type { Kind } from '../../lib/kinds';
+import type { Kind, UnitType } from '../../lib/kinds';
 
 /** What the catalog shows about a title (card and title page header). */
 export type TitleInfo = {
   kind: Kind;
+  unit_type: UnitType;
   universe: string | null;
   title: string;
   credits: string | null;

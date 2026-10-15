@@ -73,6 +73,15 @@ describe('POST /api/admin/units', () => {
     expect([db.tables.media_units.length, db.tables.units.length]).toEqual(before);
   });
 
+  it('remove speaks of volumes on a title that comes in volumes', async () => {
+    const db = fixture();
+    db.tables.media.find((m) => m.id === 'm1')!.unit_type = 'tomo';
+    expect((await post({ media_id: 'm1', action: 'remove', unit_id: '' }, db)).error).toBe('Tomo inválido.');
+    expect((await post({ media_id: 'm1', action: 'remove', unit_id: 'u3' }, db)).error).toBe('Ese tomo no está en este título.');
+    expect((await post({ media_id: 'm1', action: 'remove', unit_id: 'u1' }, db)).ok).toBe('Tomo borrado.');
+    expect(db.tables.units.some((u) => u.id === 'u1')).toBe(false);
+  });
+
   it('remove ignores a unit that is not in the title', async () => {
     const db = fixture();
     const { error } = await post({ media_id: 'm1', action: 'remove', unit_id: 'u3' }, db);

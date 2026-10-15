@@ -23,8 +23,8 @@ Branch: `feat/improvements` (from main 8606165). Delivery: single-pr. Runner: `p
 
 ## Tasks
 
-- [x] T1 — S1 kind rename (SQL migration, lib, API, UI, tests). Route: delegated (context backstop: long parent session). Commit: `feat(titles): manga replaces anime` (hash in L5). RED: 10 tests (episodes manga formats/pages, titles manga kind, route manga kind) failed; GREEN: 156/156, astro check 0 errors.
-- [ ] T2 — S2 unit_type per title (SQL column, forms, wording, labels, tests). Route: delegated, same writer after T1. Commit: —
+- [x] T1 — S1 kind rename (SQL migration, lib, API, UI, tests). Route: delegated (context backstop: long parent session). Commit: d3afbe6. RED: 10 tests (episodes manga formats/pages, titles manga kind, route manga kind) failed; GREEN: 156/156, astro check 0 errors.
+- [x] T2 — S2 unit_type per title (SQL column, forms, wording, labels, tests). Route: delegated, same writer after T1. Commit: `feat(titles): episodes or volumes per title` (hash in L6). RED: 10 tests (titles unit_type create/update/message, unitLabel tomo, tomo uploads, episodes/units messages, detectNumber tomo/vol) failed; GREEN: 166/166, astro check 0 errors.
 - [ ] T3 — S3 title delete (endpoint cleanup, route recompute, danger zone UI, tests). Route: delegated, same writer after T2. Commit: —
 - [ ] T4 — Independent verification (high risk: migration, deletion of stored data). Route: delegated verifier. Commit: —
 
@@ -34,3 +34,4 @@ Branch: `feat/improvements` (from main 8606165). Delivery: single-pr. Runner: `p
 - L2 (2026-10-14, user, answering per-title vs per-file): "opcion 1 esta ok al terminar de una implementa la eliminacion de un comic o manga en este caso lo llamamos titulo pero no tenemos como eliminar actualmente"
 - L3: Map from a read-only explorer. The existing `delete` action in `src/pages/api/admin/media.ts:31-37` only deletes the media row and its cover. Units, their progress and files are left orphaned, and route kinds are not recomputed. The DeleteTitleZone UI was removed in 101b32a.
 - L4 (T1): kind is now `comic` | `manga` (helper `src/lib/kinds.ts`). Both kinds share one format list (`UNIT_FORMATS`, `UNIT_PICK_EXTENSIONS`, `UNIT_FORMAT_LIST`) and page uploads; unit labels are always `<Serie> #N`. Reader video code untouched. SQL: `01_schema.sql` drops/re-adds `media_kind_check` and `routes_kind_check` around `update ... set kind = 'manga' where kind = 'anime'`.
+- L5 (T2): `media.unit_type` (`episodio` | `tomo`, default `episodio`) with helpers `toUnitType`, `unitWords`, `unitCount` in `src/lib/kinds.ts`. Labels: `<Serie> #N` (episodio) and `<Serie> - Tomo N` (tomo). Counters that mix titles use the neutral word "entregas". SQL adds the column and rewrites `"<X> - Episodio N"` labels of manga titles to `"<X> #N"` unless that label already exists. T1 commit: d3afbe6.

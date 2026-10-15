@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Profile } from './types';
-import type { Kind } from './kinds';
+import type { Kind, UnitType } from './kinds';
 
 /** Signed reader links outlive a long episode but not a forgotten tab. */
 export const READ_URL_SECONDS = 3 * 60 * 60;
@@ -10,7 +10,7 @@ export type ReaderState = 'ready' | 'login' | 'locked' | 'nofile' | 'error';
 export type ReaderUnit = { id: string; short: string; label: string; file_path: string | null; file_format: string | null; file_size: number | null; pages: string[] | null };
 
 type Row = {
-  id: string; slug: string; title: string; kind: Kind; requires_plan: 'free' | 'premium'; cover_url: string | null;
+  id: string; slug: string; title: string; kind: Kind; unit_type: UnitType; requires_plan: 'free' | 'premium'; cover_url: string | null;
   media_units: { short: string; position: number; unit_id: string; units: Omit<ReaderUnit, 'id' | 'short'> | null }[];
 };
 
@@ -26,7 +26,7 @@ export const isTitleLocked = (media: { requires_plan: string }, viewer: ReaderVi
 export async function getReader(sb: SupabaseClient, slug: string, short: string, viewer: ReaderViewer) {
   const { data, error } = await sb
     .from('media')
-    .select('id, slug, title, kind, requires_plan, cover_url, media_units(short, position, unit_id, units(label, file_path, file_format, file_size, pages))')
+    .select('id, slug, title, kind, unit_type, requires_plan, cover_url, media_units(short, position, unit_id, units(label, file_path, file_format, file_size, pages))')
     .eq('slug', slug)
     .maybeSingle();
   if (error) throw error;

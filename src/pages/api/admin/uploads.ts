@@ -11,7 +11,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 
   if (kind === 'unit-pages') {
     if (typeof media_id !== 'string') return jsonError(400, 'Faltan datos del título.');
-    const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', media_id).maybeSingle();
+    const { data: media } = await sb.from('media').select('id, slug, kind, unit_type, title').eq('id', media_id).maybeSingle();
     if (!media) return jsonError(404, 'Título no encontrado.');
     const number = body.data.number;
     if (!isUnitNumber(number)) return jsonError(400, 'Indica un número entero válido para el archivo.');
@@ -30,7 +30,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   if (typeof media_id !== 'string' || typeof filename !== 'string' || typeof content_type !== 'string' || typeof size !== 'number') {
     return jsonError(400, 'Faltan datos del archivo.');
   }
-  const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', media_id).maybeSingle();
+  const { data: media } = await sb.from('media').select('id, slug, kind, unit_type, title').eq('id', media_id).maybeSingle();
   if (!media) return jsonError(404, 'Título no encontrado.');
 
   if (kind === 'cover') {

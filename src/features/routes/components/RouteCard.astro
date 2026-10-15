@@ -12,7 +12,7 @@ const { summary: { route, count, unitCount }, pct, detailed = false } = Astro.pr
   <span class="t">{route.name}</span>
   <span class="muted">{route.description}</span>
   {detailed
-    ? <span class="muted">{count} títulos · {unitCount} episodios</span>
+    ? <span class="muted">{count} títulos · {unitCount} entregas</span>
     : <span class="muted">{count} títulos</span>}
   {pct !== undefined && <><ProgressBar pct={pct} /><b>{pct}%{detailed && ' completado'}</b></>}
 </a>

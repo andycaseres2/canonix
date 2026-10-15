@@ -1,19 +1,22 @@
 ---
 import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS } from '../../../lib/uploads';
+import { unitWords } from '../../../lib/kinds';
 interface Props {
+  /** "episodio" or "tomo": the word the queue uses for each file. */
+  unitType?: string;
   /** Title id. Without it the uploader only collects files and a parent script calls uploadAll(). */
   mediaId?: string;
   series?: string;
 }
-const { mediaId, series = '' } = Astro.props;
+const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
 ---
-<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''}>
+<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''} data-unit-type={unitType}>
   <div class="dropzone" id="unit-drop">
     <label class="btn primary file-pick">
       Elegir archivos
       <input id="unit-files" type="file" multiple accept={UNIT_PICK_EXTENSIONS.map((e) => `.${e}`).join(',')} />
     </label>
-    <p class="muted">o arrástralos aquí · {UNIT_FORMAT_LIST} · un archivo por episodio</p>
+    <p class="muted">o arrástralos aquí · {UNIT_FORMAT_LIST} · un archivo por <span id="unit-word">{unitWords(unitType).one}</span></p>
   </div>
   <div class="row">
     <label class="field">Nombre de la serie <small>así se nombra cada uno: "Batman #404"</small><input id="unit-series" maxlength="150" value={series} /></label>
@@ -36,6 +39,7 @@ const { mediaId, series = '' } = Astro.props;
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
   import { extractPages, isComicArchive, type Page } from '../scripts/archive';
   import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS, detectNumber, extensionOf, formatBytes, mapLimit } from '../../../lib/uploads';
+  import { unitWords } from '../../../lib/kinds';
 
   type Item = { file: File; number: number | null; status: 'pending' | 'converting' | 'uploading' | 'done' | 'error'; progress: number; message: string };
 
@@ -49,6 +53,7 @@ const { mediaId, series = '' } = Astro.props;
   const groupInput = document.getElementById('unit-group') as HTMLInputElement;
   const startBtn = document.getElementById('unit-start') as HTMLButtonElement | null;
   const clearBtn = document.getElementById('unit-clear') as HTMLButtonElement;
+  let words = unitWords(box.dataset.unitType);
   let items: Item[] = [];
   let busy = false;
 
@@ -70,7 +75,7 @@ const { mediaId, series = '' } = Astro.props;
     items.forEach((it) => { if (it.number !== null) seen.set(it.number, (seen.get(it.number) ?? 0) + 1); });
     return items.map((it) =>
       !UNIT_PICK_EXTENSIONS.includes(extensionOf(it.file.name)) ? `Formato no válido: usa ${UNIT_FORMAT_LIST}`
-      : it.number === null ? 'Falta el episodio'
+      : it.number === null ? `Falta el ${words.one}`
       : seen.get(it.number)! > 1 ? 'Número repetido'
       : '');
   }
@@ -169,6 +174,11 @@ const { mediaId, series = '' } = Astro.props;
     ready: () => items.length > 0 && issues().every((p, i) => !p || items[i].status === 'done'),
     hasProblems: () => issues().some((p, i) => p && items[i].status !== 'done'),
     count: () => items.filter((it) => it.status !== 'done').length,
+    setUnitType(next: string) {
+      words = unitWords(next);
+      document.getElementById('unit-word')!.textContent = words.one;
+      render();
+    },
     series: seriesInput,
     async uploadAll(mediaId: string) {
       busy = true; render();

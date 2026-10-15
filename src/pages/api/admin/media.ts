@@ -3,6 +3,7 @@ import { back, slugify } from '../../../lib/data';
 import { createMedia, mediaFields } from '../../../lib/media';
 import { str } from '../../../lib/form';
 import { coverStoragePath } from '../../../lib/uploads';
+import { unitWords } from '../../../lib/kinds';
 
 export const POST: APIRoute = async ({ request, locals, redirect }) => {
   const sb = locals.supabase;
@@ -16,7 +17,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     if (!data.title) return redirect(back('/admin/media', { error: 'El título es obligatorio.' }));
     const row = await createMedia(sb, { ...data, title: data.title });
     if ('error' in row) return redirect(back('/admin/media', { error: row.error! }));
-    return redirect(back(`/admin/media/${row.id}`, { ok: 'Título creado. Ahora agrega sus episodios.' }));
+    return redirect(back(`/admin/media/${row.id}`, { ok: `Título creado. Ahora agrega sus ${unitWords(data.unit_type).many}.` }));
   }
 
   const id = str(f, 'id', 40);

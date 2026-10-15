@@ -36,6 +36,9 @@ describe('detectNumber', () => {
     ['Watchmen 1986.pdf', null],
     ['portada.cbz', null],
     ['2.cbz', 2],
+    ['Berserk Tomo 05 - 2a edición.cbz', 5],
+    ['Berserk Vol. 07 parte 2.pdf', 7],
+    ['Berserk Volumen 9 v2.cbz', 9],
   ])('%s -> %s', (name, n) => {
     expect(detectNumber(name)).toBe(n);
   });
@@ -68,9 +71,14 @@ describe('unitLabel', () => {
     expect(unitLabel({ title: 'Batman: Year One', kind: 'comic' }, 404, '   ')).toBe('Batman: Year One #404');
   });
 
-  it('uses #n for comics and mangas alike', () => {
+  it('uses #n for episodes of comics and mangas alike', () => {
     expect(unitLabel({ title: 'Spider-Man', kind: 'comic' }, 5)).toBe('Spider-Man #5');
-    expect(unitLabel({ title: 'Naruto', kind: 'manga' }, 3)).toBe('Naruto #3');
+    expect(unitLabel({ title: 'Naruto', kind: 'manga', unit_type: 'episodio' }, 3)).toBe('Naruto #3');
+  });
+
+  it('uses "- Tomo n" for titles that come in volumes', () => {
+    expect(unitLabel({ title: 'Berserk', kind: 'manga', unit_type: 'tomo' }, 3)).toBe('Berserk - Tomo 3');
+    expect(unitLabel({ title: 'Saga Deluxe', kind: 'comic', unit_type: 'tomo' }, 1, 'Saga')).toBe('Saga - Tomo 1');
   });
 });
 
@@ -225,6 +233,23 @@ describe('POST /api/admin/episodes (pages)', () => {
     const unit = db.tables.units.find((u) => u.label === 'Spider-Man #8')!;
     expect(unit).toMatchObject({ file_path: signed.body.folder, pages: ['001.jpg', '002.jpg', '003.jpg'], file_format: 'cbz', file_size: 9 });
     expect(unitsOf(db, 'm1').some((r) => r.unit_id === unit.id && r.short === '8')).toBe(true);
+  });
+
+  it('names the units of a title that comes in volumes "- Tomo n", single file or pages', async () => {
+    const db = fixture();
+    db.tables.media.find((m) => m.id === 'm3')!.unit_type = 'tomo';
+    expect((await uploadUnit(db, 'm3', 2, 'Naruto Tomo 2.cbz')).body).toMatchObject({ ok: true, label: 'Naruto - Tomo 2' });
+    const { signed, done } = await uploadPages(db, 'm3', 3, 1);
+    expect(signed.body.label).toBe('Naruto - Tomo 3');
+    expect(done.body).toMatchObject({ ok: true, label: 'Naruto - Tomo 3' });
+    expect(unitsOf(db, 'm3').map((r) => r.unit.label)).toEqual(['Naruto #1', 'Naruto - Tomo 2', 'Naruto - Tomo 3']);
+  });
+
+  it('calls a bad number by the title\'s word', async () => {
+    const db = fixture();
+    db.tables.media.find((m) => m.id === 'm3')!.unit_type = 'tomo';
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm3', number: -1, path: 'x' })).body.error).toBe('Tomo inválido.');
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: -1, path: 'x' })).body.error).toBe('Episodio inválido.');
   });
 
   it('registers the pages of a manga', async () => {

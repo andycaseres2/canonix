@@ -7,7 +7,7 @@ import { getReader } from '../../../lib/reader';
 const { supabase, user, profile } = Astro.locals;
 const viewer = user && profile ? { id: user.id, plan: profile.plan, role: profile.role } : null;
 const r = await getReader(supabase, Astro.params.slug!, Astro.params.n!, viewer);
-if (!r) return new Response('Episodio no encontrado', { status: 404 });
+if (!r) return new Response('No encontrado', { status: 404 });
 if (r.state === 'login') return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
 // Signed links are personal and short lived: keep them out of shared caches
 Astro.response.headers.set('Cache-Control', 'private, no-store');
@@ -15,8 +15,8 @@ const { data: progress } = await supabase.from('progress').select('unit_id').eq(
 const nextHref = r.next ? `/leer/${r.media.slug}/${encodeURIComponent(r.next.short)}` : null;
 ---
 <Layout title={`${r.unit.label} · Leer`}>
-  <ReaderBar slug={r.media.slug} title={r.media.title} unit={r.unit} prev={r.prev} next={r.next} done={!!progress} canMark={r.state === 'ready'} />
+  <ReaderBar slug={r.media.slug} title={r.media.title} unitType={r.media.unit_type} unit={r.unit} prev={r.prev} next={r.next} done={!!progress} canMark={r.state === 'ready'} />
   {r.state === 'ready'
     ? <ReaderViewer url={r.url} pages={r.pages} format={r.format ?? ''} storageKey={`reader-page:${r.unit.id}`} nextHref={nextHref} nextLabel={r.next?.label ?? null} />
-    : <ReaderNotice state={r.state} slug={r.media.slug} />}
+    : <ReaderNotice state={r.state} slug={r.media.slug} unitType={r.media.unit_type} />}
 </Layout>

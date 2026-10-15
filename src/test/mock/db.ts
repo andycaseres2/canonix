@@ -50,7 +50,7 @@ const DEFAULTS: Record<TableName, () => Row> = {
   profiles: () => ({ display_name: null, role: 'user', plan: 'free', created_at: now() }),
   media: () => ({
     id: uuid(), universe: null, credits: null, year_label: null, year_start: null, description: null, search_hint: null,
-    cover_url: null, where_label: null, where_url: null, requires_plan: 'free', created_at: now(),
+    cover_url: null, where_label: null, where_url: null, requires_plan: 'free', unit_type: 'episodio', created_at: now(),
   }),
   units: () => ({ id: uuid(), file_path: null, file_format: null, file_size: null, pages: null }),
   media_units: () => ({ group_name: null }),

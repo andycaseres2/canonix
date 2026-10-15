@@ -3,12 +3,13 @@
 import ProgressBar from '../../../components/ui/ProgressBar.astro';
 import { fileMeta } from '../../../lib/uploads';
 import type { TitleUnitView } from '../../../lib/reader';
-interface Props { slug: string; units: TitleUnitView[]; done: string[]; logged: boolean; locked: boolean }
-const { slug, units, done, logged, locked } = Astro.props;
+import { unitWords } from '../../../lib/kinds';
+interface Props { slug: string; unitType: string; units: TitleUnitView[]; done: string[]; logged: boolean; locked: boolean }
+const { slug, unitType, units, done, logged, locked } = Astro.props;
 const doneSet = new Set(done);
 const read = units.filter((u) => doneSet.has(u.id)).length;
 const pct = units.length ? Math.round((read / units.length) * 100) : 0;
-const word = 'Episodios';
+const words = unitWords(unitType);
 // Consecutive units with the same group name share a heading
 const groups: { name: string | null; units: TitleUnitView[] }[] = [];
 units.forEach((u) => {
@@ -19,7 +20,7 @@ units.forEach((u) => {
 ---
 <section class="episodes" id="episodes" data-total={units.length}>
   <div class="episodes-head">
-    <h2>{word} ({units.length})</h2>
+    <h2>{words.Many} ({units.length})</h2>
     {logged && units.length > 0 && (
       <div class="episodes-progress">
         <ProgressBar pct={pct} />
@@ -27,9 +28,9 @@ units.forEach((u) => {
       </div>
     )}
   </div>
-  {locked && <p class="panel episodes-locked">Este título es parte del plan premium. Con premium puedes leer sus episodios aquí.</p>}
+  {locked && <p class="panel episodes-locked">Este título es parte del plan premium. Con premium puedes leer sus {words.many} aquí.</p>}
   {!logged && units.some((u) => u.has_file) && <p class="muted"><a href={`/login?next=/catalogo/${slug}`}>Entra</a> para leerlos y guardar tu progreso.</p>}
-  {units.length === 0 && <p class="muted">Todavía no tiene {word.toLowerCase()}.</p>}
+  {units.length === 0 && <p class="muted">Todavía no tiene {words.many}.</p>}
   {groups.map((g) => (
     <>
       {g.name && <h3 class="episodes-group">{g.name}</h3>}

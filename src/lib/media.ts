@@ -1,7 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { slugify } from './data';
 import { yearStart } from './form';
-import { toKind } from './kinds';
+import { toKind, toUnitType } from './kinds';
 
 /** Reads one trimmed text field (null when empty), capped at `max` characters. */
 export type Read = (key: string, max: number) => string | null;
@@ -12,7 +12,7 @@ export function mediaFields(read: Read, kind: unknown) {
   return {
     title: read('title', 200), kind: toKind(kind), universe: read('universe', 40)?.toLowerCase() ?? null,
     credits: read('credits', 200), year_label, year_start: yearStart(year_label), description: read('description', 4000),
-    requires_plan: read('requires_plan', 10) === 'premium' ? 'premium' : 'free',
+    requires_plan: read('requires_plan', 10) === 'premium' ? 'premium' : 'free', unit_type: toUnitType(read('unit_type', 10)),
   };
 }
 

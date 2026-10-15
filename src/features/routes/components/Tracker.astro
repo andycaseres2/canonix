@@ -47,7 +47,9 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
 
 <script>
   type Unit = { id: string; label: string; short: string; group: string | null; file: boolean };
-  type Item = { slug: string; kind: string; premium: boolean; title: string; credits: string | null; year: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
+  import { unitWords } from '../../../lib/kinds';
+
+  type Item = { slug: string; kind: string; unitType: string; premium: boolean; title: string; credits: string | null; year: string | null; sectionId: string | null; section: string | null; sectionDescription: string | null; units: Unit[] };
 
   const root = document.getElementById('tracker')!;
   const data = JSON.parse(document.getElementById('tracker-data')!.textContent || '{}') as {
@@ -63,11 +65,12 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
   const isDone = (it: Item) => it.units.length > 0 && count(it) === it.units.length;
   /** The unit to open next: the first one with a file not marked yet, or the first with a file when all are read. */
   const toRead = (it: Item) => it.units.find((u) => u.file && !done.has(u.id)) ?? it.units.find((u) => u.file);
-  /** "Leer #3" link to the reader, or the premium tag when the viewer cannot open the title. */
+  /** "Leer #3" / "Leer tomo 3" link to the reader, or the premium tag when the viewer cannot open the title. */
   function readLink(it: Item, unit = toRead(it)) {
     if (!unit) return '';
     if (it.premium && !data.premium) return '<span class="locked-tag">Premium</span>';
-    return `<a class="btn small primary" href="/leer/${esc(it.slug)}/${encodeURIComponent(unit.short)}">Leer #${esc(unit.short)} ›</a>`;
+    const verb = it.unitType === 'tomo' ? 'Leer tomo ' : 'Leer #';
+    return `<a class="btn small primary" href="/leer/${esc(it.slug)}/${encodeURIComponent(unit.short)}">${verb}${esc(unit.short)} ›</a>`;
   }
 
   function setUnits(ids: string[], on: boolean) {
@@ -106,7 +109,7 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
     if (read) h += `<span class="read-row">${read}</span>`;
     h += `</span><input type="checkbox" data-all="${esc(it.slug)}"${all ? ' checked' : ''}${dis} aria-label="Marcar ${esc(it.title)} completo"></div>`;
     if (multi) {
-      h += `<button class="toggle" data-open="${esc(it.slug)}" aria-expanded="${isOpen}">${isOpen ? 'Ocultar' : 'Ver'} episodios</button>`;
+      h += `<button class="toggle" data-open="${esc(it.slug)}" aria-expanded="${isOpen}">${isOpen ? 'Ocultar' : 'Ver'} ${unitWords(it.unitType).many}</button>`;
       if (isOpen) {
         h += '<div class="issues">';
         let g: string | null | undefined, chips = '';

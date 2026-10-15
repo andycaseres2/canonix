@@ -74,6 +74,8 @@ alter table public.media add column if not exists requires_plan text not null de
 alter table public.media drop constraint if exists media_kind_check;
 update public.media set kind = 'manga' where kind = 'anime';
 alter table public.media add constraint media_kind_check check (kind in ('comic','manga'));
+-- Cada título viene en episodios o en tomos: decide cómo se nombran y se cuentan sus números
+alter table public.media add column if not exists unit_type text not null default 'episodio' check (unit_type in ('episodio','tomo'));
 
 -- Unidad de lectura/visionado: un número de cómic o un episodio.
 -- La etiqueta es única para que el mismo número cuente en todos los títulos que lo incluyen.
@@ -104,6 +106,16 @@ create table if not exists public.media_units (
   primary key (media_id, unit_id)
 );
 create index if not exists media_units_pos on public.media_units(media_id, position);
+
+-- Migración: las etiquetas "<Serie> - Episodio N" de los antiguos animes (hoy mangas) pasan a "<Serie> #N",
+-- el formato de los episodios de cómics y mangas, para que una nueva subida encuentre la misma unidad.
+-- La etiqueta es única: si "<Serie> #N" ya existe, esa unidad se deja como está (no se fusiona ni se pierde nada).
+update public.units u
+  set label = regexp_replace(u.label, ' - Episodio ([0-9]+)$', ' #\1')
+  where u.label ~ ' - Episodio [0-9]+$'
+    and exists (select 1 from public.media_units mu join public.media m on m.id = mu.media_id
+      where mu.unit_id = u.id and m.kind = 'manga')
+    and not exists (select 1 from public.units o where o.label = regexp_replace(u.label, ' - Episodio ([0-9]+)$', ' #\1'));
 
 -- ---------- Rutas ----------
 create table if not exists public.routes (

@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { toUnitType } from './kinds';
 
 /** Shared rules and helpers for files the admin uploads straight to Storage. */
 
@@ -56,12 +57,12 @@ export const MAX_UNIT_NUMBER = 99999;
 export const isUnitNumber = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= MAX_UNIT_NUMBER;
 
 /**
- * Labels look like "<series> #5", so an uploaded file joins the
+ * Labels look like "<series> #5" (episodes) or "<series> - Tomo 5" (volumes), so an uploaded file joins the
  * unit that already exists with that label. The series defaults to the title.
  */
-export const unitLabel = (media: { title: string; kind: string }, n: number, series?: unknown) => {
+export const unitLabel = (media: { title: string; kind: string; unit_type?: string | null }, n: number, series?: unknown) => {
   const name = (typeof series === 'string' && series.trim() ? series.trim() : media.title).slice(0, 150);
-  return `${name} #${n}`;
+  return toUnitType(media.unit_type) === 'tomo' ? `${name} - Tomo ${n}` : `${name} #${n}`;
 };
 
 export const formatBytes = (n: number) =>
@@ -87,8 +88,8 @@ export const unitFolder = (slug: string, n: number, stamp = Date.now()) => `${sl
 
 /** Validates the page list the browser wants to upload. */
 export function checkPages(pages: unknown): { pages: { name: string; content_type: string; size: number }[] } | { error: string } {
-  if (!Array.isArray(pages) || pages.length === 0) return { error: 'El cómic no tiene páginas.' };
-  if (pages.length > MAX_PAGES) return { error: `Un episodio puede tener hasta ${MAX_PAGES} páginas.` };
+  if (!Array.isArray(pages) || pages.length === 0) return { error: 'El archivo no tiene páginas.' };
+  if (pages.length > MAX_PAGES) return { error: `Un archivo puede tener hasta ${MAX_PAGES} páginas.` };
   const seen = new Set<string>();
   for (const p of pages) {
     if (!isPageName(p?.name) || typeof p.size !== 'number' || p.size <= 0) return { error: 'Cada página debe ser una imagen (JPG, PNG, WEBP, GIF o AVIF).' };
@@ -135,8 +136,8 @@ export const unitPath = (slug: string, n: number, filename: string, stamp = Date
   `${slug}/${String(n).padStart(5, '0')}-${stamp}.${extensionOf(filename)}`;
 
 /**
- * Issue/episode number from a file name such as "Naruto - 012 [1080p].mkv" or
- * "Uncanny X-Men 129 (1980).cbr". Ignores bracketed tags, years and resolutions.
+ * Issue/episode/volume number from a file name such as "Naruto - 012 [1080p].mkv",
+ * "Berserk Tomo 05.cbz" or "Uncanny X-Men 129 (1980).cbr". Ignores bracketed tags, years and resolutions.
  */
 export function detectNumber(filename: string): number | null {
   const s = filename
@@ -145,7 +146,7 @@ export function detectNumber(filename: string): number | null {
     .replace(/\((?:19|20)\d{2}\)/g, ' ')
     .replace(/\b\d{3,4}p\b/gi, ' ')
     .replace(/\b[xh]\.?26[45]\b/gi, ' ');
-  const marked = s.match(/(?:#|\b(?:ep|episodio|episode|cap|capitulo|capítulo|chapter|ch|issue|n[º°o])\.?\s*)(\d{1,5})\b/i);
+  const marked = s.match(/(?:#|\b(?:ep|episodio|episode|cap|capitulo|capítulo|chapter|ch|issue|vol|volumen|volume|tomo|n[º°o])\.?\s*)(\d{1,5})\b/i);
   if (marked) return parseInt(marked[1], 10);
   const numbers = [...s.matchAll(/\d+/g)].map((m) => m[0]).filter((n) => !(n.length === 4 && /^(19|20)/.test(n)));
   const last = numbers.at(-1);

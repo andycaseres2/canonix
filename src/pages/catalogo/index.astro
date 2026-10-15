@@ -6,13 +6,13 @@ import CatalogGrid from '../../features/catalog/components/CatalogGrid.astro';
 import type { CatalogMedia } from '../../features/catalog/types';
 const { supabase } = Astro.locals;
 const tipo = Astro.url.searchParams.get('tipo');
-let q = supabase.from('media').select('slug, kind, universe, title, credits, year_label, year_start, cover_url, media_units(count)').order('year_start', { ascending: true }).order('title');
+let q = supabase.from('media').select('slug, kind, unit_type, universe, title, credits, year_label, year_start, cover_url, media_units(count)').order('year_start', { ascending: true }).order('title');
 if (tipo === 'comic' || tipo === 'manga') q = q.eq('kind', tipo);
 const { data: media } = await q;
 ---
 <Layout title="Catálogo">
   <h1>Catálogo</h1>
-  <p class="lead">Todos los cómics y mangas cargados, con sus episodios.</p>
+  <p class="lead">Todos los cómics y mangas cargados, con sus episodios o tomos.</p>
   <CatalogTabs current={tipo ?? ''} />
   <CatalogSearch />
   <CatalogGrid media={(media ?? []) as CatalogMedia[]} />

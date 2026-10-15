@@ -1,4 +1,4 @@
-import type { Kind } from './kinds';
+import type { Kind, UnitType } from './kinds';
 
 export type Profile = {
   id: string;
@@ -14,6 +14,8 @@ export type TrackerUnit = { id: string; label: string; short: string; group: str
 export type TrackerItem = {
   slug: string;
   kind: Kind;
+  /** Whether the title comes in episodes or volumes */
+  unitType: UnitType;
   title: string;
   credits: string | null;
   year: string | null;
