@@ -63,6 +63,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
   function refresh() {
     const n = queue.count();
     const units = kind() === 'anime' ? 'episodio' : 'número';
+    go.textContent = `Crear ${kindWord()}`;
     document.querySelector('.unit-title')!.textContent = kind() === 'anime' ? 'Episodios' : 'Números';
     const parts = [titleInput.value.trim() ? `«${titleInput.value.trim()}»` : 'Falta el nombre'];
     parts.push(cover ? 'con portada' : 'sin portada');
