@@ -17,8 +17,12 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       <div class="progress"><span id="viewer-progress"></span></div>
     </div>
     <!-- The page fills the width and scrolls inside this box; tapping its left or right third turns the page, a double tap zooms -->
-    <div class="viewer-stage" id="viewer-stage" hidden></div>
+    <div class="viewer-frame" id="viewer-frame" hidden>
+      <div class="viewer-stage" id="viewer-stage"></div>
+      <div class="viewer-spinner" role="status"><span class="spinner" aria-hidden="true"></span><span>Cargando página…</span></div>
+    </div>
     <div class="viewer-controls" id="viewer-controls" hidden>
+      <button class="btn small yellow" type="button" id="viewer-resume" hidden></button>
       <button class="btn small" type="button" data-go="-1" aria-label="Página anterior">‹</button>
       <span class="viewer-count" id="viewer-count" aria-live="polite"></span>
       <button class="btn small" type="button" data-go="1" aria-label="Página siguiente">›</button>
@@ -166,8 +170,9 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       return;
     }
 
+    const frame = $('viewer-frame');
     status.hidden = true;
-    stage.hidden = false;
+    frame.hidden = false;
     controls.hidden = false;
 
     // Size the page box to what is left below the reader bar (title, back link) and above the controls, so the whole reader fits the screen
@@ -175,14 +180,23 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     fitScreen();
     addEventListener('resize', fitScreen);
 
-    let page = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
+    // Reading always starts at the cover; where the reader left off is offered as a button
+    const saved = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
+    const resume = $<HTMLButtonElement>('viewer-resume');
+    resume.textContent = `Seguir en pág. ${saved + 1}`;
+    resume.hidden = saved === 0;
+    resume.addEventListener('click', () => go(saved - page));
+
+    let page = 0;
     let drawing = 0;
     const show = async (i: number) => {
       page = Math.min(Math.max(i, 0), book.count - 1);
       const ticket = ++drawing;
       count.textContent = `${page + 1} / ${book.count}`;
-      store.set(key, String(page));
+      if (page > 0) { store.set(key, String(page)); if (!resume.hidden) { resume.hidden = true; fitScreen(); } }
       if (nextLink) nextLink.hidden = page < book.count - 1;
+      // The loading sign shows only when the page takes a moment, so cached pages turn without a flicker
+      const slow = window.setTimeout(() => frame.classList.add('loading'), 150);
       let el: HTMLElement;
       try {
         el = await book.draw(page, stage.clientWidth);
@@ -190,6 +204,8 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
         el = Object.assign(document.createElement('p'), { className: 'viewer-page-error', textContent: `No se pudo mostrar la página ${page + 1}.` });
       }
       if (ticket !== drawing) return; // a later turn already won
+      clearTimeout(slow);
+      frame.classList.remove('loading');
       el.classList.add('viewer-page');
       el.setAttribute('aria-label', `Página ${page + 1} de ${book.count}`);
       stage.replaceChildren(el);
