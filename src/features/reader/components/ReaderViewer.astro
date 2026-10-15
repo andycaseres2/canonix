@@ -28,7 +28,7 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       <button class="btn small" type="button" data-go="1" aria-label="Página siguiente">›</button>
       <button class="btn small" type="button" id="viewer-zoom" aria-pressed="false">Zoom</button>
       <button class="btn small" type="button" id="viewer-full"><span class="label-long">Pantalla completa</span><span class="label-short">Completa</span></button>
-      {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} hidden>Siguiente: {nextLabel} ›</a>}
+      {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} rel="next" hidden>Siguiente: {nextLabel} ›</a>}
     </div>
   </section>
 )}

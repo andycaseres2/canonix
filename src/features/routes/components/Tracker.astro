@@ -174,4 +174,6 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
     setUnits(it.units.map((u) => u.id), el.checked);
   });
   render();
+  // Back from the reader the browser may restore this page from memory: reload it so new reads show
+  addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
 </script>

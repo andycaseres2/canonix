@@ -34,4 +34,13 @@ const { slug, title, unitType, unit, prev, next, done, canMark } = Astro.props;
       button.disabled = false;
     }
   });
+
+  // Going on to the next issue/volume marks this one as read. keepalive lets the request finish while the page changes.
+  document.querySelectorAll<HTMLAnchorElement>('a[rel="next"]').forEach((link) => link.addEventListener('click', () => {
+    if (!button || button.getAttribute('aria-pressed') === 'true') return;
+    fetch('/api/progress', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+      body: JSON.stringify({ add: [button.dataset.unit] }),
+    }).catch(() => { /* the read toggle stays available on the next visit */ });
+  }));
 </script>

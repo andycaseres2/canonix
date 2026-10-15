@@ -85,4 +85,6 @@ units.forEach((u) => {
       button.disabled = false;
     }
   });
+  // Back from the reader the browser may restore this page from memory: reload it so new reads show
+  addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
 </script>
