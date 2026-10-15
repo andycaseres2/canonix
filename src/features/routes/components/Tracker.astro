@@ -107,7 +107,7 @@ const payload = JSON.stringify({ items, done, logged, premium, openFirst, showHe
     if (read) h += `<span class="read-row">${read}</span>`;
     h += `</span><input type="checkbox" data-all="${esc(it.slug)}"${all ? ' checked' : ''}${dis} aria-label="Marcar ${esc(it.title)} completo"></div>`;
     if (multi) {
-      h += `<button class="toggle" data-open="${esc(it.slug)}" aria-expanded="${isOpen}">${isOpen ? 'Ocultar' : 'Ver'} números</button>`;
+      h += `<button class="toggle" data-open="${esc(it.slug)}" aria-expanded="${isOpen}">${isOpen ? 'Ocultar' : 'Ver'} episodios</button>`;
       if (isOpen) {
         h += '<div class="issues">';
         let g: string | null | undefined, chips = '';

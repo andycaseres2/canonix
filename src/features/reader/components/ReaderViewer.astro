@@ -154,7 +154,7 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     try {
       if (root.dataset.pages) book = openPaged(JSON.parse(root.dataset.pages) as string[]);
       else if (format === 'pdf') book = await openPdf(url, progress('Cargando'));
-      else if (format === 'cbr') throw new Error('Este número está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
+      else if (format === 'cbr') throw new Error('Este episodio está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
       else {
         // Older issues stored as one CBZ: the whole archive is needed before any page
         const bytes = await download(url, progress('Descargando'));

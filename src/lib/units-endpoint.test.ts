@@ -36,7 +36,7 @@ describe('POST /api/admin/units', () => {
     Object.assign(db.tables.units.find((u) => u.id === 'u1')!, { file_path: 'asm/00001-1.cbz', file_format: 'cbz', file_size: 3 });
     store(db, 'asm/00001-1.cbz');
     const { ok } = await post({ media_id: 'm1', action: 'remove', unit_id: 'u1' }, db);
-    expect(ok).toBe('Número borrado.');
+    expect(ok).toBe('Episodio borrado.');
     expect(db.tables.media_units.some((r) => r.unit_id === 'u1')).toBe(false);
     expect(db.tables.units.some((u) => u.id === 'u1')).toBe(false);
     expect(db.storage.read('content', 'asm/00001-1.cbz')).toBeNull();
@@ -65,7 +65,7 @@ describe('POST /api/admin/units', () => {
     expect(db.storage.read('content', 'ff/00001-1.cbz')).not.toBeNull();
   });
 
-  it.each([['', 'Número inválido.'], ['not-a-uuid', 'Ese número no está en este título.']])('remove with unit id %j answers %j and touches nothing', async (unit_id, message) => {
+  it.each([['', 'Episodio inválido.'], ['not-a-uuid', 'Ese episodio no está en este título.']])('remove with unit id %j answers %j and touches nothing', async (unit_id, message) => {
     const db = fixture();
     const before = [db.tables.media_units.length, db.tables.units.length];
     const { error } = await post({ media_id: 'm1', action: 'remove', unit_id }, db);
@@ -76,7 +76,7 @@ describe('POST /api/admin/units', () => {
   it('remove ignores a unit that is not in the title', async () => {
     const db = fixture();
     const { error } = await post({ media_id: 'm1', action: 'remove', unit_id: 'u3' }, db);
-    expect(error).toBe('Ese número no está en este título.');
+    expect(error).toBe('Ese episodio no está en este título.');
     expect(db.tables.units.some((u) => u.id === 'u3')).toBe(true);
   });
 });

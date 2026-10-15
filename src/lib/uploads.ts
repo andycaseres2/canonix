@@ -88,7 +88,7 @@ export const unitFolder = (slug: string, n: number, stamp = Date.now()) => `${sl
 /** Validates the page list the browser wants to upload. */
 export function checkPages(pages: unknown): { pages: { name: string; content_type: string; size: number }[] } | { error: string } {
   if (!Array.isArray(pages) || pages.length === 0) return { error: 'El cómic no tiene páginas.' };
-  if (pages.length > MAX_PAGES) return { error: `Un número puede tener hasta ${MAX_PAGES} páginas.` };
+  if (pages.length > MAX_PAGES) return { error: `Un episodio puede tener hasta ${MAX_PAGES} páginas.` };
   const seen = new Set<string>();
   for (const p of pages) {
     if (!isPageName(p?.name) || typeof p.size !== 'number' || p.size <= 0) return { error: 'Cada página debe ser una imagen (JPG, PNG, WEBP, GIF o AVIF).' };

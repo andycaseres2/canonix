@@ -20,7 +20,6 @@ mu.forEach((u) => {
   if (!last || last.name !== u.group_name) groups.push({ name: u.group_name, units: [u] });
   else last.units.push(u);
 });
-// While editing, a title's units are always called episodes
 const unitWord = 'episodios';
 const withFile = mu.filter((u) => u.units?.file_path).length;
 // Prefill the series with the name the existing numbers use ("Batman #404" -> "Batman"), else the title

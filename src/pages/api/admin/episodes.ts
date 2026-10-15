@@ -50,7 +50,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 
   if (action === 'remove_file') {
     const { data: unit } = await sb.from('units').select('id, file_path, pages').eq('id', String(body.data.unit_id)).maybeSingle();
-    if (!unit) return jsonError(404, 'Número no encontrado.');
+    if (!unit) return jsonError(404, 'Episodio no encontrado.');
     const { error } = await sb.from('units').update({ file_path: null, file_format: null, file_size: null, pages: null }).eq('id', unit.id);
     if (error) return jsonError(500, error.message);
     await removeStored(sb, unit).catch((e) => console.error('[episodes.remove_file] files left in storage', unit.file_path, e));
@@ -61,7 +61,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', String(body.data.media_id)).maybeSingle();
   if (!media) return jsonError(404, 'Título no encontrado.');
   const number = body.data.number;
-  if (!isUnitNumber(number)) return jsonError(400, 'Número inválido.');
+  if (!isUnitNumber(number)) return jsonError(400, 'Episodio inválido.');
 
   if (body.data.folder !== undefined) {
     // A comic uploaded page by page: every listed page must be in its folder

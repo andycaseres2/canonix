@@ -5,19 +5,16 @@ interface Props {
   /** Title id. Without it the uploader only collects files and a parent script calls uploadAll(). */
   mediaId?: string;
   series?: string;
-  /** Fixed name for one unit ("episodio"); by default it follows the kind. */
-  unitWord?: string;
 }
-const { mediaId, kind, series = '', unitWord } = Astro.props;
-const word = unitWord ?? (kind === 'anime' ? 'episodio' : 'número');
+const { mediaId, kind, series = '' } = Astro.props;
 ---
-<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''} data-kind={kind} data-word={unitWord}>
+<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''} data-kind={kind}>
   <div class="dropzone" id="unit-drop">
     <label class="btn primary file-pick">
       Elegir archivos
       <input id="unit-files" type="file" multiple accept={pickExtensions(kind).map((e) => `.${e}`).join(',')} />
     </label>
-    <p class="muted">o arrástralos aquí · <span id="unit-formats">{formatList(kind)}</span> · un archivo por <span class="unit-word">{word}</span></p>
+    <p class="muted">o arrástralos aquí · <span id="unit-formats">{formatList(kind)}</span> · un archivo por episodio</p>
   </div>
   <div class="row">
     <label class="field">Nombre de la serie <small>así se nombra cada uno: "Batman #404"</small><input id="unit-series" maxlength="150" value={series} /></label>
@@ -58,7 +55,6 @@ const word = unitWord ?? (kind === 'anime' ? 'episodio' : 'número');
   let items: Item[] = [];
   let busy = false;
 
-  const word = () => box.dataset.word || (kind === 'anime' ? 'episodio' : 'número');
   const exts = () => pickExtensions(kind);
 
   /** Small DOM builder; text always goes in as text, never as HTML. */
@@ -79,7 +75,7 @@ const word = unitWord ?? (kind === 'anime' ? 'episodio' : 'número');
     items.forEach((it) => { if (it.number !== null) seen.set(it.number, (seen.get(it.number) ?? 0) + 1); });
     return items.map((it) =>
       !exts().includes(extensionOf(it.file.name)) ? `Formato no válido: usa ${formatList(kind)}`
-      : it.number === null ? `Falta el ${word()}`
+      : it.number === null ? 'Falta el episodio'
       : seen.get(it.number)! > 1 ? 'Número repetido'
       : '');
   }
@@ -182,7 +178,6 @@ const word = unitWord ?? (kind === 'anime' ? 'episodio' : 'número');
       kind = next;
       input.accept = exts().map((e) => `.${e}`).join(',');
       document.getElementById('unit-formats')!.textContent = formatList(kind);
-      box.querySelectorAll('.unit-word').forEach((n) => { n.textContent = word(); });
       render();
     },
     series: seriesInput,

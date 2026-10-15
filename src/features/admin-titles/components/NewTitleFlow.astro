@@ -26,7 +26,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
 </form>
 
 <NumberedStep n={3}>
-  <Fragment slot="title"><span class="unit-title">Números</span> <small class="muted">opcional, puedes subirlos después</small></Fragment>
+  <Fragment slot="title"><span class="unit-title">Episodios</span> <small class="muted">opcional, puedes subirlos después</small></Fragment>
   <UnitUploader kind="comic" />
 </NumberedStep>
 
@@ -62,8 +62,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
 
   function refresh() {
     const n = queue.count();
-    const units = kind() === 'anime' ? 'episodio' : 'número';
-    document.querySelector('.unit-title')!.textContent = kind() === 'anime' ? 'Episodios' : 'Números';
+    const units = 'episodio';
     const parts = [titleInput.value.trim() ? `«${titleInput.value.trim()}»` : 'Falta el nombre'];
     parts.push(cover ? 'con portada' : 'sin portada');
     parts.push(n ? `${n} ${units}${n === 1 ? '' : 's'}` : `sin ${units}s por ahora`);

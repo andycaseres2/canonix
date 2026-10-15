@@ -7,7 +7,7 @@ interface Props { unitsDone: number; thisWeek: number; thisWeekCapped: boolean; 
 const { unitsDone, thisWeek, thisWeekCapped, premium } = Astro.props;
 ---
 <StatGrid>
-  <Stat value={unitsDone}>números y episodios</Stat>
+  <Stat value={unitsDone}>episodios</Stat>
   <Stat value={`${thisWeek}${thisWeekCapped ? '+' : ''}`}>en los últimos 7 días</Stat>
   <Stat value={premium ? 'Premium' : 'Gratis'}>tu plan</Stat>
 </StatGrid>

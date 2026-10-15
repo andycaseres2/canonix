@@ -12,6 +12,6 @@ const { media: m } = Astro.props;
     <span><KindBadge kind={m.kind} /> <span class="muted">{m.universe}</span></span>
     <span class="t">{m.title}</span>
     <span class="muted">{m.year_label}{m.credits ? ` · ${m.credits}` : ''}</span>
-    <span class="muted">{m.media_units?.[0]?.count ?? 0} {m.kind === 'anime' ? 'episodios' : 'números'}</span>
+    <span class="muted">{m.media_units?.[0]?.count ?? 0} episodios</span>
   </span>
 </a>

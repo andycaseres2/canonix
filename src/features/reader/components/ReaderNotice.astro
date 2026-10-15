@@ -6,7 +6,7 @@ interface Props { state: Exclude<ReaderState, 'ready' | 'login'>; slug: string }
 const { state, slug } = Astro.props;
 const text = {
   locked: 'Este título es parte del plan premium.',
-  nofile: 'Este número todavía no tiene archivo.',
+  nofile: 'Este episodio todavía no tiene archivo.',
   error: 'No pudimos abrir el archivo. Vuelve a intentarlo en un momento.',
 }[state];
 ---

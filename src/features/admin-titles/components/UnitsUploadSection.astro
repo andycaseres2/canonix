@@ -8,4 +8,4 @@ const { mediaId, kind, unitWord, series } = Astro.props;
 ---
 <h2 style="margin-top:0">Agregar {unitWord}</h2>
 <p class="muted" style="margin-top:0">Un archivo ({formatList(kind)}) por cada episodio. El número se toma del nombre del archivo y puedes corregirlo antes de subir.</p>
-<UnitUploader mediaId={mediaId} kind={kind} series={series} unitWord="episodio" />
+<UnitUploader mediaId={mediaId} kind={kind} series={series} />
