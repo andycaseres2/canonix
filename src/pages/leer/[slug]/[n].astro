@@ -7,7 +7,7 @@ import { getReader } from '../../../lib/reader';
 const { supabase, user, profile } = Astro.locals;
 const viewer = user && profile ? { id: user.id, plan: profile.plan, role: profile.role } : null;
 const r = await getReader(supabase, Astro.params.slug!, Astro.params.n!, viewer);
-if (!r) return new Response('Número no encontrado', { status: 404 });
+if (!r) return new Response('Episodio no encontrado', { status: 404 });
 if (r.state === 'login') return Astro.redirect(`/login?next=${encodeURIComponent(Astro.url.pathname)}`);
 // Signed links are personal and short lived: keep them out of shared caches
 Astro.response.headers.set('Cache-Control', 'private, no-store');

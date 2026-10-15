@@ -7,7 +7,7 @@ const { slug, title, unit, prev, next, done, canMark } = Astro.props;
 <header class="reader-bar">
   <a class="reader-back" href={`/catalogo/${slug}`}>← {title}</a>
   <h1 class="reader-title">{unit.label}</h1>
-  <nav class="reader-units" aria-label="Números">
+  <nav class="reader-units" aria-label="Episodios">
     {prev ? <a class="btn small" href={`/leer/${slug}/${encodeURIComponent(prev.short)}`} rel="prev">‹ {prev.short}</a> : <span class="btn small" aria-disabled="true">‹</span>}
     {canMark && <button class="btn small" type="button" id="reader-done" data-unit={unit.id} aria-pressed={done ? 'true' : 'false'}>{done ? '✓ Leído' : 'Marcar leído'}</button>}
     {next ? <a class="btn small" href={`/leer/${slug}/${encodeURIComponent(next.short)}`} rel="next">{next.short} ›</a> : <span class="btn small" aria-disabled="true">›</span>}

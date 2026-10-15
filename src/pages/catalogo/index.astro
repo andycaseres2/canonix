@@ -12,7 +12,7 @@ const { data: media } = await q;
 ---
 <Layout title="Catálogo">
   <h1>Catálogo</h1>
-  <p class="lead">Todos los cómics y animes cargados, con sus números o episodios.</p>
+  <p class="lead">Todos los cómics y animes cargados, con sus episodios.</p>
   <CatalogTabs current={tipo ?? ''} />
   <CatalogSearch />
   <CatalogGrid media={(media ?? []) as CatalogMedia[]} />
