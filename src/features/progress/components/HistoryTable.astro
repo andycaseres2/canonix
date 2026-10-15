@@ -8,6 +8,6 @@ const fmt = new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium', timeStyle: '
 {entries.length === 0
   ? <p class="muted">Aún no has marcado nada. Empieza por una <a href="/rutas">ruta</a>.</p>
   : <div class="table-wrap"><table style="min-width:0">
-      <thead><tr><th>Número / episodio</th><th>Fecha</th></tr></thead>
+      <thead><tr><th>Episodio</th><th>Fecha</th></tr></thead>
       <tbody>{entries.map((r) => <tr><td>{r.units?.label}</td><td class="muted">{fmt.format(new Date(r.completed_at))}</td></tr>)}</tbody>
     </table></div>}

@@ -11,21 +11,19 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     {format === 'mkv' && <p class="muted">Si no se reproduce, tu navegador no soporta MKV. Prueba con Chrome.</p>}
   </div>
 ) : (
-  <section class="viewer" id="viewer" data-url={url ?? undefined} data-pages={pages ? JSON.stringify(pages) : undefined} data-format={format} data-key={storageKey} data-fit="height" aria-label="Lector">
+  <section class="viewer" id="viewer" data-url={url ?? undefined} data-pages={pages ? JSON.stringify(pages) : undefined} data-format={format} data-key={storageKey} aria-label="Lector">
     <div class="viewer-status" id="viewer-status" role="status">
       <p id="viewer-status-text">Cargando…</p>
       <div class="progress"><span id="viewer-progress"></span></div>
     </div>
-    <div class="viewer-stage" id="viewer-stage" hidden>
-      <button class="viewer-hit prev" type="button" tabindex="-1" aria-label="Página anterior"></button>
-      <button class="viewer-hit next" type="button" tabindex="-1" aria-label="Página siguiente"></button>
-    </div>
+    <!-- The page fills the width and scrolls inside this box; tapping its left or right third turns the page, a double tap zooms -->
+    <div class="viewer-stage" id="viewer-stage" hidden></div>
     <div class="viewer-controls" id="viewer-controls" hidden>
       <button class="btn small" type="button" data-go="-1" aria-label="Página anterior">‹</button>
       <span class="viewer-count" id="viewer-count" aria-live="polite"></span>
       <button class="btn small" type="button" data-go="1" aria-label="Página siguiente">›</button>
-      <button class="btn small" type="button" id="viewer-fit">Ajustar al ancho</button>
-      <button class="btn small" type="button" id="viewer-full">Pantalla completa</button>
+      <button class="btn small" type="button" id="viewer-zoom" aria-pressed="false">Zoom</button>
+      <button class="btn small" type="button" id="viewer-full"><span class="label-long">Pantalla completa</span><span class="label-short">Completa</span></button>
       {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} hidden>Siguiente: {nextLabel} ›</a>}
     </div>
   </section>
@@ -141,7 +139,7 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
     const status = $('viewer-status'), statusText = $('viewer-status-text'), bar = $('viewer-progress');
     const stage = $('viewer-stage'), controls = $('viewer-controls'), count = $('viewer-count');
-    const fit = $<HTMLButtonElement>('viewer-fit'), full = $<HTMLButtonElement>('viewer-full');
+    const full = $<HTMLButtonElement>('viewer-full');
     const nextLink = document.getElementById('viewer-next');
     const { url, format, key } = root.dataset as { url: string; format: string; key: string };
     const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
@@ -154,7 +152,7 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     try {
       if (root.dataset.pages) book = openPaged(JSON.parse(root.dataset.pages) as string[]);
       else if (format === 'pdf') book = await openPdf(url, progress('Cargando'));
-      else if (format === 'cbr') throw new Error('Este número está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
+      else if (format === 'cbr') throw new Error('Este episodio está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
       else {
         // Older issues stored as one CBZ: the whole archive is needed before any page
         const bytes = await download(url, progress('Descargando'));
@@ -171,6 +169,11 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     status.hidden = true;
     stage.hidden = false;
     controls.hidden = false;
+
+    // Size the page box to what is left below the reader bar (title, back link) and above the controls, so the whole reader fits the screen
+    const fitScreen = () => root.style.setProperty('--viewer-chrome', `${Math.round(root.getBoundingClientRect().top + scrollY) + controls.offsetHeight + 12}px`);
+    fitScreen();
+    addEventListener('resize', fitScreen);
 
     let page = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
     let drawing = 0;
@@ -189,32 +192,60 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       if (ticket !== drawing) return; // a later turn already won
       el.classList.add('viewer-page');
       el.setAttribute('aria-label', `Página ${page + 1} de ${book.count}`);
-      stage.querySelector('.viewer-page')?.remove();
-      stage.prepend(el);
-      if (root.dataset.fit === 'width') root.scrollIntoView({ block: 'start' });
+      stage.replaceChildren(el);
+      stage.scrollTop = 0;
     };
-    const go = (delta: number) => show(page + delta);
+
+    // Zoom doubles the page inside the box; the point that was tapped (or the centre) stays where it was
+    const zoomBtn = $<HTMLButtonElement>('viewer-zoom');
+    const setZoom = (on: boolean, at?: { x: number; y: number }) => {
+      if ((root.dataset.zoom === 'on') === on) return;
+      const box = stage.getBoundingClientRect();
+      const x = at ? at.x - box.left : stage.clientWidth / 2, y = at ? at.y - box.top : stage.clientHeight / 2;
+      const fx = (stage.scrollLeft + x) / stage.scrollWidth, fy = (stage.scrollTop + y) / stage.scrollHeight;
+      root.dataset.zoom = on ? 'on' : 'off';
+      zoomBtn.setAttribute('aria-pressed', String(on));
+      stage.scrollLeft = fx * stage.scrollWidth - x;
+      stage.scrollTop = fy * stage.scrollHeight - y;
+    };
+    const isZoomed = () => root.dataset.zoom === 'on';
+    zoomBtn.addEventListener('click', () => setZoom(!isZoomed()));
+
+    const go = (delta: number) => { setZoom(false); return show(page + delta); };
 
     controls.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.go))));
-    stage.querySelector('.viewer-hit.prev')!.addEventListener('click', () => go(-1));
-    stage.querySelector('.viewer-hit.next')!.addEventListener('click', () => go(1));
+    // A tap (not a scroll) on the left or right third turns the page, unless zoomed; two quick taps toggle the zoom.
+    // A single tap waits a moment to make sure it is not the first of two.
+    const DOUBLE_TAP_MS = 280;
+    let tapTimer = 0;
+    stage.addEventListener('click', (e) => {
+      if (tapTimer) {
+        clearTimeout(tapTimer);
+        tapTimer = 0;
+        setZoom(!isZoomed(), { x: e.clientX, y: e.clientY });
+        return;
+      }
+      const x = (e.clientX - stage.getBoundingClientRect().left) / stage.clientWidth;
+      tapTimer = window.setTimeout(() => {
+        tapTimer = 0;
+        if (isZoomed()) return;
+        if (x < 1 / 3) go(-1);
+        else if (x > 2 / 3) go(1);
+      }, DOUBLE_TAP_MS);
+    });
     addEventListener('keydown', (e) => {
       if ((e.target as HTMLElement).closest('input, textarea, select') || e.altKey || e.metaKey || e.ctrlKey) return;
       if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
       if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
     });
 
-    const setFit = (width: boolean) => {
-      root.dataset.fit = width ? 'width' : 'height';
-      fit.textContent = width ? 'Ver página entera' : 'Ajustar al ancho';
-      store.set('reader-fit', root.dataset.fit);
-    };
-    setFit(store.get('reader-fit') === 'width' || matchMedia('(max-width: 640px)').matches);
-    fit.addEventListener('click', () => { setFit(root.dataset.fit !== 'width'); show(page); });
-
     full.hidden = !document.fullscreenEnabled;
     full.addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : root.requestFullscreen()));
-    document.addEventListener('fullscreenchange', () => { full.textContent = document.fullscreenElement ? 'Salir de pantalla completa' : 'Pantalla completa'; });
+    document.addEventListener('fullscreenchange', () => {
+      const on = Boolean(document.fullscreenElement);
+      full.querySelector('.label-long')!.textContent = on ? 'Salir de pantalla completa' : 'Pantalla completa';
+      full.querySelector('.label-short')!.textContent = on ? 'Salir' : 'Completa';
+    });
 
     await show(page);
   }

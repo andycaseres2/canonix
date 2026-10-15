@@ -1,5 +1,5 @@
 ---
-// Site-wide sticky header: logo and main navigation, marking the current section.
+// Site-wide sticky header: logo and main navigation, marking the current section. On phones the links fold into a "Menú" button.
 interface Props { signedIn: boolean; isAdmin: boolean }
 const { signedIn, isAdmin } = Astro.props;
 const path = Astro.url.pathname;
@@ -8,7 +8,8 @@ const cur = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'pa
 <header class="site-header">
     <div class="wrap">
       <a class="logo" href="/" aria-label="Canonix, inicio"><span>CANONIX</span></a>
-      <nav class="nav" aria-label="Principal">
+      <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menú</button>
+      <nav class="nav" id="site-nav" aria-label="Principal">
         <a href="/rutas" aria-current={cur('/rutas')}>Rutas</a>
         <a href="/catalogo" aria-current={cur('/catalogo')}>Catálogo</a>
         {signedIn && <a href="/perfil" aria-current={cur('/perfil')}>Mi progreso</a>}
@@ -19,3 +20,12 @@ const cur = (p: string) => (p === '/' ? path === '/' : path.startsWith(p)) ? 'pa
       </nav>
     </div>
   </header>
+
+<script>
+  const toggle = document.querySelector<HTMLButtonElement>('.nav-toggle');
+  toggle?.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') !== 'true';
+    toggle.setAttribute('aria-expanded', String(open));
+    toggle.closest('.site-header')!.classList.toggle('menu-open', open);
+  });
+</script>

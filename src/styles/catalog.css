@@ -9,7 +9,7 @@
 /* Title page: issues/episodes list */
 .badge.premium { color: var(--ink); background: var(--yellow); border-color: var(--line); }
 .episodes { margin-top: 32px; }
-.episodes-head { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 8px 24px; margin-bottom: 14px; }
+.episodes-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 24px; margin-bottom: 14px; }
 .episodes-head h2 { margin: 0; }
 .episodes-progress { display: flex; align-items: center; gap: 10px; }
 .episodes-progress .bar { width: 160px; }

@@ -8,7 +8,7 @@ const { slug, kind, units, done, logged, locked } = Astro.props;
 const doneSet = new Set(done);
 const read = units.filter((u) => doneSet.has(u.id)).length;
 const pct = units.length ? Math.round((read / units.length) * 100) : 0;
-const word = kind === 'anime' ? 'Episodios' : 'Números';
+const word = 'Episodios';
 const open = kind === 'anime' ? 'Ver' : 'Leer';
 // Consecutive units with the same group name share a heading
 const groups: { name: string | null; units: TitleUnitView[] }[] = [];
@@ -28,7 +28,7 @@ units.forEach((u) => {
       </div>
     )}
   </div>
-  {locked && <p class="panel episodes-locked">Este título es parte del plan premium. Con premium puedes {kind === 'anime' ? 'ver sus episodios' : 'leer sus números'} aquí.</p>}
+  {locked && <p class="panel episodes-locked">Este título es parte del plan premium. Con premium puedes {kind === 'anime' ? 'ver' : 'leer'} sus episodios aquí.</p>}
   {!logged && units.some((u) => u.has_file) && <p class="muted"><a href={`/login?next=/catalogo/${slug}`}>Entra</a> para {kind === 'anime' ? 'verlos' : 'leerlos'} y guardar tu progreso.</p>}
   {units.length === 0 && <p class="muted">Todavía no tiene {word.toLowerCase()}.</p>}
   {groups.map((g) => (

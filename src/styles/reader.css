@@ -1,13 +1,14 @@
 /* Reader: header bar, notices, the comic viewer (CBZ/PDF) and the episode video player. */
-.reader-bar { display: grid; grid-template-columns: 1fr; gap: 6px 16px; align-items: center; margin-bottom: 16px; }
+.reader-bar { display: grid; grid-template-columns: 1fr; gap: 6px 16px; align-items: center; margin: -12px 0 12px; }
 .reader-back { font-weight: 700; font-size: .95rem; }
 .reader-title { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0; }
 .reader-units { display: flex; flex-wrap: wrap; gap: 8px; }
 .reader-units [aria-disabled="true"] { opacity: .4; pointer-events: none; }
 .reader-units [aria-pressed="true"] { background: var(--green); color: #fff; }
+/* Wide screens: back link, title and buttons share one row, leaving the rest of the screen to the page */
 @media (min-width: 760px) {
-  .reader-bar { grid-template-columns: 1fr auto; }
-  .reader-back { grid-column: 1 / -1; }
+  .reader-bar { grid-template-columns: auto minmax(0, 1fr) auto; }
+  .reader-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 }
 .reader-notice { display: grid; gap: 12px; justify-items: start; max-width: 520px; }
 .reader-notice p { margin: 0; }
@@ -18,17 +19,25 @@
 .viewer-status p { margin: 0; }
 .viewer-status .progress { width: min(320px, 100%); }
 .viewer-status.failed .progress { display: none; }
-.viewer-stage { position: relative; display: flex; align-items: center; justify-content: center; }
-.viewer[data-fit="height"] .viewer-stage { height: calc(100dvh - 230px); min-height: 320px; overflow: hidden; }
-.viewer[data-fit="height"] .viewer-page { max-width: 100%; max-height: 100%; width: auto; height: auto; object-fit: contain; }
-.viewer[data-fit="width"] .viewer-page { display: block; width: 100%; height: auto; }
-.viewer:fullscreen .viewer-stage { flex: 1; height: auto; }
-/* Tap the left or right third to turn the page */
+/* --viewer-chrome (site header + controls) is measured by the viewer script, so the reader fills the screen at any size */
+/* The box is as tall as the page, up to the free screen height; a taller page scrolls inside it */
+.viewer-stage { max-height: max(280px, calc(100dvh - var(--viewer-chrome, 230px))); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+/* A page shorter than the box sits in its middle; a taller one starts at the top and scrolls */
+.viewer-page { display: block; flex: none; width: 100%; height: auto; margin-block: auto; }
+/* Our own double tap zooms, so the browser's must not */
+.viewer-stage { touch-action: manipulation; overflow-x: auto; }
+.viewer[data-zoom="on"] .viewer-page { width: 200%; max-width: none; }
+#viewer-zoom[aria-pressed="true"] { background: var(--red); color: #fff; }
+.viewer:fullscreen .viewer-stage { flex: 1; max-height: none; min-height: 0; }
 .viewer-page-error { color: #fff; margin: 0; padding: 24px; }
-.viewer-hit { position: absolute; top: 0; bottom: 0; width: 33%; border: 0; background: none; min-height: 0; cursor: pointer; z-index: 1; }
-.viewer-hit.prev { left: 0; cursor: w-resize; }
-.viewer-hit.next { right: 0; cursor: e-resize; }
 .viewer-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: var(--panel); border-top: 3px solid var(--line); position: sticky; bottom: 0; z-index: 2; }
-.viewer-count { min-width: 5.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.viewer-count { min-width: 4.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .reader-video video { display: block; width: 100%; max-height: calc(100dvh - 200px); background: #000; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
+#viewer-full .label-short { display: none; }
+@media (max-width: 480px) {
+  .viewer-controls { gap: 6px; padding: 8px 6px; }
+  .viewer-count { min-width: 3.8em; }
+  #viewer-full .label-long { display: none; }
+  #viewer-full .label-short { display: inline; }
+}
