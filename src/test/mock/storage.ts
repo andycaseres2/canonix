@@ -24,6 +24,8 @@ export class MockStorage {
   private files = new Map<string, StoredFile>();
   private uploadTokens = new Map<string, Token>();
   private readTokens = new Map<string, Token>();
+  /** Buckets whose remove() fails, to test how endpoints report storage errors. */
+  failRemove = new Set<BucketName>();
 
   private key = (bucket: string, path: string) => `${bucket}/${path}`;
 

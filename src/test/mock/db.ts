@@ -68,6 +68,8 @@ export class MockError extends Error {}
 export class MockDb {
   users: MockUser[] = [];
   storage = new MockStorage();
+  /** Tables whose deletes fail, to test how endpoints report database errors. */
+  failDeletes = new Set<TableName>();
   tables: Record<TableName, Row[]> = {
     profiles: [], media: [], units: [], media_units: [], routes: [], route_sections: [], route_items: [], progress: [], user_routes: [],
   };

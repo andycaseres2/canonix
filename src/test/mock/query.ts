@@ -191,6 +191,7 @@ export class Query implements PromiseLike<Result> {
         return rows;
       }
       case 'delete': {
+        if (this.db.failDeletes.has(this.table)) throw new MockError(`mock: delete failed on "${this.table}"`);
         const rows = this.matching().filter((r) => this.rls.canDelete(this.table, r));
         t[this.table] = t[this.table].filter((r) => !rows.includes(r));
         this.db.cascade(this.table, rows.map((r) => r.id).filter(Boolean));
