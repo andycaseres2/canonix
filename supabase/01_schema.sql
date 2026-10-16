@@ -51,12 +51,12 @@ create trigger guard_profile before update on public.profiles
   for each row execute function public.guard_profile_update();
 
 -- ---------- Catálogo ----------
--- Un título del catálogo: un cómic (serie o arco) o un anime
+-- Un título del catálogo: un cómic o un manga (serie, arco o tomo)
 create table if not exists public.media (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
-  kind text not null check (kind in ('comic','anime')),
-  universe text,                 -- marvel, dc, anime...
+  kind text not null check (kind in ('comic','manga')),
+  universe text,                 -- marvel, dc, manga...
   title text not null,
   credits text,                  -- autores, estudio, notas cortas
   year_label text,               -- "2000" o "2000–2009"
@@ -70,6 +70,12 @@ create table if not exists public.media (
 );
 -- Quién puede leer los archivos del título: 'free' cualquier usuario con cuenta, 'premium' solo premium
 alter table public.media add column if not exists requires_plan text not null default 'free' check (requires_plan in ('free','premium'));
+-- Migración: lo que era "anime" es manga (mismos formatos y lector por páginas que un cómic)
+alter table public.media drop constraint if exists media_kind_check;
+update public.media set kind = 'manga' where kind = 'anime';
+alter table public.media add constraint media_kind_check check (kind in ('comic','manga'));
+-- Cada título viene en episodios o en tomos: decide cómo se nombran y se cuentan sus números
+alter table public.media add column if not exists unit_type text not null default 'episodio' check (unit_type in ('episodio','tomo'));
 
 -- Unidad de lectura/visionado: un número de cómic o un episodio.
 -- La etiqueta es única para que el mismo número cuente en todos los títulos que lo incluyen.
@@ -101,19 +107,33 @@ create table if not exists public.media_units (
 );
 create index if not exists media_units_pos on public.media_units(media_id, position);
 
+-- Migración: las etiquetas "<Serie> - Episodio N" de los antiguos animes (hoy mangas) pasan a "<Serie> #N",
+-- el formato de los episodios de cómics y mangas, para que una nueva subida encuentre la misma unidad.
+-- La etiqueta es única: si "<Serie> #N" ya existe, esa unidad se deja como está (no se fusiona ni se pierde nada).
+update public.units u
+  set label = regexp_replace(u.label, ' - Episodio ([0-9]+)$', ' #\1')
+  where u.label ~ ' - Episodio [0-9]+$'
+    and exists (select 1 from public.media_units mu join public.media m on m.id = mu.media_id
+      where mu.unit_id = u.id and m.kind = 'manga')
+    and not exists (select 1 from public.units o where o.label = regexp_replace(u.label, ' - Episodio ([0-9]+)$', ' #\1'));
+
 -- ---------- Rutas ----------
 create table if not exists public.routes (
   id uuid primary key default gen_random_uuid(),
   slug text unique not null,
   name text not null,
-  universe text not null,        -- marvel, dc, anime
-  kind text not null default 'comic' check (kind in ('comic','anime','mixed')),
+  universe text not null,        -- marvel, dc, manga
+  kind text not null default 'comic' check (kind in ('comic','manga','mixed')),
   description text,
   published boolean not null default false,
   requires_plan text not null default 'free' check (requires_plan in ('free','premium')),
   position int not null default 0,
   created_at timestamptz not null default now()
 );
+-- Migración: las rutas de anime pasan a ser de manga, como sus títulos
+alter table public.routes drop constraint if exists routes_kind_check;
+update public.routes set kind = 'manga' where kind = 'anime';
+alter table public.routes add constraint routes_kind_check check (kind in ('comic','manga','mixed'));
 
 -- Etapas de una ruta ("Años 60", "Extra: Spider-Man"...), con título y descripción
 create table if not exists public.route_sections (

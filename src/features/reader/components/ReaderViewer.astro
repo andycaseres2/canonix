@@ -1,30 +1,35 @@
 ---
 // In-app viewer: comic pages one at a time with keyboard, tap and fit controls, or a video player for episodes.
 // Comics stored by pages load only the pages being read; PDFs load by ranges; older single CBZ files are downloaded whole.
-interface Props { url: string | null; pages: string[] | null; format: string; storageKey: string; nextHref: string | null; nextLabel: string | null }
-const { url, pages, format, storageKey, nextHref, nextLabel } = Astro.props;
+// The page ships only the first batch of signed pages: the rest, and fresh links once these expire, come from `endpoint`.
+interface Props { url: string | null; pages: string[] | null; pageCount: number; endpoint: string; format: string; storageKey: string; nextHref: string | null; nextLabel: string | null }
+const { url, pages, pageCount, endpoint, format, storageKey, nextHref, nextLabel } = Astro.props;
 const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
 ---
 {isVideo ? (
   <div class="reader-video">
-    <video controls playsinline preload="metadata" src={url ?? undefined}></video>
+    <video id="reader-video" controls playsinline preload="metadata" src={url ?? undefined} data-endpoint={endpoint}></video>
     {format === 'mkv' && <p class="muted">Si no se reproduce, tu navegador no soporta MKV. Prueba con Chrome.</p>}
   </div>
 ) : (
-  <section class="viewer" id="viewer" data-url={url ?? undefined} data-pages={pages ? JSON.stringify(pages) : undefined} data-format={format} data-key={storageKey} aria-label="Lector">
+  <section class="viewer" id="viewer" data-url={url ?? undefined} data-pages={pages ? JSON.stringify(pages) : undefined} data-count={pages ? pageCount : undefined} data-endpoint={endpoint} data-format={format} data-key={storageKey} aria-label="Lector">
     <div class="viewer-status" id="viewer-status" role="status">
       <p id="viewer-status-text">Cargando…</p>
       <div class="progress"><span id="viewer-progress"></span></div>
     </div>
     <!-- The page fills the width and scrolls inside this box; tapping its left or right third turns the page, a double tap zooms -->
-    <div class="viewer-stage" id="viewer-stage" hidden></div>
+    <div class="viewer-frame" id="viewer-frame" hidden>
+      <div class="viewer-stage" id="viewer-stage"></div>
+      <div class="viewer-spinner" role="status"><span class="spinner" aria-hidden="true"></span><span>Cargando página…</span></div>
+    </div>
     <div class="viewer-controls" id="viewer-controls" hidden>
+      <button class="btn small yellow" type="button" id="viewer-resume" hidden></button>
       <button class="btn small" type="button" data-go="-1" aria-label="Página anterior">‹</button>
       <span class="viewer-count" id="viewer-count" aria-live="polite"></span>
       <button class="btn small" type="button" data-go="1" aria-label="Página siguiente">›</button>
       <button class="btn small" type="button" id="viewer-zoom" aria-pressed="false">Zoom</button>
       <button class="btn small" type="button" id="viewer-full"><span class="label-long">Pantalla completa</span><span class="label-short">Completa</span></button>
-      {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} hidden>Siguiente: {nextLabel} ›</a>}
+      {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} rel="next" hidden>Siguiente: {nextLabel} ›</a>}
     </div>
   </section>
 )}
@@ -33,6 +38,7 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
   // Only the worker's url: pdf.js itself loads on demand, for PDF files
   import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
   import { comicPages, imageType } from '../pages';
+  import { PAGE_BATCH } from '../../../lib/reader';
 
   /** A comic opened in memory: how many pages it has and how to draw one. */
   type Book = { count: number; draw(index: number, width: number): Promise<HTMLElement> };
@@ -41,6 +47,14 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },
     set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } },
   };
+
+  /** Fresh signed links from the reader endpoint, which checks access exactly like the reader page. */
+  async function fetchLinks<T>(endpoint: string, query = ''): Promise<T> {
+    const res = await fetch(`${endpoint}${query}`, { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error ?? `El servidor respondió ${res.status}.`);
+    return data;
+  }
 
   async function download(url: string, onProgress: (got: number, total: number) => void) {
     const res = await fetch(url);
@@ -85,8 +99,24 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     };
   }
 
-  /** Pages stored as images: each one is fetched when shown, the next two are preloaded, far ones are let go. */
-  function openPaged(urls: string[]): Book {
+  /**
+   * Pages stored as images: each one is fetched when shown, the next two are preloaded, far ones are let go.
+   * Signed links come in batches of PAGE_BATCH from the endpoint, the next batch asked for before the reader gets there.
+   */
+  function openPaged(count: number, first: string[], endpoint: string): Book {
+    const urls: string[] = [...first];
+    const batches = new Map<number, Promise<void>>();
+    /** Signs the batch holding page i, unless its link is known; `fresh` signs it again (an expired link). */
+    const sign = (i: number, fresh = false) => {
+      const from = i - (i % PAGE_BATCH);
+      if (!fresh && urls[i]) return Promise.resolve();
+      if (!batches.has(from)) {
+        batches.set(from, fetchLinks<{ pages: string[] }>(endpoint, `?from=${from}&count=${PAGE_BATCH}`)
+          .then(({ pages }) => pages.forEach((u, k) => { urls[from + k] = u; }))
+          .finally(() => batches.delete(from)));
+      }
+      return batches.get(from)!;
+    };
     const loaded = new Map<number, HTMLImageElement>();
     const load = (i: number) => {
       if (!loaded.has(i)) {
@@ -97,13 +127,28 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       }
       return loaded.get(i)!;
     };
+    const decoded = async (i: number) => {
+      await sign(i);
+      const img = load(i);
+      // A page that failed is forgotten, so coming back to it tries again
+      await img.decode().catch(() => { if (!img.naturalWidth) { loaded.delete(i); throw new Error('page'); } });
+      return img;
+    };
     return {
-      count: urls.length,
+      count,
       async draw(i) {
-        const img = load(i);
-        // A page that failed is forgotten, so coming back to it tries again
-        await img.decode().catch(() => { if (!img.naturalWidth) { loaded.delete(i); throw new Error('page'); } });
-        [i + 1, i + 2].filter((j) => j < urls.length).forEach(load);
+        let img: HTMLImageElement;
+        try {
+          img = await decoded(i);
+        } catch {
+          // Most likely an expired link: sign that batch again once and retry
+          const from = i - (i % PAGE_BATCH);
+          for (let j = from; j < from + PAGE_BATCH; j++) loaded.delete(j);
+          await sign(i, true);
+          img = await decoded(i);
+        }
+        [i + 1, i + 2].filter((j) => j < count).forEach((j) => sign(j).then(() => load(j), () => undefined));
+        if (i + PAGE_BATCH / 2 < count) sign(i + PAGE_BATCH / 2).catch(() => undefined);
         // Keep decoded images only around the current page; the browser cache still has the bytes
         for (const j of loaded.keys()) if (j < i - 2 || j > i + 3) loaded.delete(j);
         return img;
@@ -111,28 +156,66 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     };
   }
 
-  /** PDFs load by HTTP ranges: pdf.js asks only for the parts of the file the shown pages need. */
-  async function openPdf(url: string, onProgress: (got: number, total: number) => void): Promise<Book> {
+  /**
+   * PDFs load by HTTP ranges: pdf.js asks only for the parts of the file the shown pages need.
+   * Those ranges fail once the signed link expires, so a page that fails reopens the file with a fresh link and retries once.
+   */
+  async function openPdf(url: string, onProgress: (got: number, total: number) => void, refresh: () => Promise<string>): Promise<Book> {
     const pdfjs = await import('pdfjs-dist');
     pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-    const task = pdfjs.getDocument({ url, disableAutoFetch: true, disableStream: true, rangeChunkSize: 1 << 20 });
-    task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => onProgress(loaded, total);
-    const doc = await task.promise;
+    const load = async (src: string) => {
+      const task = pdfjs.getDocument({ url: src, disableAutoFetch: true, disableStream: true, rangeChunkSize: 1 << 20 });
+      task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => onProgress(loaded, total);
+      return { task, doc: await task.promise };
+    };
+    let pdf = await load(url).catch(async () => load(await refresh()));
+    let reopening: Promise<void> | null = null;
+    const reopen = () => (reopening ??= (async () => {
+      const old = pdf;
+      pdf = await load(await refresh());
+      old.task.destroy();
+    })().finally(() => { reopening = null; }));
+    const render = async (i: number, width: number) => {
+      const page = await pdf.doc.getPage(i + 1);
+      // Render at the stage width (sharp on retina, capped for memory); CSS scales it like an image
+      const base = page.getViewport({ scale: 1 });
+      const scale = Math.min((width * devicePixelRatio) / base.width, 2400 / base.width);
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.floor(viewport.width);
+      canvas.height = Math.floor(viewport.height);
+      await page.render({ canvas, viewport }).promise;
+      return canvas;
+    };
     return {
-      count: doc.numPages,
+      count: pdf.doc.numPages,
       async draw(i, width) {
-        const page = await doc.getPage(i + 1);
-        // Render at the stage width (sharp on retina, capped for memory); CSS scales it like an image
-        const base = page.getViewport({ scale: 1 });
-        const scale = Math.min((width * devicePixelRatio) / base.width, 2400 / base.width);
-        const viewport = page.getViewport({ scale });
-        const canvas = document.createElement('canvas');
-        canvas.width = Math.floor(viewport.width);
-        canvas.height = Math.floor(viewport.height);
-        await page.render({ canvas, viewport }).promise;
-        return canvas;
+        try {
+          return await render(i, width);
+        } catch {
+          await reopen();
+          return render(i, width);
+        }
       },
     };
+  }
+
+  /** A video whose link expires mid-episode gets a fresh one and continues where it stopped (at most once a minute). */
+  function keepVideoFresh(video: HTMLVideoElement, endpoint: string) {
+    let last = 0;
+    video.addEventListener('error', async () => {
+      if (Date.now() - last < 60_000) return;
+      last = Date.now();
+      const at = video.currentTime, playing = !video.paused;
+      try {
+        const { url } = await fetchLinks<{ url: string }>(endpoint);
+        video.addEventListener('loadedmetadata', () => {
+          video.currentTime = at;
+          if (playing) video.play().catch(() => undefined);
+        }, { once: true });
+        video.src = url;
+      } catch { /* the player keeps showing its own error */ }
+    });
   }
 
   async function open(root: HTMLElement) {
@@ -141,7 +224,8 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     const stage = $('viewer-stage'), controls = $('viewer-controls'), count = $('viewer-count');
     const full = $<HTMLButtonElement>('viewer-full');
     const nextLink = document.getElementById('viewer-next');
-    const { url, format, key } = root.dataset as { url: string; format: string; key: string };
+    const { url, format, key, endpoint } = root.dataset as { url: string; format: string; key: string; endpoint: string };
+    const refresh = async () => (await fetchLinks<{ url: string }>(endpoint)).url;
     const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
     const progress = (verb: string) => (got: number, total: number) => {
       statusText.textContent = total ? `${verb} ${mb(got)} de ${mb(total)} MB…` : `${verb} ${mb(got)} MB…`;
@@ -150,12 +234,12 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
 
     let book: Book;
     try {
-      if (root.dataset.pages) book = openPaged(JSON.parse(root.dataset.pages) as string[]);
-      else if (format === 'pdf') book = await openPdf(url, progress('Cargando'));
-      else if (format === 'cbr') throw new Error('Este episodio está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
+      if (root.dataset.pages) book = openPaged(Number(root.dataset.count), JSON.parse(root.dataset.pages) as string[], endpoint);
+      else if (format === 'pdf') book = await openPdf(url, progress('Cargando'), refresh);
+      else if (format === 'cbr') throw new Error('Este archivo está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
       else {
         // Older issues stored as one CBZ: the whole archive is needed before any page
-        const bytes = await download(url, progress('Descargando'));
+        const bytes = await download(url, progress('Descargando')).catch(async () => download(await refresh(), progress('Descargando')));
         statusText.textContent = 'Abriendo…';
         book = await openCbz(bytes);
       }
@@ -166,8 +250,9 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       return;
     }
 
+    const frame = $('viewer-frame');
     status.hidden = true;
-    stage.hidden = false;
+    frame.hidden = false;
     controls.hidden = false;
 
     // Size the page box to what is left below the reader bar (title, back link) and above the controls, so the whole reader fits the screen
@@ -175,14 +260,23 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     fitScreen();
     addEventListener('resize', fitScreen);
 
-    let page = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
+    // Reading always starts at the cover; where the reader left off is offered as a button
+    const saved = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
+    const resume = $<HTMLButtonElement>('viewer-resume');
+    resume.textContent = `Seguir en pág. ${saved + 1}`;
+    resume.hidden = saved === 0;
+    resume.addEventListener('click', () => go(saved - page));
+
+    let page = 0;
     let drawing = 0;
     const show = async (i: number) => {
       page = Math.min(Math.max(i, 0), book.count - 1);
       const ticket = ++drawing;
       count.textContent = `${page + 1} / ${book.count}`;
-      store.set(key, String(page));
+      if (page > 0) { store.set(key, String(page)); if (!resume.hidden) { resume.hidden = true; fitScreen(); } }
       if (nextLink) nextLink.hidden = page < book.count - 1;
+      // The loading sign shows only when the page takes a moment, so cached pages turn without a flicker
+      const slow = window.setTimeout(() => frame.classList.add('loading'), 150);
       let el: HTMLElement;
       try {
         el = await book.draw(page, stage.clientWidth);
@@ -190,6 +284,8 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
         el = Object.assign(document.createElement('p'), { className: 'viewer-page-error', textContent: `No se pudo mostrar la página ${page + 1}.` });
       }
       if (ticket !== drawing) return; // a later turn already won
+      clearTimeout(slow);
+      frame.classList.remove('loading');
       el.classList.add('viewer-page');
       el.setAttribute('aria-label', `Página ${page + 1} de ${book.count}`);
       stage.replaceChildren(el);
@@ -253,4 +349,6 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
   // Last, so every helper above is initialized: paged comics open without awaiting anything first
   const viewer = document.getElementById('viewer');
   if (viewer) open(viewer);
+  const video = document.getElementById('reader-video') as HTMLVideoElement | null;
+  if (video?.dataset.endpoint) keepVideoFresh(video, video.dataset.endpoint);
 </script>

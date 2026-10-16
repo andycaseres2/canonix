@@ -24,10 +24,19 @@
 .viewer-stage { max-height: max(280px, calc(100dvh - var(--viewer-chrome, 230px))); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
 /* A page shorter than the box sits in its middle; a taller one starts at the top and scrolls */
 .viewer-page { display: block; flex: none; width: 100%; height: auto; margin-block: auto; }
+/* While a page loads: a sign over the box (or an empty box of some height on the first page) */
+.viewer-frame { position: relative; }
+.viewer-spinner { display: none; position: absolute; inset: 0; place-content: center; justify-items: center; gap: 12px; color: #fff; font-weight: 700; background: rgb(18 23 43 / .55); pointer-events: none; }
+.viewer-frame.loading .viewer-spinner { display: grid; }
+.viewer-frame.loading .viewer-stage:empty { min-height: min(60vh, 480px); }
+.spinner { width: 40px; height: 40px; border: 4px solid rgb(255 255 255 / .25); border-top-color: var(--yellow); border-radius: 50%; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
 /* Our own double tap zooms, so the browser's must not */
 .viewer-stage { touch-action: manipulation; overflow-x: auto; }
 .viewer[data-zoom="on"] .viewer-page { width: 200%; max-width: none; }
 #viewer-zoom[aria-pressed="true"] { background: var(--red); color: #fff; }
+.viewer:fullscreen .viewer-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .viewer:fullscreen .viewer-stage { flex: 1; max-height: none; min-height: 0; }
 .viewer-page-error { color: #fff; margin: 0; padding: 24px; }
 .viewer-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: var(--panel); border-top: 3px solid var(--line); position: sticky; bottom: 0; z-index: 2; }

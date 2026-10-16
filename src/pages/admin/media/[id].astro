@@ -5,7 +5,10 @@ import UnitsUploadSection from '../../../features/admin-titles/components/UnitsU
 import UnitsList from '../../../features/admin-titles/components/UnitsList.astro';
 import CoverEditor from '../../../features/admin-titles/components/CoverEditor.astro';
 import TitleDataForm from '../../../features/admin-titles/components/TitleDataForm.astro';
+import DeleteTitleZone from '../../../features/admin-titles/components/DeleteTitleZone.astro';
 import type { TitleRecord, TitleUnit, UnitGroup } from '../../../features/admin-titles/types';
+import { unitWords } from '../../../lib/kinds';
+import { parseUnitLabel } from '../../../lib/uploads';
 const { supabase } = Astro.locals;
 const { data } = await supabase.from('media').select('*').eq('id', Astro.params.id!).maybeSingle();
 if (!data) return Astro.redirect('/admin/media?error=' + encodeURIComponent('Título no encontrado'));
@@ -20,25 +23,26 @@ mu.forEach((u) => {
   if (!last || last.name !== u.group_name) groups.push({ name: u.group_name, units: [u] });
   else last.units.push(u);
 });
-const unitWord = 'episodios';
+const words = unitWords(m.unit_type);
 const withFile = mu.filter((u) => u.units?.file_path).length;
-// Prefill the series with the name the existing numbers use ("Batman #404" -> "Batman"), else the title
+// Prefill the series with the name the existing numbers use ("Batman #404" or "Berserk - Tomo 3"), else the title
 const firstLabel: string | undefined = mu[0]?.units?.label;
-const seriesGuess = firstLabel?.match(m.kind === 'anime' ? /^(.*) - Episodio \d+$/ : /^(.*) #\d+$/)?.[1] ?? m.title;
+const seriesGuess = (firstLabel && parseUnitLabel(firstLabel)?.series) || m.title;
 ---
 <Layout title={`${m.title} · Admin`}>
   <p class="back-link"><a href="/admin/media">← Catálogo</a></p>
   <h1>{m.title}</h1>
   <div class="split">
     <section>
-      <UnitsUploadSection mediaId={m.id} kind={m.kind} unitWord={unitWord} series={seriesGuess} />
-      <UnitsHeader unitWord={unitWord} total={mu.length} withFile={withFile} />
-      <UnitsList mediaId={m.id} unitWord={unitWord} groups={groups} />
+      <UnitsUploadSection mediaId={m.id} unitType={m.unit_type} series={seriesGuess} />
+      <UnitsHeader unitWord={words.many} total={mu.length} withFile={withFile} />
+      <UnitsList mediaId={m.id} unitWord={words.many} groups={groups} />
     </section>
 
     <section>
       <CoverEditor mediaId={m.id} title={m.title} coverUrl={m.cover_url} />
       <TitleDataForm title={m} />
+      <DeleteTitleZone mediaId={m.id} />
     </section>
   </div>
 </Layout>

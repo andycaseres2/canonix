@@ -1,0 +1,13 @@
+---
+// Danger zone that deletes the title (after a confirm dialog).
+import DangerZone from '../../../components/ui/DangerZone.astro';
+interface Props { mediaId: string }
+const { mediaId } = Astro.props;
+const warning = 'Se borra el título, sus archivos que no estén en otros títulos y el progreso de los lectores en ellos. También sale de todas las rutas. No se puede deshacer.';
+---
+<DangerZone title="Borrar título" description={warning}>
+  <form method="post" action="/api/admin/media" data-confirm={warning} data-confirm-title="¿Borrar título?" data-confirm-label="Borrar título" data-confirm-danger>
+    <input type="hidden" name="action" value="delete" /><input type="hidden" name="id" value={mediaId} />
+    <button class="btn small danger" type="submit">Borrar título</button>
+  </form>
+</DangerZone>

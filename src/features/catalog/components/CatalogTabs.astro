@@ -1,9 +1,0 @@
----
-// Kind filter tabs for the catalog; `current` is the active `tipo` ('' for all).
-interface Props { current: string }
-const { current } = Astro.props;
-const tabs = [['', 'Todo'], ['comic', 'Cómics'], ['anime', 'Anime']];
----
-<div class="admin-nav" role="tablist">
-  {tabs.map(([value, label]) => <a href={value ? `/catalogo?tipo=${value}` : '/catalogo'} aria-current={current === value ? 'page' : undefined}>{label}</a>)}
-</div>

@@ -1,6 +1,8 @@
 /** Shapes the catalog admin pages pass to their components (rows come untyped from Supabase). */
 
-export type TitleKind = 'comic' | 'anime';
+import type { Kind, UnitType } from '../../lib/kinds';
+
+export type TitleKind = Kind;
 
 /** One row of the titles table. */
 export type TitleListItem = {
@@ -18,6 +20,7 @@ export type TitleRecord = {
   id: string;
   slug: string;
   kind: TitleKind;
+  unit_type: UnitType;
   title: string;
   universe: string | null;
   year_label: string | null;

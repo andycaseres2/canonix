@@ -69,6 +69,7 @@ export function createMockClient(db: MockDb, session: SessionStore) {
         },
         async remove(paths: string[]) {
           if (!rls().isAdmin) return { data: [], error: null };
+          if (db.storage.failRemove.has(bucket)) return { data: null, error: { message: 'mock: remove failed' } };
           return { data: db.storage.remove(bucket, paths).map((name) => ({ name })), error: null };
         },
       };

@@ -3,7 +3,7 @@ import { POST as uploads } from '../pages/api/admin/uploads';
 import { POST as episodes } from '../pages/api/admin/episodes';
 import type { MockDb, Row } from '../test/mock/db';
 import { ADMIN, as, fixture } from '../test/mock/fixture';
-import { UNIT_FORMATS, detectNumber, formatList, pickExtensions, unitFileMeta, unitLabel } from './uploads';
+import { UNIT_FORMATS, UNIT_PICK_EXTENSIONS, UNIT_FORMAT_LIST, detectNumber, parseUnitLabel, unitFileMeta, unitLabel } from './uploads';
 
 const ORIGIN = 'http://x';
 
@@ -36,6 +36,9 @@ describe('detectNumber', () => {
     ['Watchmen 1986.pdf', null],
     ['portada.cbz', null],
     ['2.cbz', 2],
+    ['Berserk Tomo 05 - 2a edición.cbz', 5],
+    ['Berserk Vol. 07 parte 2.pdf', 7],
+    ['Berserk Volumen 9 v2.cbz', 9],
   ])('%s -> %s', (name, n) => {
     expect(detectNumber(name)).toBe(n);
   });
@@ -55,11 +58,10 @@ describe('unitFileMeta', () => {
 });
 
 describe('unit formats', () => {
-  it('stores comics only as CBZ or PDF, but lets the admin pick CBR files to convert', () => {
-    expect(Object.keys(UNIT_FORMATS.comic)).toEqual(['cbz', 'pdf']);
-    expect(pickExtensions('comic')).toEqual(['cbz', 'cbr', 'pdf']);
-    expect(pickExtensions('anime')).toEqual(['mp4', 'webm', 'mkv']);
-    expect(formatList('comic')).toBe('CBZ, CBR o PDF');
+  it('stores comics and mangas only as CBZ or PDF, but lets the admin pick CBR files to convert', () => {
+    expect(Object.keys(UNIT_FORMATS)).toEqual(['cbz', 'pdf']);
+    expect(UNIT_PICK_EXTENSIONS).toEqual(['cbz', 'cbr', 'pdf']);
+    expect(UNIT_FORMAT_LIST).toBe('CBZ, CBR o PDF');
   });
 });
 
@@ -69,9 +71,14 @@ describe('unitLabel', () => {
     expect(unitLabel({ title: 'Batman: Year One', kind: 'comic' }, 404, '   ')).toBe('Batman: Year One #404');
   });
 
-  it('uses #n for comics and Episodio n for anime', () => {
+  it('uses #n for episodes of comics and mangas alike', () => {
     expect(unitLabel({ title: 'Spider-Man', kind: 'comic' }, 5)).toBe('Spider-Man #5');
-    expect(unitLabel({ title: 'Naruto', kind: 'anime' }, 3)).toBe('Naruto - Episodio 3');
+    expect(unitLabel({ title: 'Naruto', kind: 'manga', unit_type: 'episodio' }, 3)).toBe('Naruto #3');
+  });
+
+  it('uses "- Tomo n" for titles that come in volumes', () => {
+    expect(unitLabel({ title: 'Berserk', kind: 'manga', unit_type: 'tomo' }, 3)).toBe('Berserk - Tomo 3');
+    expect(unitLabel({ title: 'Saga Deluxe', kind: 'comic', unit_type: 'tomo' }, 1, 'Saga')).toBe('Saga - Tomo 1');
   });
 });
 
@@ -84,9 +91,18 @@ describe('POST /api/admin/uploads (unit)', () => {
     expect(body.label).toBe('Spider-Man #5');
   });
 
+  it('signs a manga file with the comic formats', async () => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit', media_id: 'm3', number: 2, filename: 'Naruto 002.pdf', content_type: '', size: 10 });
+    expect(status).toBe(200);
+    expect(body.path).toMatch(/^naruto\/00002-\d+\.pdf$/);
+    expect(body.headers['Content-Type']).toBe('application/pdf');
+    expect(body.label).toBe('Naruto #2');
+  });
+
   it.each([
-    ['m1', 'episodio.mp4', 1, 'CBZ, CBR o PDF'],
-    ['m3', 'naruto.cbz', 1, 'MP4, WEBM o MKV'],
+    ['m1', 'episodio.mp4', 1, 'Para un cómic sube archivos CBZ, CBR o PDF.'],
+    ['m3', 'naruto.mp4', 1, 'Para un manga sube archivos CBZ, CBR o PDF.'],
+    ['m3', 'naruto.cbr', 1, 'se convierten a CBZ'],
     ['m1', 'asm.cbr', 1, 'se convierten a CBZ'],
     ['m1', 'asm.cbz', -1, 'número'],
     ['m1', 'asm.cbz', 1.5, 'número'],
@@ -101,13 +117,13 @@ describe('POST /api/admin/episodes', () => {
   it('registers each uploaded file as a unit of the title, so the count follows the files', async () => {
     const db = fixture();
     const before = unitsOf(db, 'm3').length;
-    expect((await uploadUnit(db, 'm3', 2, 'Naruto 002.mp4')).status).toBe(200);
-    expect((await uploadUnit(db, 'm3', 3, 'Naruto 003.mp4', 'Temporada 1')).status).toBe(200);
+    expect((await uploadUnit(db, 'm3', 2, 'Naruto 002.cbz')).status).toBe(200);
+    expect((await uploadUnit(db, 'm3', 3, 'Naruto 003.pdf', 'Tomo 1')).status).toBe(200);
     const rows = unitsOf(db, 'm3');
     expect(rows).toHaveLength(before + 2);
     const ep3 = rows.find((r) => r.short === '3')!;
-    expect(ep3).toMatchObject({ group_name: 'Temporada 1', unit: { label: 'Naruto - Episodio 3', file_format: 'mp4', file_size: 4 } });
-    expect(ep3.unit.file_path).toMatch(/^naruto\/00003-\d+\.mp4$/);
+    expect(ep3).toMatchObject({ group_name: 'Tomo 1', unit: { label: 'Naruto #3', file_format: 'pdf', file_size: 4 } });
+    expect(ep3.unit.file_path).toMatch(/^naruto\/00003-\d+\.pdf$/);
     expect(ep3.position).toBeGreaterThan(rows.find((r) => r.short === '2')!.position);
   });
 
@@ -164,16 +180,16 @@ describe('POST /api/admin/episodes', () => {
 const pageList = (n: number, ext = 'jpg') => Array.from({ length: n }, (_, i) => ({ name: `${String(i + 1).padStart(3, '0')}.${ext}`, content_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`, size: 3 }));
 
 /** Sign, upload and register a comic split into pages, the way the admin page does. `skip` leaves pages out of the upload. */
-async function uploadPages(db: MockDb, media_id: string, number: number, count: number, skip: string[] = []) {
+async function uploadPages(db: MockDb, media_id: string, number: number, count: number, skip: string[] = [], source = 'cbz') {
   const pages = pageList(count);
-  const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source: 'cbz', pages });
+  const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source, pages });
   if (signed.status !== 200) return { signed, done: signed };
   for (const t of signed.body.targets) {
     if (skip.includes(t.name)) continue;
     const token = new URL(t.uploadUrl, ORIGIN).searchParams.get('token')!;
     expect(db.storage.acceptUpload(token, new Uint8Array(3), t.headers['Content-Type'])).toBeNull();
   }
-  const done = await json(episodes, db, { action: 'complete', media_id, number, folder: signed.body.folder, pages: pages.map((p) => p.name), source: 'cbz' });
+  const done = await json(episodes, db, { action: 'complete', media_id, number, folder: signed.body.folder, pages: pages.map((p) => p.name), source });
   return { signed, done };
 }
 
@@ -188,8 +204,14 @@ describe('POST /api/admin/uploads (unit-pages)', () => {
     expect(body.targets[0].uploadUrl).toContain(`/object/upload/sign/content/${body.folder}001.jpg?token=`);
   });
 
+  it('signs the pages of a manga too', async () => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit-pages', media_id: 'm3', number: 4, source: 'cbz', pages: pageList(2) });
+    expect(status).toBe(200);
+    expect(body.folder).toMatch(/^naruto\/00004-\d+\/$/);
+    expect(body.label).toBe('Naruto #4');
+  });
+
   it.each([
-    ['m3', pageList(2), 'cómic'],
     ['m1', [], 'páginas'],
     ['m1', pageList(2001), '2000'],
     ['m1', [{ name: '001.txt', content_type: 'text/plain', size: 3 }], 'imagen'],
@@ -211,6 +233,32 @@ describe('POST /api/admin/episodes (pages)', () => {
     const unit = db.tables.units.find((u) => u.label === 'Spider-Man #8')!;
     expect(unit).toMatchObject({ file_path: signed.body.folder, pages: ['001.jpg', '002.jpg', '003.jpg'], file_format: 'cbz', file_size: 9 });
     expect(unitsOf(db, 'm1').some((r) => r.unit_id === unit.id && r.short === '8')).toBe(true);
+  });
+
+  it('names the units of a title that comes in volumes "- Tomo n", single file or pages', async () => {
+    const db = fixture();
+    db.tables.media.find((m) => m.id === 'm3')!.unit_type = 'tomo';
+    expect((await uploadUnit(db, 'm3', 2, 'Naruto Tomo 2.cbz')).body).toMatchObject({ ok: true, label: 'Naruto - Tomo 2' });
+    const { signed, done } = await uploadPages(db, 'm3', 3, 1);
+    expect(signed.body.label).toBe('Naruto - Tomo 3');
+    expect(done.body).toMatchObject({ ok: true, label: 'Naruto - Tomo 3' });
+    expect(unitsOf(db, 'm3').map((r) => r.unit.label)).toEqual(['Naruto #1', 'Naruto - Tomo 2', 'Naruto - Tomo 3']);
+  });
+
+  it('calls a bad number by the title\'s word', async () => {
+    const db = fixture();
+    db.tables.media.find((m) => m.id === 'm3')!.unit_type = 'tomo';
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm3', number: -1, path: 'x' })).body.error).toBe('Tomo inválido.');
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: -1, path: 'x' })).body.error).toBe('Episodio inválido.');
+  });
+
+  it('registers the pages of a manga', async () => {
+    const db = fixture();
+    const { signed, done } = await uploadPages(db, 'm3', 4, 2);
+    expect(done.status).toBe(200);
+    const unit = db.tables.units.find((u) => u.label === 'Naruto #4')!;
+    expect(unit).toMatchObject({ file_path: signed.body.folder, pages: ['001.jpg', '002.jpg'], file_format: 'cbz' });
+    expect(unitsOf(db, 'm3').some((r) => r.unit_id === unit.id && r.short === '4')).toBe(true);
   });
 
   it('refuses to register when a page is missing and leaves the unit untouched', async () => {
@@ -255,5 +303,90 @@ describe('POST /api/admin/episodes (pages)', () => {
     expect(unit).toMatchObject({ file_path: null, pages: null, file_format: null, file_size: null });
     expect(db.storage.read('content', `${signed.body.folder}001.jpg`)).toBeNull();
     expect(db.storage.read('content', `${signed.body.folder}002.jpg`)).toBeNull();
+  });
+});
+
+describe('pages converted from a PDF', () => {
+  it('records a PDF split into pages with its source format', async () => {
+    const db = fixture();
+    const { done } = await uploadPages(db, 'm1', 7, 3, [], 'pdf');
+    expect(done.status).toBe(200);
+    const unit = db.tables.units.find((u) => u.label === 'Spider-Man #7')!;
+    expect(unit).toMatchObject({ file_format: 'pdf', pages: ['001.jpg', '002.jpg', '003.jpg'] });
+    expect(unit.file_path).toMatch(/^asm\/00007-\d+\/$/);
+  });
+
+  it('still records an unknown source as CBZ', async () => {
+    const db = fixture();
+    await uploadPages(db, 'm1', 8, 2, [], 'zip');
+    expect(db.tables.units.find((u) => u.label === 'Spider-Man #8')).toMatchObject({ file_format: 'cbz' });
+  });
+});
+
+describe('POST /api/admin/episodes (discard_folder)', () => {
+  /** Signs `count` pages and uploads only the first `uploaded`, like an upload that failed halfway. */
+  async function partial(db: MockDb, media_id: string, number: number, count: number, uploaded: number) {
+    const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source: 'cbz', pages: pageList(count) });
+    for (const t of signed.body.targets.slice(0, uploaded)) {
+      const token = new URL(t.uploadUrl, ORIGIN).searchParams.get('token')!;
+      expect(db.storage.acceptUpload(token, new Uint8Array(3), t.headers['Content-Type'])).toBeNull();
+    }
+    return signed.body.folder as string;
+  }
+  const stored = (db: MockDb, folder: string, n: number) =>
+    pageList(n).map((p) => db.storage.read('content', `${folder}${p.name}`) !== null);
+
+  it('deletes the pages of the title\'s own folder that no unit uses', async () => {
+    const db = fixture();
+    const folder = await partial(db, 'm1', 8, 3, 2);
+    await new Promise((r) => setTimeout(r, 2));
+    const other = await partial(db, 'm1', 8, 1, 1);
+    expect(stored(db, folder, 2)).toEqual([true, true]);
+    const { status, body } = await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 8, folder });
+    expect(status).toBe(200);
+    expect(body).toEqual({ ok: true, removed: 2 });
+    expect(stored(db, folder, 3)).toEqual([false, false, false]);
+    expect(stored(db, other, 1)).toEqual([true]);
+    expect(db.tables.units.some((u) => u.label === 'Spider-Man #8')).toBe(false);
+  });
+
+  it('refuses a folder a unit points at and leaves its pages', async () => {
+    const db = fixture();
+    const { signed } = await uploadPages(db, 'm1', 9, 2);
+    const { status, body } = await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 9, folder: signed.body.folder });
+    expect(status).toBe(409);
+    expect(body.error).toBe('Esa carpeta está en uso.');
+    expect(stored(db, signed.body.folder, 2)).toEqual([true, true]);
+    expect(db.tables.units.find((u) => u.label === 'Spider-Man #9')).toMatchObject({ file_path: signed.body.folder, pages: ['001.jpg', '002.jpg'] });
+  });
+
+  it.each([
+    ['another title', (f: string) => f],
+    ['a path that climbs out', (f: string) => `asm/00008-1/../../${f}`],
+    ['the folder without its trailing slash', (f: string) => f.replace(/\/$/, '')],
+  ])('refuses %s and leaves its pages', async (_, make) => {
+    const db = fixture();
+    const foreign = await partial(db, 'm2', 8, 2, 2);
+    const { status, body } = await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 8, folder: make(foreign) });
+    expect(status).toBe(400);
+    expect(body.error).toBe('Carpeta no válida.');
+    expect(stored(db, foreign, 2)).toEqual([true, true]);
+  });
+
+  it('refuses a folder of another number of the same title', async () => {
+    const db = fixture();
+    const folder = await partial(db, 'm1', 8, 1, 1);
+    expect((await json(episodes, db, { action: 'discard_folder', media_id: 'm1', number: 9, folder })).body).toEqual({ error: 'Carpeta no válida.' });
+    expect(stored(db, folder, 1)).toEqual([true]);
+  });
+});
+
+describe('parseUnitLabel', () => {
+  it('reads back the labels unitLabel builds and nothing else', () => {
+    expect(parseUnitLabel('Batman #404')).toEqual({ series: 'Batman', n: 404, type: 'episodio' });
+    expect(parseUnitLabel('Berserk - Tomo 3')).toEqual({ series: 'Berserk', n: 3, type: 'tomo' });
+    expect(parseUnitLabel('X-Men - Tomo 2 #5')).toEqual({ series: 'X-Men - Tomo 2', n: 5, type: 'episodio' });
+    expect(parseUnitLabel('ASM Annual')).toBeNull();
+    expect(parseUnitLabel('Naruto - Episodio 4')).toBeNull();
   });
 });

@@ -1,15 +1,15 @@
 ---
-// Title page list of issues/episodes: number, name, file format and size, a read toggle and the "Leer"/"Ver" link.
+// Title page list of issues/episodes: number, name, file format and size, a read toggle and the "Leer" link.
 import ProgressBar from '../../../components/ui/ProgressBar.astro';
 import { fileMeta } from '../../../lib/uploads';
 import type { TitleUnitView } from '../../../lib/reader';
-interface Props { slug: string; kind: 'comic' | 'anime'; units: TitleUnitView[]; done: string[]; logged: boolean; locked: boolean }
-const { slug, kind, units, done, logged, locked } = Astro.props;
+import { unitWords } from '../../../lib/kinds';
+interface Props { slug: string; unitType: string; units: TitleUnitView[]; done: string[]; logged: boolean; locked: boolean }
+const { slug, unitType, units, done, logged, locked } = Astro.props;
 const doneSet = new Set(done);
 const read = units.filter((u) => doneSet.has(u.id)).length;
 const pct = units.length ? Math.round((read / units.length) * 100) : 0;
-const word = 'Episodios';
-const open = kind === 'anime' ? 'Ver' : 'Leer';
+const words = unitWords(unitType);
 // Consecutive units with the same group name share a heading
 const groups: { name: string | null; units: TitleUnitView[] }[] = [];
 units.forEach((u) => {
@@ -20,17 +20,17 @@ units.forEach((u) => {
 ---
 <section class="episodes" id="episodes" data-total={units.length}>
   <div class="episodes-head">
-    <h2>{word} ({units.length})</h2>
+    <h2>{words.Many} ({units.length})</h2>
     {logged && units.length > 0 && (
       <div class="episodes-progress">
         <ProgressBar pct={pct} />
-        <span class="muted"><b id="episodes-read">{read}</b> de {units.length} {kind === 'anime' ? 'vistos' : 'leídos'}</span>
+        <span class="muted"><b id="episodes-read">{read}</b> de {units.length} leídos</span>
       </div>
     )}
   </div>
-  {locked && <p class="panel episodes-locked">Este título es parte del plan premium. Con premium puedes {kind === 'anime' ? 'ver' : 'leer'} sus episodios aquí.</p>}
-  {!logged && units.some((u) => u.has_file) && <p class="muted"><a href={`/login?next=/catalogo/${slug}`}>Entra</a> para {kind === 'anime' ? 'verlos' : 'leerlos'} y guardar tu progreso.</p>}
-  {units.length === 0 && <p class="muted">Todavía no tiene {word.toLowerCase()}.</p>}
+  {locked && <p class="panel episodes-locked">Este título es parte del plan premium. Con premium puedes leer sus {words.many} aquí.</p>}
+  {!logged && units.some((u) => u.has_file) && <p class="muted"><a href={`/login?next=/catalogo/${slug}`}>Entra</a> para leerlos y guardar tu progreso.</p>}
+  {units.length === 0 && <p class="muted">Todavía no tiene {words.many}.</p>}
   {groups.map((g) => (
     <>
       {g.name && <h3 class="episodes-group">{g.name}</h3>}
@@ -43,11 +43,11 @@ units.forEach((u) => {
               <small class="muted">{u.has_file ? fileMeta(u.file_format, u.file_size) : 'Sin archivo todavía'}</small>
             </span>
             {logged && (
-              <button class="episode-check" type="button" data-unit={u.id} aria-pressed={doneSet.has(u.id) ? 'true' : 'false'} aria-label={`${u.label}: ${kind === 'anime' ? 'visto' : 'leído'}`} title={kind === 'anime' ? 'Visto' : 'Leído'}>✓</button>
+              <button class="episode-check" type="button" data-unit={u.id} aria-pressed={doneSet.has(u.id) ? 'true' : 'false'} aria-label={`${u.label}: leído`} title="Leído">✓</button>
             )}
             {u.has_file && !locked
-              ? <a class="btn small primary episode-open" href={`/leer/${slug}/${encodeURIComponent(u.short)}`}>{open}</a>
-              : <span class="btn small episode-open" aria-disabled="true">{locked && u.has_file ? 'Premium' : open}</span>}
+              ? <a class="btn small primary episode-open" href={`/leer/${slug}/${encodeURIComponent(u.short)}`}>Leer</a>
+              : <span class="btn small episode-open" aria-disabled="true">{locked && u.has_file ? 'Premium' : 'Leer'}</span>}
           </li>
         ))}
       </ol>
@@ -85,4 +85,6 @@ units.forEach((u) => {
       button.disabled = false;
     }
   });
+  // Back from the reader the browser may restore this page from memory: reload it so new reads show
+  addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
 </script>

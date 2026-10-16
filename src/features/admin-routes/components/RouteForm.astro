@@ -6,7 +6,7 @@ import FormActions from '../../../components/ui/FormActions.astro';
 import type { RouteRecord } from '../types';
 interface Props { route: RouteRecord }
 const { route: r } = Astro.props;
-const kindLabel = r.kind === 'anime' ? 'anime' : r.kind === 'mixed' ? 'mixta' : 'cómics';
+const kindLabel = r.kind === 'manga' ? 'mangas' : r.kind === 'mixed' ? 'mixta' : 'cómics';
 ---
 <Panel as="form" data-swap="#route-page" class="stack" method="post" action="/api/admin/routes">
   <input type="hidden" name="action" value="update" /><input type="hidden" name="id" value={r.id} />

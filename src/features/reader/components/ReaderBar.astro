@@ -1,13 +1,14 @@
 ---
 // Reader header: back to the title, the unit's name, previous/next units and the "read" toggle.
 import type { ReaderUnit } from '../../../lib/reader';
-interface Props { slug: string; title: string; unit: ReaderUnit; prev: ReaderUnit | null; next: ReaderUnit | null; done: boolean; canMark: boolean }
-const { slug, title, unit, prev, next, done, canMark } = Astro.props;
+import { unitWords } from '../../../lib/kinds';
+interface Props { slug: string; title: string; unitType: string; unit: ReaderUnit; prev: ReaderUnit | null; next: ReaderUnit | null; done: boolean; canMark: boolean }
+const { slug, title, unitType, unit, prev, next, done, canMark } = Astro.props;
 ---
 <header class="reader-bar">
   <a class="reader-back" href={`/catalogo/${slug}`}>← {title}</a>
   <h1 class="reader-title">{unit.label}</h1>
-  <nav class="reader-units" aria-label="Episodios">
+  <nav class="reader-units" aria-label={unitWords(unitType).Many}>
     {prev ? <a class="btn small" href={`/leer/${slug}/${encodeURIComponent(prev.short)}`} rel="prev">‹ {prev.short}</a> : <span class="btn small" aria-disabled="true">‹</span>}
     {canMark && <button class="btn small" type="button" id="reader-done" data-unit={unit.id} aria-pressed={done ? 'true' : 'false'}>{done ? '✓ Leído' : 'Marcar leído'}</button>}
     {next ? <a class="btn small" href={`/leer/${slug}/${encodeURIComponent(next.short)}`} rel="next">{next.short} ›</a> : <span class="btn small" aria-disabled="true">›</span>}
@@ -33,4 +34,13 @@ const { slug, title, unit, prev, next, done, canMark } = Astro.props;
       button.disabled = false;
     }
   });
+
+  // Going on to the next issue/volume marks this one as read. keepalive lets the request finish while the page changes.
+  document.querySelectorAll<HTMLAnchorElement>('a[rel="next"]').forEach((link) => link.addEventListener('click', () => {
+    if (!button || button.getAttribute('aria-pressed') === 'true') return;
+    fetch('/api/progress', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true,
+      body: JSON.stringify({ add: [button.dataset.unit] }),
+    }).catch(() => { /* the read toggle stays available on the next visit */ });
+  }));
 </script>

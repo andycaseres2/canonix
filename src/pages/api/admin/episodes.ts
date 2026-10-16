@@ -1,8 +1,9 @@
 import type { APIRoute } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { unitWords } from '../../../lib/kinds';
 import { UNIT_FORMATS, checkPages, extensionOf, findFile, isUnitNumber, jsonError, listFolder, readJson, removeStored, unitLabel } from '../../../lib/uploads';
 
-type Media = { id: string; slug: string; kind: string; title: string };
+type Media = { id: string; slug: string; kind: string; unit_type: string; title: string };
 type Stored = { file_path: string; file_format: string; file_size: number; pages: string[] | null };
 
 /** "<slug>/00005-<stamp>" as a regex source: uploads of a title and number always start like this. */
@@ -39,8 +40,9 @@ async function attach(sb: SupabaseClient, media: Media, number: number, body: an
 }
 
 /**
- * Step 2 of an issue/episode upload: the uploaded file (or the folder of a comic's pages) becomes
- * (or joins) the unit with that number, so the title's count follows its files. Also removes a unit's file.
+ * Step 2 of an issue/episode/volume upload: the uploaded file (or the folder of a comic's pages) becomes
+ * (or joins) the unit with that number, so the title's count follows its files. Also removes a unit's file,
+ * and discards the folder of a page upload that failed halfway.
  */
 export const POST: APIRoute = async ({ request, url, locals }) => {
   const body = await readJson(request, url);
@@ -50,29 +52,45 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
 
   if (action === 'remove_file') {
     const { data: unit } = await sb.from('units').select('id, file_path, pages').eq('id', String(body.data.unit_id)).maybeSingle();
-    if (!unit) return jsonError(404, 'Episodio no encontrado.');
+    if (!unit) return jsonError(404, 'Entrega no encontrada.');
     const { error } = await sb.from('units').update({ file_path: null, file_format: null, file_size: null, pages: null }).eq('id', unit.id);
     if (error) return jsonError(500, error.message);
     await removeStored(sb, unit).catch((e) => console.error('[episodes.remove_file] files left in storage', unit.file_path, e));
     return Response.json({ ok: true });
   }
-  if (action !== 'complete') return jsonError(400, 'Acción desconocida.');
+  if (action !== 'complete' && action !== 'discard_folder') return jsonError(400, 'Acción desconocida.');
 
-  const { data: media } = await sb.from('media').select('id, slug, kind, title').eq('id', String(body.data.media_id)).maybeSingle();
+  const { data: media } = await sb.from('media').select('id, slug, kind, unit_type, title').eq('id', String(body.data.media_id)).maybeSingle();
   if (!media) return jsonError(404, 'Título no encontrado.');
   const number = body.data.number;
-  if (!isUnitNumber(number)) return jsonError(400, 'Episodio inválido.');
+  if (!isUnitNumber(number)) return jsonError(400, `${unitWords(media.unit_type).One} inválido.`);
+
+  if (action === 'discard_folder') {
+    // An upload that failed halfway: drop the pages that made it, unless a unit already uses the folder
+    const folder = String(body.data.folder ?? '');
+    if (!new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'Carpeta no válida.');
+    const { data: used, error } = await sb.from('units').select('id').eq('file_path', folder).limit(1);
+    if (error) return jsonError(500, error.message);
+    if (used?.length) return jsonError(409, 'Esa carpeta está en uso.');
+    try {
+      const names = [...(await listFolder(sb, 'content', folder)).keys()];
+      await removeStored(sb, { file_path: folder, pages: names });
+      return Response.json({ ok: true, removed: names.length });
+    } catch (e) {
+      return jsonError(500, (e as Error).message);
+    }
+  }
 
   if (body.data.folder !== undefined) {
-    // A comic uploaded page by page: every listed page must be in its folder
+    // A comic or manga uploaded page by page: every listed page must be in its folder
     const folder = String(body.data.folder);
-    if (media.kind !== 'comic' || !new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'No encontramos las páginas subidas.');
+    if (!new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'No encontramos las páginas subidas.');
     const checked = checkPages((Array.isArray(body.data.pages) ? body.data.pages : []).map((name: unknown) => ({ name, size: 1 })));
     if ('error' in checked) return jsonError(400, checked.error);
     const uploaded = await listFolder(sb, 'content', folder);
     const missing = checked.pages.filter((p) => !uploaded.has(p.name)).length;
     if (missing) return jsonError(400, `Faltan ${missing} página${missing === 1 ? '' : 's'} por subir. Vuelve a intentarlo.`);
-    const source = body.data.source === 'cbr' ? 'cbr' : 'cbz';
+    const source = body.data.source === 'cbr' || body.data.source === 'pdf' ? body.data.source : 'cbz';
     const size = checked.pages.reduce((sum, p) => sum + uploaded.get(p.name)!, 0);
     return attach(sb, media, number, body.data, { file_path: folder, file_format: source, file_size: size, pages: checked.pages.map((p) => p.name) });
   }
@@ -80,7 +98,7 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
   const path = String(body.data.path ?? '');
   const ext = extensionOf(path);
   const ownFile = new RegExp(`${ownPrefix(media, number)}\\.[a-z0-9]{1,5}$`);
-  const file = ownFile.test(path) && UNIT_FORMATS[media.kind as 'comic' | 'anime'][ext] ? await findFile(sb, 'content', path) : null;
+  const file = ownFile.test(path) && UNIT_FORMATS[ext] ? await findFile(sb, 'content', path) : null;
   if (!file) return jsonError(400, 'No encontramos el archivo subido.');
   return attach(sb, media, number, body.data, { file_path: path, file_format: ext, file_size: file.size, pages: null });
 };

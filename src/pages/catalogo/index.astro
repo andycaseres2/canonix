@@ -1,19 +1,19 @@
 ---
 import Layout from '../../layouts/Layout.astro';
-import CatalogTabs from '../../features/catalog/components/CatalogTabs.astro';
+import KindTabs from '../../components/ui/KindTabs.astro';
 import CatalogSearch from '../../features/catalog/components/CatalogSearch.astro';
 import CatalogGrid from '../../features/catalog/components/CatalogGrid.astro';
 import type { CatalogMedia } from '../../features/catalog/types';
 const { supabase } = Astro.locals;
 const tipo = Astro.url.searchParams.get('tipo');
-let q = supabase.from('media').select('slug, kind, universe, title, credits, year_label, year_start, cover_url, media_units(count)').order('year_start', { ascending: true }).order('title');
-if (tipo === 'comic' || tipo === 'anime') q = q.eq('kind', tipo);
+let q = supabase.from('media').select('slug, kind, unit_type, universe, title, credits, year_label, year_start, cover_url, media_units(count)').order('year_start', { ascending: true }).order('title');
+if (tipo === 'comic' || tipo === 'manga') q = q.eq('kind', tipo);
 const { data: media } = await q;
 ---
 <Layout title="Catálogo">
   <h1>Catálogo</h1>
-  <p class="lead">Todos los cómics y animes cargados, con sus episodios.</p>
-  <CatalogTabs current={tipo ?? ''} />
+  <p class="lead">Todos los cómics y mangas cargados, con sus episodios o tomos.</p>
+  <KindTabs base="/catalogo" current={tipo ?? ''} />
   <CatalogSearch />
   <CatalogGrid media={(media ?? []) as CatalogMedia[]} />
 </Layout>

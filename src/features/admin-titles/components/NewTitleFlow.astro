@@ -4,6 +4,7 @@
 import Panel from '../../../components/ui/Panel.astro';
 import NumberedStep from '../../../components/ui/NumberedStep.astro';
 import KindPicker from './KindPicker.astro';
+import UnitTypePicker from './UnitTypePicker.astro';
 import TitleBasicsFields from './TitleBasicsFields.astro';
 import CoverPicker from './CoverPicker.astro';
 import UnitUploader from './UnitUploader.astro';
@@ -15,6 +16,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
     <Fragment slot="title">Tipo y nombre</Fragment>
     <Panel class="stack">
       <KindPicker />
+      <UnitTypePicker />
       <TitleBasicsFields />
     </Panel>
   </NumberedStep>
@@ -27,7 +29,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
 
 <NumberedStep n={3}>
   <Fragment slot="title"><span class="unit-title">Episodios</span> <small class="muted">opcional, puedes subirlos después</small></Fragment>
-  <UnitUploader kind="comic" />
+  <UnitUploader />
 </NumberedStep>
 
 <CreateBar />
@@ -36,10 +38,11 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
 
 <script>
   import { appDialog, postJson, putFile, type UploadTarget } from '../scripts/upload';
+  import { kindWord as wordFor, unitWords } from '../../../lib/kinds';
 
   type Queue = {
     ready(): boolean; hasProblems(): boolean; count(): number;
-    setKind(k: 'comic' | 'anime'): void; series: HTMLInputElement;
+    setUnitType(t: string): void; series: HTMLInputElement;
     uploadAll(mediaId: string): Promise<{ done: number; failed: number }>;
   };
 
@@ -57,20 +60,24 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
   let cover: File | null = null;
   let seriesTouched = false;
 
-  const kind = () => (form.elements.namedItem('kind') as RadioNodeList).value as 'comic' | 'anime';
-  const kindWord = () => (kind() === 'anime' ? 'anime' : 'cómic');
+  const kindWord = () => wordFor((form.elements.namedItem('kind') as RadioNodeList).value);
+  const words = () => unitWords((form.elements.namedItem('unit_type') as RadioNodeList).value);
+  const unitTitle = document.querySelector<HTMLElement>('.unit-title')!;
 
   function refresh() {
     const n = queue.count();
-    const units = 'episodio';
+    const { one, many } = words();
     const parts = [titleInput.value.trim() ? `«${titleInput.value.trim()}»` : 'Falta el nombre'];
     parts.push(cover ? 'con portada' : 'sin portada');
-    parts.push(n ? `${n} ${units}${n === 1 ? '' : 's'}` : `sin ${units}s por ahora`);
+    parts.push(n ? `${n} ${n === 1 ? one : many}` : `sin ${many} por ahora`);
     summary.textContent = parts.join(' · ');
   }
 
   form.addEventListener('change', (e) => {
-    if ((e.target as HTMLInputElement).name === 'kind') queue.setKind(kind());
+    if ((e.target as HTMLInputElement).name === 'unit_type') {
+      queue.setUnitType(words().one);
+      unitTitle.textContent = words().Many;
+    }
     refresh();
   });
   titleInput.addEventListener('input', () => {

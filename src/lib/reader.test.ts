@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { MockDb } from '../test/mock/db';
 import { ADMIN, PREMIUM, READER, as, fixture } from '../test/mock/fixture';
-import { getReader, getTitleUnits } from './reader';
+import { PAGE_BATCH, getReader, getTitleUnits } from './reader';
 
 /** Spider-Man (free) #1 and #2 and Naruto (premium) episode 1 get files; FF #1 has none. */
 function withFiles() {
@@ -60,7 +60,7 @@ describe('getReader (paged comics)', () => {
 
   it('signs every page, in order, for a reader of a free title', async () => {
     const r = await read(paged(), READER, 'asm', '1');
-    expect(r).toMatchObject({ state: 'ready', url: null, next: { short: '2' } });
+    expect(r).toMatchObject({ state: 'ready', url: null, next: { short: '2' }, pageCount: 2 });
     expect(r!.pages).toHaveLength(2);
     expect(r!.pages![0]).toMatch(/\/object\/sign\/content\/asm\/00001-1\/001\.jpg\?token=/);
     expect(r!.pages![1]).toMatch(/\/object\/sign\/content\/asm\/00001-1\/002\.png\?token=/);
@@ -70,6 +70,18 @@ describe('getReader (paged comics)', () => {
     expect(await read(paged(), READER, 'naruto', '1')).toMatchObject({ state: 'locked', pages: null });
     expect(await read(paged(), null, 'asm', '1')).toMatchObject({ state: 'login', pages: null });
     expect((await read(paged(), PREMIUM, 'naruto', '1'))!.pages).toHaveLength(1);
+  });
+
+  it('signs only the first batch of a long volume and says how many pages it has', async () => {
+    const db = paged();
+    const names = Array.from({ length: 45 }, (_, i) => `${String(i + 1).padStart(3, '0')}.jpg`);
+    Object.assign(db.tables.units.find((u) => u.id === 'u1')!, { pages: names });
+    const signs = vi.spyOn(db.storage, 'issueReadToken');
+    const r = await read(db, READER, 'asm', '1');
+    expect(r).toMatchObject({ state: 'ready', pageCount: 45 });
+    expect(r!.pages).toHaveLength(PAGE_BATCH);
+    expect(r!.pages![PAGE_BATCH - 1]).toMatch(/\/asm\/00001-1\/020\.jpg\?token=/);
+    expect(signs).toHaveBeenCalledTimes(PAGE_BATCH);
   });
 
   it('keeps single-file units working with a signed url and no pages', async () => {

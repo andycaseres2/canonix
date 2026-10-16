@@ -18,11 +18,11 @@ export function fixture() {
   db.addUser({ id: PREMIUM, email: 'premium@demo.com', password: 'demo1234', plan: 'premium' });
   const t = db.tables;
   t.media.push(
-    { id: 'm1', slug: 'asm', kind: 'comic', title: 'Spider-Man', year_start: 1962, requires_plan: 'free' },
-    { id: 'm2', slug: 'ff', kind: 'comic', title: 'Fantastic Four', year_start: 1961, requires_plan: 'free' },
-    { id: 'm3', slug: 'naruto', kind: 'anime', title: 'Naruto', year_start: 2002, requires_plan: 'premium' },
+    { id: 'm1', slug: 'asm', kind: 'comic', unit_type: 'episodio', title: 'Spider-Man', year_start: 1962, requires_plan: 'free' },
+    { id: 'm2', slug: 'ff', kind: 'comic', unit_type: 'episodio', title: 'Fantastic Four', year_start: 1961, requires_plan: 'free' },
+    { id: 'm3', slug: 'naruto', kind: 'manga', unit_type: 'episodio', title: 'Naruto', year_start: 2002, requires_plan: 'premium' },
   );
-  t.units.push({ id: 'u1', label: 'ASM #1' }, { id: 'u2', label: 'ASM #2' }, { id: 'u3', label: 'FF #1' }, { id: 'u4', label: 'Naruto - Episodio 1' });
+  t.units.push({ id: 'u1', label: 'ASM #1' }, { id: 'u2', label: 'ASM #2' }, { id: 'u3', label: 'FF #1' }, { id: 'u4', label: 'Naruto #1' });
   t.media_units.push(
     { media_id: 'm1', unit_id: 'u2', short: '2', group_name: null, position: 2 },
     { media_id: 'm1', unit_id: 'u1', short: '1', group_name: null, position: 1 },
@@ -32,7 +32,7 @@ export function fixture() {
   t.routes.push(
     { id: 'r1', slug: 'free', name: 'Free', universe: 'marvel', published: true, requires_plan: 'free', position: 1 },
     { id: 'r2', slug: 'draft', name: 'Draft', universe: 'dc', published: false, requires_plan: 'free', position: 2 },
-    { id: 'r3', slug: 'paid', name: 'Paid', universe: 'anime', published: true, requires_plan: 'premium', position: 3 },
+    { id: 'r3', slug: 'paid', name: 'Paid', universe: 'manga', published: true, requires_plan: 'premium', position: 3 },
   );
   t.route_sections.push(
     { id: 's1', route_id: 'r1', title: 'A', description: 'Primera etapa', position: 1 },

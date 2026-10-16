@@ -1,20 +1,22 @@
 ---
-import { formatList, pickExtensions } from '../../../lib/uploads';
+import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS } from '../../../lib/uploads';
+import { unitWords } from '../../../lib/kinds';
 interface Props {
-  kind: 'comic' | 'anime';
+  /** "episodio" or "tomo": the word the queue uses for each file. */
+  unitType?: string;
   /** Title id. Without it the uploader only collects files and a parent script calls uploadAll(). */
   mediaId?: string;
   series?: string;
 }
-const { mediaId, kind, series = '' } = Astro.props;
+const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
 ---
-<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''} data-kind={kind}>
+<div class="panel stack uploader" id="subir" data-media-id={mediaId ?? ''} data-unit-type={unitType}>
   <div class="dropzone" id="unit-drop">
     <label class="btn primary file-pick">
       Elegir archivos
-      <input id="unit-files" type="file" multiple accept={pickExtensions(kind).map((e) => `.${e}`).join(',')} />
+      <input id="unit-files" type="file" multiple accept={UNIT_PICK_EXTENSIONS.map((e) => `.${e}`).join(',')} />
     </label>
-    <p class="muted">o arrástralos aquí · <span id="unit-formats">{formatList(kind)}</span> · un archivo por episodio</p>
+    <p class="muted">o arrástralos aquí · {UNIT_FORMAT_LIST} · un archivo por <span id="unit-word">{unitWords(unitType).one}</span></p>
   </div>
   <div class="row">
     <label class="field">Nombre de la serie <small>así se nombra cada uno: "Batman #404"</small><input id="unit-series" maxlength="150" value={series} /></label>
@@ -35,10 +37,10 @@ const { mediaId, kind, series = '' } = Astro.props;
 
 <script>
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
-  import { extractPages, isComicArchive, type Page } from '../scripts/archive';
-  import { detectNumber, extensionOf, formatBytes, formatList, mapLimit, pickExtensions } from '../../../lib/uploads';
+  import { extractPages, isPagedSource, renderPdfPages, type Page } from '../scripts/archive';
+  import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS, detectNumber, extensionOf, formatBytes, mapLimit } from '../../../lib/uploads';
+  import { unitWords } from '../../../lib/kinds';
 
-  type Kind = 'comic' | 'anime';
   type Item = { file: File; number: number | null; status: 'pending' | 'converting' | 'uploading' | 'done' | 'error'; progress: number; message: string };
 
   const box = document.getElementById('subir')!;
@@ -51,11 +53,9 @@ const { mediaId, kind, series = '' } = Astro.props;
   const groupInput = document.getElementById('unit-group') as HTMLInputElement;
   const startBtn = document.getElementById('unit-start') as HTMLButtonElement | null;
   const clearBtn = document.getElementById('unit-clear') as HTMLButtonElement;
-  let kind = box.dataset.kind as Kind;
+  let words = unitWords(box.dataset.unitType);
   let items: Item[] = [];
   let busy = false;
-
-  const exts = () => pickExtensions(kind);
 
   /** Small DOM builder; text always goes in as text, never as HTML. */
   function el(tag: string, props: Record<string, unknown> = {}, ...children: (Node | string)[]): HTMLElement {
@@ -74,8 +74,8 @@ const { mediaId, kind, series = '' } = Astro.props;
     const seen = new Map<number, number>();
     items.forEach((it) => { if (it.number !== null) seen.set(it.number, (seen.get(it.number) ?? 0) + 1); });
     return items.map((it) =>
-      !exts().includes(extensionOf(it.file.name)) ? `Formato no válido: usa ${formatList(kind)}`
-      : it.number === null ? 'Falta el episodio'
+      !UNIT_PICK_EXTENSIONS.includes(extensionOf(it.file.name)) ? `Formato no válido: usa ${UNIT_FORMAT_LIST}`
+      : it.number === null ? `Falta el ${words.one}`
       : seen.get(it.number)! > 1 ? 'Número repetido'
       : '');
   }
@@ -88,7 +88,7 @@ const { mediaId, kind, series = '' } = Astro.props;
       num.setAttribute('aria-label', `Número de ${it.file.name}`);
       num.addEventListener('change', () => { it.number = num.value === '' ? null : Math.trunc(Number(num.value)); render(); });
       let status: Node;
-      if (it.status === 'converting') status = el('span', { className: 'muted' }, 'Preparando páginas…');
+      if (it.status === 'converting') status = el('span', { className: 'muted' }, it.message || 'Preparando páginas…');
       else if (it.status === 'uploading') {
         const bar = el('span'); bar.style.width = `${Math.round(it.progress * 100)}%`;
         status = el('div', { className: 'progress' }, bar);
@@ -117,7 +117,7 @@ const { mediaId, kind, series = '' } = Astro.props;
   async function uploadOne(mediaId: string, it: Item) {
     const series = seriesInput.value;
     try {
-      if (isComicArchive(it.file)) {
+      if (isPagedSource(it.file)) {
         await uploadPages(mediaId, it, series);
         it.status = 'done';
         render();
@@ -134,11 +134,15 @@ const { mediaId, kind, series = '' } = Astro.props;
     render();
   }
 
-  /** A CBZ/CBR is stored one image per page, so the reader shows page 1 without downloading the whole comic. */
+  /** A CBZ/CBR/PDF is stored one image per page, so the reader shows page 1 without downloading the whole comic. */
   async function uploadPages(mediaId: string, it: Item, series: string) {
-    it.status = 'converting'; render();
-    const pages: Page[] = await extractPages(it.file);
-    const source = extensionOf(it.file.name) === 'cbr' ? 'cbr' : 'cbz';
+    it.status = 'converting'; it.message = ''; render();
+    const ext = extensionOf(it.file.name);
+    const pages: Page[] = ext === 'pdf'
+      ? await renderPdfPages(it.file, (done, total) => { it.message = `Convirtiendo página ${done} de ${total}…`; render(); })
+      : await extractPages(it.file);
+    it.message = '';
+    const source = ext === 'cbr' || ext === 'pdf' ? ext : 'cbz';
     const signed = await postJson<{ folder: string; targets: (UploadTarget & { name: string })[] }>('/api/admin/uploads', {
       kind: 'unit-pages', media_id: mediaId, number: it.number, series, source,
       pages: pages.map((p) => ({ name: p.name, content_type: p.blob.type, size: p.blob.size })),
@@ -152,18 +156,28 @@ const { mediaId, kind, series = '' } = Astro.props;
       const progress = sent.reduce((a, b) => a + b, 0) / total;
       if (progress - last >= 0.01 || progress === 1) { last = progress; it.progress = progress; render(); }
     };
-    await mapLimit(pages.map((p, i) => ({ p, i, target: signed.targets[i] })), 4, async ({ p, i, target }) => {
-      for (let attempt = 1; ; attempt++) {
-        try {
-          await putFile(target, p.blob, (f) => { sent[i] = f * p.blob.size; report(); });
-          sent[i] = p.blob.size; report();
-          return;
-        } catch (e) {
-          if (attempt >= 2) throw new Error(`No se pudo subir la página ${i + 1}: ${(e as Error).message}`);
+    try {
+      // After a failure no new page starts, and the folder is discarded only once the pages in flight settle
+      let failed = null as Error | null;
+      await mapLimit(pages.map((p, i) => ({ p, i, target: signed.targets[i] })), 4, async ({ p, i, target }) => {
+        for (let attempt = 1; !failed; attempt++) {
+          try {
+            await putFile(target, p.blob, (f) => { sent[i] = f * p.blob.size; report(); });
+            sent[i] = p.blob.size; report();
+            return;
+          } catch (e) {
+            if (attempt >= 2) failed = new Error(`No se pudo subir la página ${i + 1}: ${(e as Error).message}`);
+          }
         }
-      }
-    });
-    await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, folder: signed.folder, pages: pages.map((p) => p.name), source, group: groupInput.value });
+      });
+      if (failed) throw failed;
+      await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, folder: signed.folder, pages: pages.map((p) => p.name), source, group: groupInput.value });
+    } catch (e) {
+      // Best effort: the server refuses when a unit already uses the folder
+      await postJson('/api/admin/episodes', { action: 'discard_folder', media_id: mediaId, number: it.number, folder: signed.folder })
+        .catch((err) => console.warn('[uploader] pages left in storage', signed.folder, err));
+      throw e;
+    }
   }
 
   const warnLeave = (e: BeforeUnloadEvent) => { e.preventDefault(); };
@@ -174,10 +188,9 @@ const { mediaId, kind, series = '' } = Astro.props;
     ready: () => items.length > 0 && issues().every((p, i) => !p || items[i].status === 'done'),
     hasProblems: () => issues().some((p, i) => p && items[i].status !== 'done'),
     count: () => items.filter((it) => it.status !== 'done').length,
-    setKind(next: Kind) {
-      kind = next;
-      input.accept = exts().map((e) => `.${e}`).join(',');
-      document.getElementById('unit-formats')!.textContent = formatList(kind);
+    setUnitType(next: string) {
+      words = unitWords(next);
+      document.getElementById('unit-word')!.textContent = words.one;
       render();
     },
     series: seriesInput,

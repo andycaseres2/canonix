@@ -5,9 +5,9 @@ interface Props { profile: Profile | null; showRegister: boolean }
 const { profile, showRegister } = Astro.props;
 ---
 <section class="hero">
-  <p class="lbl">{profile ? `Hola, ${profile.display_name ?? ''}` : 'Cómics y anime'}</p>
-  <p class="big">Lee y mira en el orden correcto</p>
-  <p>Rutas de lectura de Marvel, DC y guías de anime. Marca cada episodio y lleva tu registro.</p>
+  <p class="lbl">{profile ? `Hola, ${profile.display_name ?? ''}` : 'Cómics y manga'}</p>
+  <p class="big">Lee en el orden correcto</p>
+  <p>Rutas de lectura de Marvel, DC y manga. Marca cada entrega y lleva tu registro.</p>
   <p class="row" style="max-width:420px">
     <a class="btn" href="/rutas">Ver rutas</a>
     {showRegister && <a class="btn" href="/registro">Crear cuenta</a>}

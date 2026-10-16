@@ -16,9 +16,10 @@ const { title: m } = Astro.props;
   <Field label="Título"><input name="title" value={m.title} required /></Field>
   <Field label="Slug" hint="parte de la URL"><input name="slug" value={m.slug} required pattern="[a-z0-9-]+" /></Field>
   <div class="row">
-    <Field label="Tipo"><select name="kind"><option value="comic" selected={m.kind === 'comic'}>Cómic</option><option value="anime" selected={m.kind === 'anime'}>Anime</option></select></Field>
-    <Field label="Universo"><input name="universe" value={m.universe ?? ''} /></Field>
+    <Field label="Tipo"><select name="kind"><option value="comic" selected={m.kind === 'comic'}>Cómic</option><option value="manga" selected={m.kind === 'manga'}>Manga</option></select></Field>
+    <Field label="Viene en"><select name="unit_type"><option value="episodio" selected={m.unit_type !== 'tomo'}>Episodios</option><option value="tomo" selected={m.unit_type === 'tomo'}>Tomos</option></select></Field>
   </div>
+  <Field label="Universo"><input name="universe" value={m.universe ?? ''} /></Field>
   <Field label="Acceso" hint="quién puede leer o ver sus archivos"><select name="requires_plan"><option value="free" selected={m.requires_plan !== 'premium'}>Gratis: cualquier usuario con cuenta</option><option value="premium" selected={m.requires_plan === 'premium'}>Premium: solo usuarios premium</option></select></Field>
   <div class="row">
     <Field label="Año"><input name="year_label" value={m.year_label ?? ''} /></Field>

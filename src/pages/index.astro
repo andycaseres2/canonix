@@ -7,7 +7,7 @@ import { getDoneUnitIds, getRouteUnitMap } from '../lib/data';
 const { supabase, user, profile } = Astro.locals;
 const [routes, done] = await Promise.all([getRouteUnitMap(supabase), getDoneUnitIds(supabase, user?.id)]);
 const { count: comics } = await supabase.from('media').select('id', { count: 'exact', head: true }).eq('kind', 'comic');
-const { count: animes } = await supabase.from('media').select('id', { count: 'exact', head: true }).eq('kind', 'anime');
+const { count: mangas } = await supabase.from('media').select('id', { count: 'exact', head: true }).eq('kind', 'manga');
 ---
 <Layout title="Inicio">
   <HomeHero profile={profile} showRegister={!user} />
@@ -17,5 +17,5 @@ const { count: animes } = await supabase.from('media').select('id', { count: 'ex
   <RouteGrid routes={routes} done={done} showProgress={!!user} detailed />
 
   <h2>Catálogo</h2>
-  <CatalogShortcuts comics={comics ?? 0} animes={animes ?? 0} />
+  <CatalogShortcuts comics={comics ?? 0} mangas={mangas ?? 0} />
 </Layout>
