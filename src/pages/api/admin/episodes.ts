@@ -1,10 +1,10 @@
 import type { APIRoute } from 'astro';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { unitWords } from '../../../lib/kinds';
-import { UNIT_FORMATS, checkPages, extensionOf, findFile, isUnitNumber, jsonError, listFolder, readJson, removeStored, unitLabel } from '../../../lib/uploads';
+import { checkPages, isUnitNumber, jsonError, listFolder, readJson, removeStored, unitLabel } from '../../../lib/uploads';
 
 type Media = { id: string; slug: string; kind: string; unit_type: string; title: string };
-type Stored = { file_path: string; file_format: string; file_size: number; pages: string[] | null };
+type Stored = { file_path: string; file_format: string; file_size: number; pages: string[] };
 
 /** "<slug>/00005-<stamp>" as a regex source: uploads of a title and number always start like this. */
 const ownPrefix = (media: Media, number: number) => `^${media.slug.replace(/[^a-z0-9-]/g, '')}/${String(number).padStart(5, '0')}-\\d+`;
@@ -40,9 +40,9 @@ async function attach(sb: SupabaseClient, media: Media, number: number, body: an
 }
 
 /**
- * Step 2 of an issue/episode/volume upload: the uploaded file (or the folder of a comic's pages) becomes
- * (or joins) the unit with that number, so the title's count follows its files. Also removes a unit's file,
- * and discards the folder of a page upload that failed halfway.
+ * Step 2 of an issue/volume upload: the folder of its uploaded pages becomes (or joins) the unit with that
+ * number, so the title's count follows its files. Also removes a unit's file, and discards the folder of a
+ * page upload that failed halfway.
  */
 export const POST: APIRoute = async ({ request, url, locals }) => {
   const body = await readJson(request, url);
@@ -81,24 +81,16 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     }
   }
 
-  if (body.data.folder !== undefined) {
-    // A comic or manga uploaded page by page: every listed page must be in its folder
-    const folder = String(body.data.folder);
-    if (!new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'No encontramos las páginas subidas.');
-    const checked = checkPages((Array.isArray(body.data.pages) ? body.data.pages : []).map((name: unknown) => ({ name, size: 1 })));
-    if ('error' in checked) return jsonError(400, checked.error);
-    const uploaded = await listFolder(sb, 'content', folder);
-    const missing = checked.pages.filter((p) => !uploaded.has(p.name)).length;
-    if (missing) return jsonError(400, `Faltan ${missing} página${missing === 1 ? '' : 's'} por subir. Vuelve a intentarlo.`);
-    const source = body.data.source === 'cbr' || body.data.source === 'pdf' ? body.data.source : 'cbz';
-    const size = checked.pages.reduce((sum, p) => sum + uploaded.get(p.name)!, 0);
-    return attach(sb, media, number, body.data, { file_path: folder, file_format: source, file_size: size, pages: checked.pages.map((p) => p.name) });
-  }
-
-  const path = String(body.data.path ?? '');
-  const ext = extensionOf(path);
-  const ownFile = new RegExp(`${ownPrefix(media, number)}\\.[a-z0-9]{1,5}$`);
-  const file = ownFile.test(path) && UNIT_FORMATS[ext] ? await findFile(sb, 'content', path) : null;
-  if (!file) return jsonError(400, 'No encontramos el archivo subido.');
-  return attach(sb, media, number, body.data, { file_path: path, file_format: ext, file_size: file.size, pages: null });
+  // Every unit is stored page by page: every listed page must be in the folder
+  if (body.data.folder === undefined) return jsonError(400, 'Faltan las páginas subidas.');
+  const folder = String(body.data.folder);
+  if (!new RegExp(`${ownPrefix(media, number)}/$`).test(folder)) return jsonError(400, 'No encontramos las páginas subidas.');
+  const checked = checkPages((Array.isArray(body.data.pages) ? body.data.pages : []).map((name: unknown) => ({ name, size: 1 })));
+  if ('error' in checked) return jsonError(400, checked.error);
+  const uploaded = await listFolder(sb, 'content', folder);
+  const missing = checked.pages.filter((p) => !uploaded.has(p.name)).length;
+  if (missing) return jsonError(400, `Faltan ${missing} página${missing === 1 ? '' : 's'} por subir. Vuelve a intentarlo.`);
+  const source = body.data.source === 'cbr' || body.data.source === 'pdf' ? body.data.source : 'cbz';
+  const size = checked.pages.reduce((sum, p) => sum + uploaded.get(p.name)!, 0);
+  return attach(sb, media, number, body.data, { file_path: folder, file_format: source, file_size: size, pages: checked.pages.map((p) => p.name) });
 };

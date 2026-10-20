@@ -2,11 +2,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Profile } from './types';
 import type { Kind, UnitType } from './kinds';
 
-/** Signed reader links outlive a long episode but not a forgotten tab. */
+/** Signed reader links outlive a long reading session but not a forgotten tab. */
 export const READ_URL_SECONDS = 3 * 60 * 60;
 
 export type ReaderViewer = Pick<Profile, 'id' | 'plan' | 'role'> | null;
-export type ReaderState = 'ready' | 'login' | 'locked' | 'nofile' | 'error';
+/** 'reupload': the unit points at one file from before comics were stored by pages, so the reader cannot open it. */
+export type ReaderState = 'ready' | 'login' | 'locked' | 'nofile' | 'reupload' | 'error';
 export type ReaderUnit = { id: string; short: string; label: string; file_path: string | null; file_format: string | null; file_size: number | null; pages: string[] | null };
 
 type Row = {
@@ -27,8 +28,8 @@ export const readerViewer = (user: { id: string } | null, profile: Pick<Profile,
   user && profile ? { id: user.id, plan: profile.plan, role: profile.role } : null;
 
 /**
- * Who may read one issue/episode of a title, without signing anything: the unit, its previous/next units
- * that have a file, and the state ('ready' when the viewer may open its file). Shared by the reader page and
+ * Who may read one issue/volume of a title, without signing anything: the unit, its previous/next units
+ * that have a file, and the state ('ready' when the viewer may open its pages). Shared by the reader page and
  * the endpoint that signs more links, so both refuse exactly the same viewers.
  */
 export async function getReaderAccess(sb: SupabaseClient, slug: string, short: string, viewer: ReaderViewer) {
@@ -48,9 +49,10 @@ export async function getReaderAccess(sb: SupabaseClient, slug: string, short: s
 
   const withFile = units.filter((u) => u.file_path);
   const at = withFile.indexOf(unit);
-  const state: Exclude<ReaderState, 'error'> = !viewer ? 'login' : isTitleLocked(media, viewer) ? 'locked' : !unit.file_path ? 'nofile' : 'ready';
+  const state: Exclude<ReaderState, 'error'> =
+    !viewer ? 'login' : isTitleLocked(media, viewer) ? 'locked' : !unit.file_path ? 'nofile' : !unit.pages?.length ? 'reupload' : 'ready';
   return {
-    media, unit, format: unit.file_format, state,
+    media, unit, state,
     prev: at > 0 ? withFile[at - 1] : null,
     next: at >= 0 && at < withFile.length - 1 ? withFile[at + 1] : null,
   };
@@ -65,30 +67,17 @@ export async function signPages(sb: SupabaseClient, unit: ReaderUnit, from: numb
   return !error && urls.length === names.length && urls.every(Boolean) ? urls : null;
 }
 
-/** Signed link for a unit stored as one file (PDF, video, older CBZ), or null when storage refuses it. */
-export async function signFile(sb: SupabaseClient, unit: ReaderUnit) {
-  if (!unit.file_path) return null;
-  const { data } = await sb.storage.from('content').createSignedUrl(unit.file_path, READ_URL_SECONDS);
-  return data?.signedUrl ?? null;
-}
-
 /**
- * One issue/episode of a title for the reader page: when the viewer may read it, the signed url of its file or,
- * for a comic stored by pages, the page count and the first batch of signed pages. Storage RLS
- * (rutas_content_read) has the final say.
+ * One issue/volume of a title for the reader page: when the viewer may read it, its page count and the first
+ * batch of signed pages. Storage RLS (rutas_content_read) has the final say.
  */
 export async function getReader(sb: SupabaseClient, slug: string, short: string, viewer: ReaderViewer) {
   const access = await getReaderAccess(sb, slug, short, viewer);
   if (!access) return null;
-  const result = (state: ReaderState, url: string | null = null, pages: string[] | null = null) =>
-    ({ ...access, state, url, pages, pageCount: access.unit.pages?.length ?? 0 });
+  const result = (state: ReaderState, pages: string[] | null = null) => ({ ...access, state, pages, pageCount: access.unit.pages?.length ?? 0 });
   if (access.state !== 'ready') return result(access.state);
-  if (access.unit.pages) {
-    const urls = await signPages(sb, access.unit, 0, PAGE_BATCH);
-    return urls ? result('ready', null, urls) : result('error');
-  }
-  const url = await signFile(sb, access.unit);
-  return url ? result('ready', url) : result('error');
+  const urls = await signPages(sb, access.unit, 0, PAGE_BATCH);
+  return urls ? result('ready', urls) : result('error');
 }
 
 export type TitleUnitView = { id: string; short: string; label: string; group: string | null; has_file: boolean; file_format: string | null; file_size: number | null };
