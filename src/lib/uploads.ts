@@ -45,12 +45,7 @@ export async function findFile(sb: SupabaseClient, bucket: string, path: string)
   return file ? { size: Number(file.metadata?.size ?? 0) } : null;
 }
 
-/**
- * One file per issue/volume, the same for comics and mangas. The content type comes from the extension:
- * browsers leave it empty for CBZ/CBR. (The reader still plays mp4/webm/mkv for a future anime kind.)
- */
-export const UNIT_FORMATS: Record<string, string> = { cbz: 'application/vnd.comicbook+zip', pdf: 'application/pdf' };
-/** Extensions the admin can pick: the stored formats plus CBR, which the browser converts to CBZ before uploading. */
+/** Extensions the admin can pick; the browser splits each file into one image per page before uploading. */
 export const UNIT_PICK_EXTENSIONS = ['cbz', 'cbr', 'pdf'];
 export const UNIT_FORMAT_LIST = 'CBZ, CBR o PDF';
 export const MAX_UNIT_NUMBER = 99999;
@@ -119,7 +114,10 @@ export async function listFolder(sb: SupabaseClient, bucket: string, folder: str
   }
 }
 
-/** Deletes what a unit had stored: its single file, or every listed page of its folder. */
+/**
+ * Deletes what a unit had stored: every listed page of its folder. A unit uploaded before comics were stored
+ * by pages points at one file instead, and that file is deleted too.
+ */
 export async function removeStored(sb: SupabaseClient, unit: { file_path: string | null; pages?: string[] | null }) {
   if (!unit.file_path) return;
   const paths = unit.pages ? unit.pages.map((p) => `${unit.file_path}${p}`) : [unit.file_path];
@@ -139,20 +137,15 @@ export async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) =>
   return out;
 }
 
-export const unitPath = (slug: string, n: number, filename: string, stamp = Date.now()) =>
-  `${slug}/${String(n).padStart(5, '0')}-${stamp}.${extensionOf(filename)}`;
-
 /**
- * Issue/episode/volume number from a file name such as "Naruto - 012 [1080p].mkv",
- * "Berserk Tomo 05.cbz" or "Uncanny X-Men 129 (1980).cbr". Ignores bracketed tags, years and resolutions.
+ * Issue/volume number from a file name such as "Naruto - 012 [Scans].cbz", "Berserk Tomo 05.cbz"
+ * or "Uncanny X-Men 129 (1980).cbr". Ignores bracketed tags and years.
  */
 export function detectNumber(filename: string): number | null {
   const s = filename
     .replace(/\.[a-z0-9]{1,5}$/i, '')
     .replace(/\[[^\]]*\]/g, ' ')
-    .replace(/\((?:19|20)\d{2}\)/g, ' ')
-    .replace(/\b\d{3,4}p\b/gi, ' ')
-    .replace(/\b[xh]\.?26[45]\b/gi, ' ');
+    .replace(/\((?:19|20)\d{2}\)/g, ' ');
   const marked = s.match(/(?:#|\b(?:ep|episodio|episode|cap|capitulo|capítulo|chapter|ch|issue|vol|volumen|volume|tomo|n[º°o])\.?\s*)(\d{1,5})\b/i);
   if (marked) return parseInt(marked[1], 10);
   const numbers = [...s.matchAll(/\d+/g)].map((m) => m[0]).filter((n) => !(n.length === 4 && /^(19|20)/.test(n)));

@@ -1,6 +1,6 @@
-/* Reader: header bar, notices, the comic viewer (CBZ/PDF) and the episode video player. */
+/* Reader: header bar, notices and the comic viewer (one page or a spread, turned like paper). */
 .reader-bar { display: grid; grid-template-columns: 1fr; gap: 6px 16px; align-items: center; margin: -12px 0 12px; }
-.reader-back { font-weight: 700; font-size: .95rem; }
+.reader-back { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-weight: 700; font-size: .95rem; }
 .reader-title { font-size: clamp(1.6rem, 4vw, 2.2rem); margin: 0; }
 .reader-units { display: flex; flex-wrap: wrap; gap: 8px; }
 .reader-units [aria-disabled="true"] { opacity: .4; pointer-events: none; }
@@ -17,24 +17,42 @@
 .viewer:fullscreen { border: 0; box-shadow: none; display: flex; flex-direction: column; }
 .viewer-status { display: grid; gap: 10px; padding: 48px 24px; color: #fff; text-align: center; justify-items: center; }
 .viewer-status p { margin: 0; }
-.viewer-status .progress { width: min(320px, 100%); }
-.viewer-status.failed .progress { display: none; }
 /* --viewer-chrome (site header + controls) is measured by the viewer script, so the reader fills the screen at any size */
 /* The box is as tall as the page, up to the free screen height; a taller page scrolls inside it */
 .viewer-stage { max-height: max(280px, calc(100dvh - var(--viewer-chrome, 230px))); overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
 /* A page shorter than the box sits in its middle; a taller one starts at the top and scrolls */
-.viewer-page { display: block; flex: none; width: 100%; height: auto; margin-block: auto; }
+.viewer-page { display: block; flex: none; width: 100%; height: auto; margin-block: auto; user-select: none; -webkit-user-drag: none; }
+/* A spread: two pages side by side, each filling its half (an empty half where a page is missing), the row centred like a single page */
+.viewer-spread { display: flex; align-items: center; flex: none; width: 100%; margin-block: auto; }
+.viewer-spread > .viewer-page, .viewer-blank { width: 50%; margin: 0; }
+.viewer-spread > .viewer-page-error { width: 50%; }
+#viewer-spread[aria-pressed="true"] { background: var(--green); color: #fff; }
 /* While a page loads: a sign over the box (or an empty box of some height on the first page) */
-.viewer-frame { position: relative; }
+.viewer-frame { position: relative; overflow: hidden; perspective: 2500px; }
+/* A page being turned, over what it uncovers: chained strips bent in 3D (no overflow on them, or the bend flattens), lit by --lit.
+   Behind a single page is paper with the print showing through; behind a spread's page, the next page (.printed). */
+.viewer-under { position: absolute; top: 0; left: 0; z-index: 1; pointer-events: none; }
+.viewer-leaf { position: absolute; top: 0; z-index: 3; transform-style: preserve-3d; pointer-events: none; }
+.viewer-strip { position: absolute; top: 0; height: 100%; transform-origin: left center; transform-style: preserve-3d; }
+.viewer-strip-front, .viewer-strip-back { position: absolute; top: 0; left: 0; display: block; width: calc(100% + 1px); height: 100%; backface-visibility: hidden; filter: brightness(var(--lit, 1)); }
+.viewer-strip-back { transform: rotateY(180deg); background: #EFE9DC; }
+.viewer-strip-back canvas { display: block; width: 100%; height: 100%; opacity: .12; }
+.viewer-strip-back.printed { background: #12172B; }
+.viewer-strip-back.printed canvas { opacity: 1; }
+/* The turning sheet's shadow on the page underneath */
+.viewer-cast { position: absolute; top: 0; z-index: 2; pointer-events: none; background: linear-gradient(to right, rgb(0 0 0 / .45), transparent); }
+.viewer-cast.left { background: linear-gradient(to left, rgb(0 0 0 / .45), transparent); }
 .viewer-spinner { display: none; position: absolute; inset: 0; place-content: center; justify-items: center; gap: 12px; color: #fff; font-weight: 700; background: rgb(18 23 43 / .55); pointer-events: none; }
 .viewer-frame.loading .viewer-spinner { display: grid; }
 .viewer-frame.loading .viewer-stage:empty { min-height: min(60vh, 480px); }
 .spinner { width: 40px; height: 40px; border: 4px solid rgb(255 255 255 / .25); border-top-color: var(--yellow); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 2.4s; } }
-/* Our own double tap zooms, so the browser's must not */
-.viewer-stage { touch-action: manipulation; overflow-x: auto; }
-.viewer[data-zoom="on"] .viewer-page { width: 200%; max-width: none; }
+/* Sideways drags turn the page and our own double tap zooms, so the browser only scrolls vertically and pinches; a zoomed page pans both ways */
+.viewer-stage { touch-action: pan-y pinch-zoom; overflow-x: auto; }
+.viewer[data-zoom="on"] .viewer-stage { touch-action: manipulation; }
+.viewer[data-zoom="on"] .viewer-page, .viewer[data-zoom="on"] .viewer-spread { width: 200%; max-width: none; }
+.viewer[data-zoom="on"] .viewer-spread > .viewer-page { width: 50%; }
 #viewer-zoom[aria-pressed="true"] { background: var(--red); color: #fff; }
 .viewer:fullscreen .viewer-frame { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .viewer:fullscreen .viewer-stage { flex: 1; max-height: none; min-height: 0; }
@@ -42,7 +60,6 @@
 .viewer-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: var(--panel); border-top: 3px solid var(--line); position: sticky; bottom: 0; z-index: 2; }
 .viewer-count { min-width: 4.5em; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 
-.reader-video video { display: block; width: 100%; max-height: calc(100dvh - 200px); background: #000; border: 3px solid var(--line); box-shadow: 6px 6px 0 var(--red); }
 #viewer-full .label-short { display: none; }
 @media (max-width: 480px) {
   .viewer-controls { gap: 6px; padding: 8px 6px; }

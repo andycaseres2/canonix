@@ -1,6 +1,5 @@
 import type { APIRoute } from 'astro';
-import { kindWord } from '../../../lib/kinds';
-import { COVER_MAX_BYTES, UNIT_FORMATS, UNIT_FORMAT_LIST, checkPages, coverPath, extensionOf, isUnitNumber, jsonError, mapLimit, readJson, signUpload, unitFolder, unitLabel, unitPath } from '../../../lib/uploads';
+import { COVER_MAX_BYTES, checkPages, coverPath, isUnitNumber, jsonError, mapLimit, readJson, signUpload, unitFolder, unitLabel } from '../../../lib/uploads';
 
 /** Step 1 of an upload: validate the file and hand the browser a signed Storage URL. */
 export const POST: APIRoute = async ({ request, url, locals }) => {
@@ -38,17 +37,6 @@ export const POST: APIRoute = async ({ request, url, locals }) => {
     if (size > COVER_MAX_BYTES) return jsonError(400, 'La portada pesa más de 5 MB.');
     const target = await signUpload(sb, 'covers', coverPath(media.slug, filename), content_type);
     return 'error' in target ? jsonError(403, target.error!) : Response.json(target);
-  }
-  if (kind === 'unit') {
-    const number = body.data.number;
-    if (!isUnitNumber(number)) return jsonError(400, 'Indica un número entero válido para el archivo.');
-    if (extensionOf(filename) === 'cbr') return jsonError(400, 'Los CBR se convierten a CBZ en el navegador antes de subir. Vuelve a elegir el archivo desde el panel.');
-    const contentType = UNIT_FORMATS[extensionOf(filename)];
-    if (!contentType) return jsonError(400, `Para un ${kindWord(media.kind)} sube archivos ${UNIT_FORMAT_LIST}.`);
-    const label = unitLabel(media, number, body.data.series);
-    const { data: unit } = await sb.from('units').select('file_path').eq('label', label).maybeSingle();
-    const target = await signUpload(sb, 'content', unitPath(media.slug, number, filename), contentType);
-    return 'error' in target ? jsonError(403, target.error!) : Response.json({ ...target, label, replaces: !!unit?.file_path });
   }
   return jsonError(400, 'Tipo de subida desconocido.');
 };

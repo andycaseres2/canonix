@@ -1,12 +1,15 @@
 ---
-// Reader header: back to the title, the unit's name, previous/next units and the "read" toggle.
+// Reader header: back to the catalog or the title, the unit's name, previous/next units and the "read" toggle.
 import type { ReaderUnit } from '../../../lib/reader';
 import { unitWords } from '../../../lib/kinds';
 interface Props { slug: string; title: string; unitType: string; unit: ReaderUnit; prev: ReaderUnit | null; next: ReaderUnit | null; done: boolean; canMark: boolean }
 const { slug, title, unitType, unit, prev, next, done, canMark } = Astro.props;
 ---
 <header class="reader-bar">
-  <a class="reader-back" href={`/catalogo/${slug}`}>← {title}</a>
+  <nav class="reader-back" aria-label="Volver">
+    <a class="btn small" href="/catalogo">← Catálogo</a>
+    <a href={`/catalogo/${slug}`}>{title}</a>
+  </nav>
   <h1 class="reader-title">{unit.label}</h1>
   <nav class="reader-units" aria-label={unitWords(unitType).Many}>
     {prev ? <a class="btn small" href={`/leer/${slug}/${encodeURIComponent(prev.short)}`} rel="prev">‹ {prev.short}</a> : <span class="btn small" aria-disabled="true">‹</span>}

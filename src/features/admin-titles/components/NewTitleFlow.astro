@@ -38,6 +38,7 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
 
 <script>
   import { appDialog, postJson, putFile, type UploadTarget } from '../scripts/upload';
+  import { compressCover } from '../scripts/compress';
   import { kindWord as wordFor, unitWords } from '../../../lib/kinds';
 
   type Queue = {
@@ -148,8 +149,9 @@ import CreateProgressDialog from './CreateProgressDialog.astro';
     if (cover) {
       const s = step('Subir la portada');
       try {
-        const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'cover', media_id: media.id, filename: cover.name, content_type: cover.type, size: cover.size });
-        await putFile(target, cover, () => {});
+        const file = await compressCover(cover);
+        const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'cover', media_id: media.id, filename: file.name, content_type: file.type, size: file.size });
+        await putFile(target, file, () => {});
         await postJson('/api/admin/covers', { action: 'complete', media_id: media.id, path: target.path });
         s('done');
       } catch (err) {

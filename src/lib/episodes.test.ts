@@ -3,7 +3,7 @@ import { POST as uploads } from '../pages/api/admin/uploads';
 import { POST as episodes } from '../pages/api/admin/episodes';
 import type { MockDb, Row } from '../test/mock/db';
 import { ADMIN, as, fixture } from '../test/mock/fixture';
-import { UNIT_FORMATS, UNIT_PICK_EXTENSIONS, UNIT_FORMAT_LIST, detectNumber, parseUnitLabel, unitFileMeta, unitLabel } from './uploads';
+import { UNIT_PICK_EXTENSIONS, UNIT_FORMAT_LIST, detectNumber, parseUnitLabel, unitFileMeta, unitLabel } from './uploads';
 
 const ORIGIN = 'http://x';
 
@@ -11,15 +11,6 @@ async function json(handler: any, db: MockDb, body: unknown) {
   const request = new Request(`${ORIGIN}/api`, { method: 'POST', body: JSON.stringify(body), headers: { 'Content-Type': 'application/json', Origin: ORIGIN } });
   const res: Response = await handler({ request, url: new URL(request.url), locals: { supabase: as(db, ADMIN) } });
   return { status: res.status, body: await res.json().catch(() => null) };
-}
-
-/** Sign, upload and register one file the way the admin page does. */
-async function uploadUnit(db: MockDb, media_id: string, number: number, filename: string, group: string | null = null, series?: string) {
-  const signed = await json(uploads, db, { kind: 'unit', media_id, number, filename, content_type: '', size: 4, series });
-  if (signed.status !== 200) return signed;
-  const token = new URL(signed.body.uploadUrl, ORIGIN).searchParams.get('token')!;
-  expect(db.storage.acceptUpload(token, new Uint8Array(4), signed.body.headers['Content-Type'])).toBeNull();
-  return json(episodes, db, { action: 'complete', media_id, number, path: signed.body.path, group, series });
 }
 
 const unitsOf = (db: MockDb, mediaId: string) =>
@@ -30,8 +21,8 @@ describe('detectNumber', () => {
     ['Amazing Spider-Man 005.cbz', 5],
     ['Amazing Spider-Man (1963) #012.cbr', 12],
     ['Uncanny X-Men 129 (1980).pdf', 129],
-    ['[SubGroup] Naruto - 012 [1080p][x264].mkv', 12],
-    ['Naruto Shippuden Episodio 45 1080p.mp4', 45],
+    ['[Scans] Naruto - 012 [ES].cbz', 12],
+    ['Naruto Shippuden Capitulo 45.pdf', 45],
     ['One Piece Cap. 1050.cbz', 1050],
     ['Watchmen 1986.pdf', null],
     ['portada.cbz', null],
@@ -58,8 +49,7 @@ describe('unitFileMeta', () => {
 });
 
 describe('unit formats', () => {
-  it('stores comics and mangas only as CBZ or PDF, but lets the admin pick CBR files to convert', () => {
-    expect(Object.keys(UNIT_FORMATS)).toEqual(['cbz', 'pdf']);
+  it('lets the admin pick CBZ, CBR or PDF files, which the browser splits into pages', () => {
     expect(UNIT_PICK_EXTENSIONS).toEqual(['cbz', 'cbr', 'pdf']);
     expect(UNIT_FORMAT_LIST).toBe('CBZ, CBR o PDF');
   });
@@ -82,34 +72,30 @@ describe('unitLabel', () => {
   });
 });
 
-describe('POST /api/admin/uploads (unit)', () => {
-  it('signs a comic file with its content type and label', async () => {
-    const { status, body } = await json(uploads, fixture(), { kind: 'unit', media_id: 'm1', number: 5, filename: 'ASM 005.CBZ', content_type: '', size: 10 });
-    expect(status).toBe(200);
-    expect(body.path).toMatch(/^asm\/00005-\d+\.cbz$/);
-    expect(body.headers['Content-Type']).toBe('application/vnd.comicbook+zip');
-    expect(body.label).toBe('Spider-Man #5');
-  });
+const pageList = (n: number, ext = 'jpg') => Array.from({ length: n }, (_, i) => ({ name: `${String(i + 1).padStart(3, '0')}.${ext}`, content_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`, size: 3 }));
 
-  it('signs a manga file with the comic formats', async () => {
-    const { status, body } = await json(uploads, fixture(), { kind: 'unit', media_id: 'm3', number: 2, filename: 'Naruto 002.pdf', content_type: '', size: 10 });
-    expect(status).toBe(200);
-    expect(body.path).toMatch(/^naruto\/00002-\d+\.pdf$/);
-    expect(body.headers['Content-Type']).toBe('application/pdf');
-    expect(body.label).toBe('Naruto #2');
-  });
+/** Sign, upload and register a comic split into pages, the way the admin page does. `skip` leaves pages out of the upload. */
+async function uploadPages(db: MockDb, media_id: string, number: number, count: number, skip: string[] = [], source = 'cbz', extra: { group?: string; series?: string } = {}) {
+  const pages = pageList(count);
+  const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source, pages, series: extra.series });
+  if (signed.status !== 200) return { signed, done: signed };
+  for (const t of signed.body.targets) {
+    if (skip.includes(t.name)) continue;
+    const token = new URL(t.uploadUrl, ORIGIN).searchParams.get('token')!;
+    expect(db.storage.acceptUpload(token, new Uint8Array(3), t.headers['Content-Type'])).toBeNull();
+  }
+  const done = await json(episodes, db, { action: 'complete', media_id, number, folder: signed.body.folder, pages: pages.map((p) => p.name), source, ...extra });
+  return { signed, done };
+}
 
-  it.each([
-    ['m1', 'episodio.mp4', 1, 'Para un cómic sube archivos CBZ, CBR o PDF.'],
-    ['m3', 'naruto.mp4', 1, 'Para un manga sube archivos CBZ, CBR o PDF.'],
-    ['m3', 'naruto.cbr', 1, 'se convierten a CBZ'],
-    ['m1', 'asm.cbr', 1, 'se convierten a CBZ'],
-    ['m1', 'asm.cbz', -1, 'número'],
-    ['m1', 'asm.cbz', 1.5, 'número'],
-  ])('rejects %s %s #%s', async (media_id, filename, number, message) => {
-    const { status, body } = await json(uploads, fixture(), { kind: 'unit', media_id, number, filename, content_type: '', size: 10 });
+/** Puts a file in content storage the way an older single-file upload left it. */
+const storeOld = (db: MockDb, path: string) => db.storage.acceptUpload(db.storage.issueUploadToken('content', path), new Uint8Array(3), 'application/pdf');
+
+describe('POST /api/admin/uploads', () => {
+  it('refuses the old single-file upload, since every unit is stored by pages', async () => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit', media_id: 'm1', number: 5, filename: 'ASM 005.cbz', content_type: '', size: 10 });
     expect(status).toBe(400);
-    expect(body.error).toContain(message);
+    expect(body.error).toBe('Tipo de subida desconocido.');
   });
 });
 
@@ -117,81 +103,54 @@ describe('POST /api/admin/episodes', () => {
   it('registers each uploaded file as a unit of the title, so the count follows the files', async () => {
     const db = fixture();
     const before = unitsOf(db, 'm3').length;
-    expect((await uploadUnit(db, 'm3', 2, 'Naruto 002.cbz')).status).toBe(200);
-    expect((await uploadUnit(db, 'm3', 3, 'Naruto 003.pdf', 'Tomo 1')).status).toBe(200);
+    expect((await uploadPages(db, 'm3', 2, 1)).done.status).toBe(200);
+    expect((await uploadPages(db, 'm3', 3, 2, [], 'pdf', { group: 'Tomo 1' })).done.status).toBe(200);
     const rows = unitsOf(db, 'm3');
     expect(rows).toHaveLength(before + 2);
     const ep3 = rows.find((r) => r.short === '3')!;
-    expect(ep3).toMatchObject({ group_name: 'Tomo 1', unit: { label: 'Naruto #3', file_format: 'pdf', file_size: 4 } });
-    expect(ep3.unit.file_path).toMatch(/^naruto\/00003-\d+\.pdf$/);
+    expect(ep3).toMatchObject({ group_name: 'Tomo 1', unit: { label: 'Naruto #3', file_format: 'pdf', file_size: 6 } });
+    expect(ep3.unit.file_path).toMatch(/^naruto\/00003-\d+\/$/);
     expect(ep3.position).toBeGreaterThan(rows.find((r) => r.short === '2')!.position);
   });
 
-  it('attaches the file to a unit that already exists with that label, without duplicating it', async () => {
+  it('attaches the pages to a unit that already exists with that label, without duplicating it', async () => {
     const db = fixture();
     db.tables.units.find((u) => u.id === 'u1')!.label = 'Spider-Man #1';
-    expect((await uploadUnit(db, 'm1', 1, 'asm 1.cbz')).status).toBe(200);
+    expect((await uploadPages(db, 'm1', 1, 1)).done.status).toBe(200);
     expect(unitsOf(db, 'm1')).toHaveLength(2);
-    expect(db.tables.units.find((u) => u.id === 'u1')!.file_format).toBe('cbz');
+    expect(db.tables.units.find((u) => u.id === 'u1')!).toMatchObject({ file_format: 'cbz', pages: ['001.jpg'] });
   });
 
-  it('with a series name the file joins the existing unit of that series', async () => {
+  it('with a series name the pages join the existing unit of that series', async () => {
     const db = fixture();
     db.tables.units.find((u) => u.id === 'u3')!.label = 'Batman #404';
     db.tables.media_units.push({ media_id: 'm1', unit_id: 'u3', short: '404', group_name: null, position: 3 });
-    const signed = await json(uploads, db, { kind: 'unit', media_id: 'm1', number: 404, filename: 'b 404.cbz', content_type: '', size: 4, series: 'Batman' });
+    const { signed, done } = await uploadPages(db, 'm1', 404, 1, [], 'cbz', { series: 'Batman' });
     expect(signed.body.label).toBe('Batman #404');
     expect(signed.body.replaces).toBe(false);
-    expect((await uploadUnit(db, 'm1', 404, 'b 404.cbz', null, 'Batman')).status).toBe(200);
+    expect(done.status).toBe(200);
     expect(unitsOf(db, 'm1').filter((r) => r.short === '404')).toHaveLength(1);
-    expect(db.tables.units.find((u) => u.id === 'u3')!.file_format).toBe('cbz');
+    expect(db.tables.units.find((u) => u.id === 'u3')!.pages).toEqual(['001.jpg']);
   });
 
-  it('a second upload for the same number replaces the file and deletes the old one', async () => {
+  it('refuses to complete an upload without its folder of pages and creates no unit', async () => {
     const db = fixture();
-    await uploadUnit(db, 'm1', 7, 'asm 7.cbz');
-    const unit = () => db.tables.units.find((u) => u.label === 'Spider-Man #7')!;
-    const oldPath = unit().file_path;
-    await new Promise((r) => setTimeout(r, 2));
-    await uploadUnit(db, 'm1', 7, 'asm 7 v2.pdf');
-    expect(unit().file_format).toBe('pdf');
-    expect(unit().file_path).not.toBe(oldPath);
-    expect(db.storage.read('content', oldPath)).toBeNull();
-    expect(unitsOf(db, 'm1').filter((r) => r.unit.label === 'Spider-Man #7')).toHaveLength(1);
+    const units = db.tables.units.length;
+    for (const body of [{ path: 'asm/00001-1.cbz' }, {}]) {
+      expect(await json(episodes, db, { action: 'complete', media_id: 'm1', number: 1, ...body })).toEqual({ status: 400, body: { error: 'Faltan las páginas subidas.' } });
+    }
+    expect(db.tables.units).toHaveLength(units);
   });
 
-  it('refuses a path that was not uploaded or belongs to another title', async () => {
+  it('remove_file clears an old single-file unit and deletes its file from storage', async () => {
     const db = fixture();
-    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: 1, path: 'asm/00001-1.cbz' })).status).toBe(400);
-    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: 1, path: 'ff/00001-1.cbz' })).status).toBe(400);
-  });
-
-  it('remove_file clears the unit file and deletes it from storage', async () => {
-    const db = fixture();
-    await uploadUnit(db, 'm1', 9, 'asm 9.cbz');
-    const unit = db.tables.units.find((u) => u.label === 'Spider-Man #9')!;
-    const path = unit.file_path;
-    expect((await json(episodes, db, { action: 'remove_file', unit_id: unit.id })).status).toBe(200);
+    const unit = Object.assign(db.tables.units.find((u) => u.id === 'u1')!, { file_path: 'asm/00001-1.pdf', file_format: 'pdf', file_size: 3, pages: null });
+    expect(storeOld(db, 'asm/00001-1.pdf')).toBeNull();
+    expect((await json(episodes, db, { action: 'remove_file', unit_id: 'u1' })).status).toBe(200);
     expect(unit).toMatchObject({ file_path: null, file_format: null, file_size: null });
-    expect(db.storage.read('content', path)).toBeNull();
+    expect(db.storage.read('content', 'asm/00001-1.pdf')).toBeNull();
   });
 });
-
-const pageList = (n: number, ext = 'jpg') => Array.from({ length: n }, (_, i) => ({ name: `${String(i + 1).padStart(3, '0')}.${ext}`, content_type: `image/${ext === 'jpg' ? 'jpeg' : ext}`, size: 3 }));
-
-/** Sign, upload and register a comic split into pages, the way the admin page does. `skip` leaves pages out of the upload. */
-async function uploadPages(db: MockDb, media_id: string, number: number, count: number, skip: string[] = [], source = 'cbz') {
-  const pages = pageList(count);
-  const signed = await json(uploads, db, { kind: 'unit-pages', media_id, number, source, pages });
-  if (signed.status !== 200) return { signed, done: signed };
-  for (const t of signed.body.targets) {
-    if (skip.includes(t.name)) continue;
-    const token = new URL(t.uploadUrl, ORIGIN).searchParams.get('token')!;
-    expect(db.storage.acceptUpload(token, new Uint8Array(3), t.headers['Content-Type'])).toBeNull();
-  }
-  const done = await json(episodes, db, { action: 'complete', media_id, number, folder: signed.body.folder, pages: pages.map((p) => p.name), source });
-  return { signed, done };
-}
 
 describe('POST /api/admin/uploads (unit-pages)', () => {
   it('signs every page inside a new folder for the issue', async () => {
@@ -223,6 +182,12 @@ describe('POST /api/admin/uploads (unit-pages)', () => {
     expect(status).toBe(400);
     expect(body.error).toContain(message);
   });
+
+  it.each([-1, 1.5])('rejects the number %s', async (number) => {
+    const { status, body } = await json(uploads, fixture(), { kind: 'unit-pages', media_id: 'm1', number, source: 'cbz', pages: pageList(1) });
+    expect(status).toBe(400);
+    expect(body.error).toContain('número');
+  });
 });
 
 describe('POST /api/admin/episodes (pages)', () => {
@@ -235,10 +200,10 @@ describe('POST /api/admin/episodes (pages)', () => {
     expect(unitsOf(db, 'm1').some((r) => r.unit_id === unit.id && r.short === '8')).toBe(true);
   });
 
-  it('names the units of a title that comes in volumes "- Tomo n", single file or pages', async () => {
+  it('names the units of a title that comes in volumes "- Tomo n"', async () => {
     const db = fixture();
     db.tables.media.find((m) => m.id === 'm3')!.unit_type = 'tomo';
-    expect((await uploadUnit(db, 'm3', 2, 'Naruto Tomo 2.cbz')).body).toMatchObject({ ok: true, label: 'Naruto - Tomo 2' });
+    expect((await uploadPages(db, 'm3', 2, 1)).done.body).toMatchObject({ ok: true, label: 'Naruto - Tomo 2' });
     const { signed, done } = await uploadPages(db, 'm3', 3, 1);
     expect(signed.body.label).toBe('Naruto - Tomo 3');
     expect(done.body).toMatchObject({ ok: true, label: 'Naruto - Tomo 3' });
@@ -248,8 +213,8 @@ describe('POST /api/admin/episodes (pages)', () => {
   it('calls a bad number by the title\'s word', async () => {
     const db = fixture();
     db.tables.media.find((m) => m.id === 'm3')!.unit_type = 'tomo';
-    expect((await json(episodes, db, { action: 'complete', media_id: 'm3', number: -1, path: 'x' })).body.error).toBe('Tomo inválido.');
-    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: -1, path: 'x' })).body.error).toBe('Episodio inválido.');
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm3', number: -1, folder: 'x' })).body.error).toBe('Tomo inválido.');
+    expect((await json(episodes, db, { action: 'complete', media_id: 'm1', number: -1, folder: 'x' })).body.error).toBe('Episodio inválido.');
   });
 
   it('registers the pages of a manga', async () => {
@@ -276,23 +241,21 @@ describe('POST /api/admin/episodes (pages)', () => {
     expect((await json(episodes, db, { ...body, folder: 'asm/00009-1/' })).status).toBe(400);
   });
 
-  it('replacing a single file with pages (and pages with pages) deletes what was stored before', async () => {
+  it('replacing an old single file with pages (and pages with pages) deletes what was stored before', async () => {
     const db = fixture();
-    await uploadUnit(db, 'm1', 7, 'asm 7.cbz');
+    db.tables.units.find((u) => u.id === 'u1')!.label = 'Spider-Man #7';
+    Object.assign(db.tables.units.find((u) => u.id === 'u1')!, { file_path: 'asm/00007-1.cbz', file_format: 'cbz', file_size: 3, pages: null });
+    expect(storeOld(db, 'asm/00007-1.cbz')).toBeNull();
     const unit = () => db.tables.units.find((u) => u.label === 'Spider-Man #7')!;
-    const single = unit().file_path;
-    await new Promise((r) => setTimeout(r, 2));
     const first = await uploadPages(db, 'm1', 7, 2);
-    expect(db.storage.read('content', single)).toBeNull();
+    expect(first.signed.body.replaces).toBe(true);
+    expect(db.storage.read('content', 'asm/00007-1.cbz')).toBeNull();
     expect(unit().pages).toEqual(['001.jpg', '002.jpg']);
     await new Promise((r) => setTimeout(r, 2));
     await uploadPages(db, 'm1', 7, 1);
     expect(db.storage.read('content', `${first.signed.body.folder}001.jpg`)).toBeNull();
     expect(db.storage.read('content', `${first.signed.body.folder}002.jpg`)).toBeNull();
     expect(unit().pages).toEqual(['001.jpg']);
-    await new Promise((r) => setTimeout(r, 2));
-    await uploadUnit(db, 'm1', 7, 'asm 7.pdf');
-    expect(unit()).toMatchObject({ file_format: 'pdf', pages: null });
   });
 
   it('remove_file deletes every page of a paged unit', async () => {

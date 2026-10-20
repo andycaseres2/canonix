@@ -37,7 +37,8 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
 
 <script>
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
-  import { extractPages, isPagedSource, renderPdfPages, type Page } from '../scripts/archive';
+  import { extractPages, renderPdfPages, type Page } from '../scripts/archive';
+  import { compressPages } from '../scripts/compress';
   import { UNIT_FORMAT_LIST, UNIT_PICK_EXTENSIONS, detectNumber, extensionOf, formatBytes, mapLimit } from '../../../lib/uploads';
   import { unitWords } from '../../../lib/kinds';
 
@@ -117,16 +118,7 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
   async function uploadOne(mediaId: string, it: Item) {
     const series = seriesInput.value;
     try {
-      if (isPagedSource(it.file)) {
-        await uploadPages(mediaId, it, series);
-        it.status = 'done';
-        render();
-        return;
-      }
-      it.status = 'uploading'; it.progress = 0; render();
-      const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'unit', media_id: mediaId, number: it.number, series, filename: it.file.name, content_type: it.file.type, size: it.file.size });
-      await putFile(target, it.file, (f) => { it.progress = f; render(); });
-      await postJson('/api/admin/episodes', { action: 'complete', media_id: mediaId, number: it.number, series, path: target.path, group: groupInput.value });
+      await uploadPages(mediaId, it, series);
       it.status = 'done';
     } catch (e) {
       it.status = 'error'; it.message = (e as Error).message;
@@ -138,9 +130,10 @@ const { mediaId, unitType = 'episodio', series = '' } = Astro.props;
   async function uploadPages(mediaId: string, it: Item, series: string) {
     it.status = 'converting'; it.message = ''; render();
     const ext = extensionOf(it.file.name);
+    // PDF pages come out already compressed; pages inside a CBZ/CBR are compressed here, so heavy scans upload light
     const pages: Page[] = ext === 'pdf'
       ? await renderPdfPages(it.file, (done, total) => { it.message = `Convirtiendo página ${done} de ${total}…`; render(); })
-      : await extractPages(it.file);
+      : await compressPages(await extractPages(it.file), (done, total) => { it.message = `Optimizando página ${done} de ${total}…`; render(); });
     it.message = '';
     const source = ext === 'cbr' || ext === 'pdf' ? ext : 'cbz';
     const signed = await postJson<{ folder: string; targets: (UploadTarget & { name: string })[] }>('/api/admin/uploads', {

@@ -6,7 +6,7 @@ import { PAGE_BATCH_MAX } from './reader';
 
 const names = (n: number) => Array.from({ length: n }, (_, i) => `${String(i + 1).padStart(3, '0')}.jpg`);
 
-/** ASM #1 has 120 pages, ASM #2 is a PDF, FF #1 has no file and Naruto (premium) #1 has 3 pages. */
+/** ASM #1 has 120 pages, ASM #2 is an old single-file PDF, FF #1 has no file and Naruto (premium) #1 has 3 pages. */
 function library() {
   const db = fixture();
   const set = (id: string, fields: object) => Object.assign(db.tables.units.find((u) => u.id === id)!, fields);
@@ -52,12 +52,11 @@ describe('GET /api/reader/[slug]/[n]', () => {
     expect(body).toEqual({ error: 'Página fuera de rango.' });
   });
 
-  it('signs the single file again for a PDF or video', async () => {
-    const { status, cache, body } = await get(library(), READER, 'asm', '2');
-    expect(status).toBe(200);
-    expect(cache).toBe('private, no-store');
-    expect(Object.keys(body)).toEqual(['url']);
-    expect(body.url).toMatch(/\/object\/sign\/content\/asm\/00002-1\.pdf\?token=/);
+  it('refuses a unit stored as a single file, which has to be uploaded again', async () => {
+    const db = library();
+    const signs = vi.spyOn(db.storage, 'issueReadToken');
+    expect(await get(db, READER, 'asm', '2')).toEqual({ status: 409, cache: 'private, no-store', body: { error: 'Este número hay que volver a subirlo.' } });
+    expect(signs).not.toHaveBeenCalled();
   });
 
   it('refuses anonymous visitors, locked titles and missing files exactly like the reader page', async () => {
@@ -89,11 +88,8 @@ describe('GET /api/reader/[slug]/[n]', () => {
     sb.storage.from = (bucket: string) => ({
       ...from(bucket),
       createSignedUrls: async (paths: string[]) => ({ data: paths.map((path) => ({ path, error: 'denied', signedUrl: '' })), error: null }),
-      createSignedUrl: async () => ({ data: null, error: { message: 'denied' } }),
     });
-    for (const n of ['1', '2']) {
-      const { status, cache, body } = await get(db, READER, 'asm', n, n === '1' ? '?from=0' : '', sb);
-      expect({ status, cache, body }).toEqual({ status: 502, cache: 'private, no-store', body: { error: 'No se pudieron preparar los enlaces.' } });
-    }
+    const { status, cache, body } = await get(db, READER, 'asm', '1', '?from=0', sb);
+    expect({ status, cache, body }).toEqual({ status: 502, cache: 'private, no-store', body: { error: 'No se pudieron preparar los enlaces.' } });
   });
 });

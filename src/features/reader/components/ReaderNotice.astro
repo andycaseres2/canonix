@@ -8,6 +8,7 @@ const { state, slug, unitType } = Astro.props;
 const text = {
   locked: 'Este título es parte del plan premium.',
   nofile: `Este ${unitWords(unitType).one} todavía no tiene archivo.`,
+  reupload: `Este ${unitWords(unitType).one} hay que volver a subirlo.`,
   error: 'No pudimos abrir el archivo. Vuelve a intentarlo en un momento.',
 }[state];
 ---
