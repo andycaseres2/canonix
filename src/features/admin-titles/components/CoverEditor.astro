@@ -30,6 +30,7 @@ const { mediaId, title, coverUrl } = Astro.props;
 
 <script>
   import { appDialog, postJson, putFile, reloadWith, type UploadTarget } from '../scripts/upload';
+  import { compressCover } from '../scripts/compress';
   const box = document.getElementById('portada')!;
   const mediaId = box.dataset.mediaId!;
   const input = document.getElementById('cover-file') as HTMLInputElement;
@@ -38,13 +39,14 @@ const { mediaId, title, coverUrl } = Astro.props;
   const fail = (e: unknown) => appDialog().alert({ title: 'No se pudo', message: (e as Error).message });
 
   input.addEventListener('change', async () => {
-    const file = input.files?.[0];
+    const picked = input.files?.[0];
     input.value = '';
-    if (!file) return;
-    if (!file.type.startsWith('image/')) return fail(new Error('La portada debe ser una imagen (JPG, PNG, WEBP…).'));
-    if (file.size > 5 * 1024 * 1024) return fail(new Error('La portada pesa más de 5 MB.'));
+    if (!picked) return;
+    if (!picked.type.startsWith('image/')) return fail(new Error('La portada debe ser una imagen (JPG, PNG, WEBP…).'));
+    if (picked.size > 5 * 1024 * 1024) return fail(new Error('La portada pesa más de 5 MB.'));
     progress.hidden = false;
     bar.style.width = '0%';
+    const file = await compressCover(picked);
     try {
       const target = await postJson<UploadTarget>('/api/admin/uploads', { kind: 'cover', media_id: mediaId, filename: file.name, content_type: file.type, size: file.size });
       await putFile(target, file, (f) => { bar.style.width = `${Math.round(f * 100)}%`; });
