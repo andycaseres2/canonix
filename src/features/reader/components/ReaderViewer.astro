@@ -1,47 +1,36 @@
 ---
-// In-app viewer: comic pages one at a time with keyboard, tap and fit controls, or a video player for episodes.
-// Comics stored by pages load only the pages being read; PDFs load by ranges; older single CBZ files are downloaded whole.
+// In-app comic viewer: one page at a time on phones, two side by side on wide screens, turned like paper,
+// with swipe, tap, keyboard and zoom controls. Every page is stored as one image; only the pages being read are loaded.
 // The page ships only the first batch of signed pages: the rest, and fresh links once these expire, come from `endpoint`.
-interface Props { url: string | null; pages: string[] | null; pageCount: number; endpoint: string; format: string; storageKey: string; nextHref: string | null; nextLabel: string | null }
-const { url, pages, pageCount, endpoint, format, storageKey, nextHref, nextLabel } = Astro.props;
-const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
+interface Props { pages: string[]; pageCount: number; endpoint: string; storageKey: string; nextHref: string | null; nextLabel: string | null }
+const { pages, pageCount, endpoint, storageKey, nextHref, nextLabel } = Astro.props;
 ---
-{isVideo ? (
-  <div class="reader-video">
-    <video id="reader-video" controls playsinline preload="metadata" src={url ?? undefined} data-endpoint={endpoint}></video>
-    {format === 'mkv' && <p class="muted">Si no se reproduce, tu navegador no soporta MKV. Prueba con Chrome.</p>}
+<section class="viewer" id="viewer" data-pages={JSON.stringify(pages)} data-count={pageCount} data-endpoint={endpoint} data-key={storageKey} aria-label="Lector">
+  <div class="viewer-status" id="viewer-status" role="status">
+    <p id="viewer-status-text">Cargando…</p>
   </div>
-) : (
-  <section class="viewer" id="viewer" data-url={url ?? undefined} data-pages={pages ? JSON.stringify(pages) : undefined} data-count={pages ? pageCount : undefined} data-endpoint={endpoint} data-format={format} data-key={storageKey} aria-label="Lector">
-    <div class="viewer-status" id="viewer-status" role="status">
-      <p id="viewer-status-text">Cargando…</p>
-      <div class="progress"><span id="viewer-progress"></span></div>
-    </div>
-    <!-- The page fills the width and scrolls inside this box; tapping its left or right third turns the page, a double tap zooms -->
-    <div class="viewer-frame" id="viewer-frame" hidden>
-      <div class="viewer-stage" id="viewer-stage"></div>
-      <div class="viewer-spinner" role="status"><span class="spinner" aria-hidden="true"></span><span>Cargando página…</span></div>
-    </div>
-    <div class="viewer-controls" id="viewer-controls" hidden>
-      <button class="btn small yellow" type="button" id="viewer-resume" hidden></button>
-      <button class="btn small" type="button" data-go="-1" aria-label="Página anterior">‹</button>
-      <span class="viewer-count" id="viewer-count" aria-live="polite"></span>
-      <button class="btn small" type="button" data-go="1" aria-label="Página siguiente">›</button>
-      <button class="btn small" type="button" id="viewer-zoom" aria-pressed="false">Zoom</button>
-      <button class="btn small" type="button" id="viewer-full"><span class="label-long">Pantalla completa</span><span class="label-short">Completa</span></button>
-      {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} rel="next" hidden>Siguiente: {nextLabel} ›</a>}
-    </div>
-  </section>
-)}
+  <!-- The page fills the width and scrolls inside this box; dragging it sideways or tapping its left or right third turns the page, a double tap zooms -->
+  <div class="viewer-frame" id="viewer-frame" hidden>
+    <div class="viewer-stage" id="viewer-stage"></div>
+    <div class="viewer-spinner" role="status"><span class="spinner" aria-hidden="true"></span><span>Cargando página…</span></div>
+  </div>
+  <div class="viewer-controls" id="viewer-controls" hidden>
+    <button class="btn small yellow" type="button" id="viewer-resume" hidden></button>
+    <button class="btn small" type="button" data-go="-1" aria-label="Página anterior">‹</button>
+    <span class="viewer-count" id="viewer-count" aria-live="polite"></span>
+    <button class="btn small" type="button" data-go="1" aria-label="Página siguiente">›</button>
+    <button class="btn small" type="button" id="viewer-zoom" aria-pressed="false">Zoom</button>
+    <button class="btn small" type="button" id="viewer-spread" aria-pressed="true" hidden>2 páginas</button>
+    <button class="btn small" type="button" id="viewer-full"><span class="label-long">Pantalla completa</span><span class="label-short">Completa</span></button>
+    {nextHref && <a class="btn small primary" id="viewer-next" href={nextHref} rel="next" hidden>Siguiente: {nextLabel} ›</a>}
+  </div>
+</section>
 
 <script>
-  // Only the worker's url: pdf.js itself loads on demand, for PDF files
-  import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
-  import { comicPages, imageType } from '../pages';
   import { PAGE_BATCH } from '../../../lib/reader';
 
-  /** A comic opened in memory: how many pages it has and how to draw one. */
-  type Book = { count: number; draw(index: number, width: number): Promise<HTMLElement> };
+  /** A comic opened for reading: how many pages it has and how to get one, ready to show. */
+  type Book = { count: number; draw(index: number): Promise<HTMLImageElement> };
 
   const store = {
     get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } },
@@ -56,51 +45,35 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     return data;
   }
 
-  async function download(url: string, onProgress: (got: number, total: number) => void) {
-    const res = await fetch(url);
-    if (!res.ok || !res.body) throw new Error(`El servidor respondió ${res.status}.`);
-    const total = Number(res.headers.get('Content-Length')) || 0;
-    const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let got = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      got += value.length;
-      onProgress(got, total);
-    }
-    const bytes = new Uint8Array(got);
-    let at = 0;
-    for (const c of chunks) { bytes.set(c, at); at += c.length; }
-    return bytes;
-  }
+  /**
+   * Pages kept on the device between visits, keyed by their storage path without the token: signed links change on every visit,
+   * so the browser cache alone never reuses them. Re-uploads go to new folders, so a stored page never goes stale.
+   */
+  const PAGE_CACHE = 'canonix-pages-v1', PAGE_CACHE_MAX = 600;
+  let trimming: Promise<void> | null = null;
+  const trimCache = (cache: Cache) => (trimming ??= cache.keys()
+    // Oldest first: the cache lists entries in the order they were stored
+    .then(async (keys) => { for (const k of keys.slice(0, Math.max(0, keys.length - PAGE_CACHE_MAX))) await cache.delete(k); })
+    .catch(() => undefined)
+    .finally(() => { trimming = null; }));
 
-  async function openCbz(bytes: Uint8Array): Promise<Book> {
-    const { unzip } = await import('fflate');
-    const files = await new Promise<Record<string, Uint8Array>>((resolve, reject) =>
-      unzip(bytes, { filter: (f) => comicPages([f.name]).length === 1 }, (err, data) => (err ? reject(err) : resolve(data))));
-    const names = comicPages(Object.keys(files));
-    const urls = new Map<number, string>();
-    const urlOf = (i: number) => {
-      if (!urls.has(i)) urls.set(i, URL.createObjectURL(new Blob([files[names[i]] as BlobPart], { type: imageType(names[i]) })));
-      return urls.get(i)!;
-    };
-    return {
-      count: names.length,
-      async draw(i) {
-        const img = new Image();
-        img.src = urlOf(i);
-        await img.decode().catch(() => undefined);
-        // Warm up the next page so turning feels instant
-        if (i + 1 < names.length) new Image().src = urlOf(i + 1);
-        return img;
-      },
-    };
+  /** A page as a local object URL, from the device cache or downloaded and stored. Without Cache Storage, or on network trouble, the signed link itself. */
+  async function pageSource(url: string): Promise<string> {
+    let cache: Cache;
+    try { cache = await caches.open(PAGE_CACHE); } catch { return url; }
+    const key = url.split('?')[0];
+    let res = await cache.match(key).catch(() => undefined);
+    if (!res) {
+      try { res = await fetch(url); } catch { return url; }
+      // Most likely an expired link: the caller signs it again
+      if (!res.ok) throw new Error(`El servidor respondió ${res.status}.`);
+      cache.put(key, res.clone()).then(() => trimCache(cache), () => undefined);
+    }
+    return URL.createObjectURL(await res.blob());
   }
 
   /**
-   * Pages stored as images: each one is fetched when shown, the next two are preloaded, far ones are let go.
+   * Pages fetched when shown, the next few preloaded, far ones let go.
    * Signed links come in batches of PAGE_BATCH from the endpoint, the next batch asked for before the reader gets there.
    */
   function openPaged(count: number, first: string[], endpoint: string): Book {
@@ -117,140 +90,52 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       }
       return batches.get(from)!;
     };
-    const loaded = new Map<number, HTMLImageElement>();
+    const loaded = new Map<number, Promise<HTMLImageElement>>();
+    /** A page decoded and ready; one that failed is forgotten, so asking again tries again. */
     const load = (i: number) => {
       if (!loaded.has(i)) {
-        const img = new Image();
-        img.decoding = 'async';
-        img.src = urls[i];
-        loaded.set(i, img);
+        loaded.set(i, (async () => {
+          await sign(i);
+          const img = new Image();
+          img.decoding = 'async';
+          img.draggable = false;
+          img.src = await pageSource(urls[i]);
+          await img.decode();
+          return img;
+        })().catch((e) => { loaded.delete(i); throw e; }));
       }
       return loaded.get(i)!;
     };
-    const decoded = async (i: number) => {
-      await sign(i);
-      const img = load(i);
-      // A page that failed is forgotten, so coming back to it tries again
-      await img.decode().catch(() => { if (!img.naturalWidth) { loaded.delete(i); throw new Error('page'); } });
-      return img;
-    };
+    const release = (img: HTMLImageElement) => { if (img.src.startsWith('blob:')) URL.revokeObjectURL(img.src); };
     return {
       count,
       async draw(i) {
-        let img: HTMLImageElement;
-        try {
-          img = await decoded(i);
-        } catch {
-          // Most likely an expired link: sign that batch again once and retry
-          const from = i - (i % PAGE_BATCH);
-          for (let j = from; j < from + PAGE_BATCH; j++) loaded.delete(j);
-          await sign(i, true);
-          img = await decoded(i);
-        }
-        [i + 1, i + 2].filter((j) => j < count).forEach((j) => sign(j).then(() => load(j), () => undefined));
+        // A failure is most likely an expired link: sign that batch again once and retry
+        const img = await load(i).catch(async () => { await sign(i, true); return load(i); });
+        // Two pages ahead for a spread, and the next batch of links before the reader gets there
+        [i + 1, i + 2, i + 3].filter((j) => j < count).forEach((j) => load(j).catch(() => undefined));
         if (i + PAGE_BATCH / 2 < count) sign(i + PAGE_BATCH / 2).catch(() => undefined);
-        // Keep decoded images only around the current page; the browser cache still has the bytes
-        for (const j of loaded.keys()) if (j < i - 2 || j > i + 3) loaded.delete(j);
+        // Keep decoded images only around the current page; the device cache still has the bytes
+        for (const [j, p] of loaded) if (j < i - 3 || j > i + 4) { loaded.delete(j); p.then(release, () => undefined); }
         return img;
       },
     };
   }
 
-  /**
-   * PDFs load by HTTP ranges: pdf.js asks only for the parts of the file the shown pages need.
-   * Those ranges fail once the signed link expires, so a page that fails reopens the file with a fresh link and retries once.
-   */
-  async function openPdf(url: string, onProgress: (got: number, total: number) => void, refresh: () => Promise<string>): Promise<Book> {
-    const pdfjs = await import('pdfjs-dist');
-    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
-    const load = async (src: string) => {
-      const task = pdfjs.getDocument({ url: src, disableAutoFetch: true, disableStream: true, rangeChunkSize: 1 << 20 });
-      task.onProgress = ({ loaded, total }: { loaded: number; total: number }) => onProgress(loaded, total);
-      return { task, doc: await task.promise };
-    };
-    let pdf = await load(url).catch(async () => load(await refresh()));
-    let reopening: Promise<void> | null = null;
-    const reopen = () => (reopening ??= (async () => {
-      const old = pdf;
-      pdf = await load(await refresh());
-      old.task.destroy();
-    })().finally(() => { reopening = null; }));
-    const render = async (i: number, width: number) => {
-      const page = await pdf.doc.getPage(i + 1);
-      // Render at the stage width (sharp on retina, capped for memory); CSS scales it like an image
-      const base = page.getViewport({ scale: 1 });
-      const scale = Math.min((width * devicePixelRatio) / base.width, 2400 / base.width);
-      const viewport = page.getViewport({ scale });
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.floor(viewport.width);
-      canvas.height = Math.floor(viewport.height);
-      await page.render({ canvas, viewport }).promise;
-      return canvas;
-    };
-    return {
-      count: pdf.doc.numPages,
-      async draw(i, width) {
-        try {
-          return await render(i, width);
-        } catch {
-          await reopen();
-          return render(i, width);
-        }
-      },
-    };
-  }
-
-  /** A video whose link expires mid-episode gets a fresh one and continues where it stopped (at most once a minute). */
-  function keepVideoFresh(video: HTMLVideoElement, endpoint: string) {
-    let last = 0;
-    video.addEventListener('error', async () => {
-      if (Date.now() - last < 60_000) return;
-      last = Date.now();
-      const at = video.currentTime, playing = !video.paused;
-      try {
-        const { url } = await fetchLinks<{ url: string }>(endpoint);
-        video.addEventListener('loadedmetadata', () => {
-          video.currentTime = at;
-          if (playing) video.play().catch(() => undefined);
-        }, { once: true });
-        video.src = url;
-      } catch { /* the player keeps showing its own error */ }
-    });
-  }
-
   async function open(root: HTMLElement) {
     const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
-    const status = $('viewer-status'), statusText = $('viewer-status-text'), bar = $('viewer-progress');
-    const stage = $('viewer-stage'), controls = $('viewer-controls'), count = $('viewer-count');
-    const full = $<HTMLButtonElement>('viewer-full');
+    const status = $('viewer-status'), statusText = $('viewer-status-text');
+    const frame = $('viewer-frame'), stage = $('viewer-stage'), controls = $('viewer-controls'), count = $('viewer-count');
+    const full = $<HTMLButtonElement>('viewer-full'), spreadBtn = $<HTMLButtonElement>('viewer-spread');
     const nextLink = document.getElementById('viewer-next');
-    const { url, format, key, endpoint } = root.dataset as { url: string; format: string; key: string; endpoint: string };
-    const refresh = async () => (await fetchLinks<{ url: string }>(endpoint)).url;
-    const mb = (n: number) => (n / 1024 / 1024).toFixed(1);
-    const progress = (verb: string) => (got: number, total: number) => {
-      statusText.textContent = total ? `${verb} ${mb(got)} de ${mb(total)} MB…` : `${verb} ${mb(got)} MB…`;
-      if (total) bar.style.width = `${Math.round((got / total) * 100)}%`;
-    };
+    const { key, endpoint } = root.dataset as { key: string; endpoint: string };
 
-    let book: Book;
-    try {
-      if (root.dataset.pages) book = openPaged(Number(root.dataset.count), JSON.parse(root.dataset.pages) as string[], endpoint);
-      else if (format === 'pdf') book = await openPdf(url, progress('Cargando'), refresh);
-      else if (format === 'cbr') throw new Error('Este archivo está en formato CBR y no se puede abrir. Hay que volver a subirlo.');
-      else {
-        // Older issues stored as one CBZ: the whole archive is needed before any page
-        const bytes = await download(url, progress('Descargando')).catch(async () => download(await refresh(), progress('Descargando')));
-        statusText.textContent = 'Abriendo…';
-        book = await openCbz(bytes);
-      }
-      if (!book.count) throw new Error('El archivo no tiene páginas.');
-    } catch (e) {
-      statusText.textContent = e instanceof Error && e.message ? e.message : 'No pudimos abrir el archivo.';
+    const book = openPaged(Number(root.dataset.count), JSON.parse(root.dataset.pages ?? '[]') as string[], endpoint);
+    if (!book.count) {
+      statusText.textContent = 'Este número no tiene páginas.';
       status.classList.add('failed');
       return;
     }
-
-    const frame = $('viewer-frame');
     status.hidden = true;
     frame.hidden = false;
     controls.hidden = false;
@@ -260,36 +145,200 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     fitScreen();
     addEventListener('resize', fitScreen);
 
+    // ---- Views: the pages on screen together. One page at a time, or on wide screens a spread: the cover alone on the right, then pairs, as in a printed book.
+    const wide = matchMedia('(min-width: 1000px) and (min-aspect-ratio: 5/4)');
+    const SPREAD_KEY = 'reader-spread';
+    let spread = false;
+    const viewOf = (p: number) => (spread ? Math.ceil(p / 2) : p);
+    const pagesOf = (v: number): (number | null)[] => (!spread ? [v] : v === 0 ? [null, 0] : [2 * v - 1, 2 * v < book.count ? 2 * v : null]);
+    const lastView = () => viewOf(book.count - 1);
+
     // Reading always starts at the cover; where the reader left off is offered as a button
     const saved = Math.min(Math.max(Number(store.get(key)) || 0, 0), book.count - 1);
     const resume = $<HTMLButtonElement>('viewer-resume');
     resume.textContent = `Seguir en pág. ${saved + 1}`;
     resume.hidden = saved === 0;
-    resume.addEventListener('click', () => go(saved - page));
+    resume.addEventListener('click', () => { setZoom(false); show(viewOf(saved)); });
 
-    let page = 0;
-    let drawing = 0;
-    const show = async (i: number) => {
-      page = Math.min(Math.max(i, 0), book.count - 1);
-      const ticket = ++drawing;
-      count.textContent = `${page + 1} / ${book.count}`;
+    let view = 0, page = 0;
+    /** Counter, saved progress, resume button and "next" link for view v, at once, before its pages arrive. */
+    const settleView = (v: number) => {
+      view = v;
+      const nums = pagesOf(v).filter((n): n is number => n !== null);
+      page = nums[0];
+      count.textContent = `${nums.map((n) => n + 1).join('–')} / ${book.count}`;
       if (page > 0) { store.set(key, String(page)); if (!resume.hidden) { resume.hidden = true; fitScreen(); } }
-      if (nextLink) nextLink.hidden = page < book.count - 1;
+      if (nextLink) nextLink.hidden = !nums.includes(book.count - 1);
+    };
+
+    const pageError = (n: number) => Object.assign(document.createElement('p'), { className: 'viewer-page-error', textContent: `No se pudo mostrar la página ${n + 1}.` });
+    /** View v's pages and the element that lays them out: the page itself, or a spread holding two (an empty half where a page is missing). */
+    const build = async (v: number) => {
+      const nums = pagesOf(v);
+      const els = await Promise.all(nums.map((n) => (n === null ? null : book.draw(n).catch(() => pageError(n)))));
+      els.forEach((el, k) => { el?.classList.add('viewer-page'); el?.setAttribute('aria-label', `Página ${nums[k]! + 1} de ${book.count}`); });
+      let content: HTMLElement;
+      if (spread) {
+        content = Object.assign(document.createElement('div'), { className: 'viewer-spread' });
+        content.append(...els.map((el) => el ?? Object.assign(document.createElement('div'), { className: 'viewer-blank' })));
+      } else {
+        content = els[0]!;
+      }
+      return { content, els, spread };
+    };
+    type Built = Awaited<ReturnType<typeof build>>;
+
+    // ---- Page turn. The sheet bends like paper over the spine: the left edge of a single page, the middle of a spread.
+    // The turning sheet is a picture of what was on screen, cut into chained strips; each strip bends a bit more than the one before,
+    // so the free edge leads and the sheet curls. In a spread the sheet lands on the left half showing the next page on its back;
+    // a single page leaves the screen, so its turn stops at TURNED (about 100°), once the whole sheet is past the spine and clipped.
+    const FLIP_MS = 900, STRIPS = 16, CURL = 60, TURNED = 0.56;
+    const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+    const swap = (content: HTMLElement, scroll = 0) => { stage.replaceChildren(content); stage.scrollTop = scroll; };
+    const ease = (t: number) => (1 - Math.cos(Math.PI * t)) / 2;
+
+    const size = (el: HTMLElement | null) =>
+      el instanceof HTMLImageElement && el.naturalWidth ? { w: el.naturalWidth, h: el.naturalHeight } : null;
+    /** A view as it looks in a box of the stage's size, laid out like the CSS does: pages fill their column, the row centred when shorter, scrolled when taller. */
+    const shoot = (els: (HTMLElement | null)[], w: number, h: number, scroll: number) => {
+      const shot = document.createElement('canvas');
+      const r = devicePixelRatio || 1;
+      shot.width = Math.round(w * r);
+      shot.height = Math.round(h * r);
+      const g = shot.getContext('2d')!;
+      g.scale(r, r);
+      g.fillStyle = '#12172B';
+      g.fillRect(0, 0, w, h);
+      const cw = w / els.length;
+      const heights = els.map((el) => { const s = size(el); return s ? (cw * s.h) / s.w : 0; });
+      const row = Math.max(...heights);
+      const top = row < h ? (h - row) / 2 : -scroll;
+      els.forEach((el, k) => { if (size(el)) g.drawImage(el as HTMLImageElement, k * cw, top + (row - heights[k]) / 2, cw, heights[k]); });
+      return shot;
+    };
+
+    /**
+     * A turn laid over the stage, between an earlier and a later view: the sheet (the earlier view's right part in front; in a spread the later
+     * view's left page behind, otherwise plain paper), its shadow, and below them what the turn uncovers. `pose(p)` lays it from 0 (flat on the
+     * right) to `end` (turned over).
+     */
+    const buildTurn = (earlier: HTMLCanvasElement, later: HTMLCanvasElement, book2: boolean, w: number, h: number) => {
+      const r = earlier.width / w, x0 = book2 ? w / 2 : 0, sw = (w - x0) / STRIPS;
+      const end = book2 ? 1 : TURNED;
+      // Below: the later view, with the earlier view's left page still there until the sheet lands on it
+      const under = Object.assign(document.createElement('canvas'), { className: 'viewer-under', width: earlier.width, height: earlier.height });
+      const ug = under.getContext('2d')!;
+      ug.drawImage(later, 0, 0);
+      if (book2) ug.drawImage(earlier, 0, 0, x0 * r, earlier.height, 0, 0, x0 * r, earlier.height);
+      const leaf = Object.assign(document.createElement('div'), { className: 'viewer-leaf' });
+      leaf.style.left = `${x0}px`;
+      leaf.style.height = `${h}px`;
+      const strips: HTMLElement[] = [];
+      let parent: HTMLElement = leaf;
+      for (let k = 0; k < STRIPS; k++) {
+        const strip = Object.assign(document.createElement('div'), { className: 'viewer-strip' });
+        strip.style.width = `${sw}px`;
+        strip.style.left = k ? `${sw}px` : '0';
+        const front = Object.assign(document.createElement('canvas'), { className: 'viewer-strip-front' });
+        const back = Object.assign(document.createElement('div'), { className: book2 ? 'viewer-strip-back printed' : 'viewer-strip-back' });
+        const behind = document.createElement('canvas');
+        // One pixel wider than the strip, so no seam shows between neighbours. Behind, a turned strip lands mirrored across the spine.
+        const from = [(x0 + k * sw) * r, book2 ? (x0 - (k + 1) * sw) * r : (x0 + k * sw) * r];
+        [front, behind].forEach((c, f) => {
+          c.width = Math.ceil((sw + 1) * r);
+          c.height = earlier.height;
+          c.getContext('2d')?.drawImage(f && book2 ? later : earlier, from[f], 0, c.width, c.height, 0, 0, c.width, c.height);
+        });
+        back.append(behind);
+        strip.append(front, back);
+        parent.append(strip);
+        parent = strip;
+        strips.push(strip);
+      }
+      const cast = Object.assign(document.createElement('div'), { className: 'viewer-cast' });
+      cast.style.height = `${h}px`;
+      const pose = (p: number) => {
+        const curl = Math.sin(Math.PI * p) * CURL;
+        let angle = 0, edge = 0;
+        strips.forEach((s, k) => {
+          // The first strip turns on the spine; the rest add a bend that grows towards the free edge, adding up to `curl`
+          const bend = k ? (-2 * curl * k) / (STRIPS * (STRIPS - 1)) : -180 * p;
+          angle += bend;
+          edge += sw * Math.cos((angle * Math.PI) / 180);
+          s.style.transform = `rotateY(${bend}deg)`;
+          // Paper facing the reader is lit, paper turned sideways darkens
+          s.style.setProperty('--lit', (0.5 + 0.5 * Math.abs(Math.cos((angle * Math.PI) / 180))).toFixed(3));
+        });
+        // The sheet's shadow falls on the page beside its free edge, darkest mid-turn
+        const lift = Math.sin(Math.PI * Math.min(p / end, 1)), width = (w - x0) * 0.35 * lift, x = x0 + edge;
+        cast.classList.toggle('left', edge < 0);
+        cast.style.left = `${Math.min(Math.max(edge < 0 ? x - width : x, 0), w)}px`;
+        cast.style.width = `${width}px`;
+        cast.style.opacity = lift.toFixed(3);
+      };
+      const remove = () => { under.remove(); cast.remove(); leaf.remove(); };
+      under.style.width = `${w}px`;
+      under.style.height = `${h}px`;
+      return { pose, end, remove, mount: () => frame.append(under, cast, leaf) };
+    };
+    type Turn = ReturnType<typeof buildTurn>;
+
+    /** The turn running now; a newer turn finishes it at once. */
+    let active: { finish: () => void } | null = null;
+    const play = (turn: Turn, from: number, to: number, done: () => void) => {
+      const ms = Math.max(160, (FLIP_MS * Math.abs(to - from)) / turn.end);
+      const start = performance.now();
+      let raf = 0, over = false;
+      const me = {
+        finish: () => {
+          if (over) return;
+          over = true;
+          if (active === me) active = null;
+          cancelAnimationFrame(raf);
+          turn.remove();
+          done();
+        },
+      };
+      const tick = (now: number) => {
+        const t = Math.min((now - start) / ms, 1);
+        turn.pose(from + (to - from) * ease(t));
+        if (t < 1) raf = requestAnimationFrame(tick);
+        else me.finish();
+      };
+      active = me;
+      turn.pose(from);
+      raf = requestAnimationFrame(tick);
+    };
+
+    let shown: (Built & { view: number }) | null = null;
+    /** Starts a turn from what is on screen to `next`, which takes the stage at once (hidden under the turn). Null when it cannot animate. */
+    const turnTo = (next: Built, forward: boolean) => {
+      const w = stage.clientWidth, h = stage.clientHeight;
+      if (!shown || shown.spread !== next.spread || isZoomed() || reduceMotion.matches || !w || !h) return null;
+      const now = shoot(shown.els, w, h, stage.scrollTop), then = shoot(next.els, w, h, 0);
+      const turn = buildTurn(forward ? now : then, forward ? then : now, next.spread, w, h);
+      turn.mount();
+      swap(next.content);
+      return turn;
+    };
+
+    let drawing = 0;
+    const show = async (v: number) => {
+      active?.finish();
+      v = Math.min(Math.max(v, 0), lastView());
+      settleView(v);
+      const ticket = ++drawing;
       // The loading sign shows only when the page takes a moment, so cached pages turn without a flicker
       const slow = window.setTimeout(() => frame.classList.add('loading'), 150);
-      let el: HTMLElement;
-      try {
-        el = await book.draw(page, stage.clientWidth);
-      } catch {
-        el = Object.assign(document.createElement('p'), { className: 'viewer-page-error', textContent: `No se pudo mostrar la página ${page + 1}.` });
-      }
+      const next = await build(v);
       if (ticket !== drawing) return; // a later turn already won
       clearTimeout(slow);
       frame.classList.remove('loading');
-      el.classList.add('viewer-page');
-      el.setAttribute('aria-label', `Página ${page + 1} de ${book.count}`);
-      stage.replaceChildren(el);
-      stage.scrollTop = 0;
+      const forward = shown ? v > shown.view : true;
+      const turn = shown && v !== shown.view ? turnTo(next, forward) : null;
+      if (turn) play(turn, forward ? 0 : turn.end, forward ? turn.end : 0, () => undefined);
+      else swap(next.content);
+      shown = { ...next, view: v };
     };
 
     // Zoom doubles the page inside the box; the point that was tapped (or the centre) stays where it was
@@ -307,14 +356,109 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
     const isZoomed = () => root.dataset.zoom === 'on';
     zoomBtn.addEventListener('click', () => setZoom(!isZoomed()));
 
-    const go = (delta: number) => { setZoom(false); return show(page + delta); };
+    let dragging = false;
+    const go = (delta: number) => { if (dragging) return; setZoom(false); return show(view + delta); };
+
+    // ---- Spread on or off: on by default on wide screens, the reader's choice remembered; phones always show one page
+    /** Takes the layout the screen and the reader's choice ask for; true when it changed. */
+    const pickSpread = () => {
+      const on = wide.matches && store.get(SPREAD_KEY) !== 'off';
+      spreadBtn.hidden = !wide.matches;
+      spreadBtn.setAttribute('aria-pressed', String(on));
+      root.dataset.spread = on ? 'on' : 'off';
+      const changed = on !== spread;
+      spread = on;
+      return changed;
+    };
+    const applySpread = () => {
+      const p = page;
+      if (!pickSpread()) return;
+      shown = null; // a different layout: no turn between them
+      show(viewOf(p));
+    };
+    spreadBtn.addEventListener('click', () => { store.set(SPREAD_KEY, spread ? 'off' : 'on'); setZoom(false); applySpread(); });
+    wide.addEventListener('change', () => applySpread());
 
     controls.querySelectorAll<HTMLButtonElement>('[data-go]').forEach((b) => b.addEventListener('click', () => go(Number(b.dataset.go))));
-    // A tap (not a scroll) on the left or right third turns the page, unless zoomed; two quick taps toggle the zoom.
+
+    // ---- Swipe: dragging the page sideways turns it with the finger (or mouse). The sheet follows; on release it completes when dragged
+    // a quarter of the width or flicked, otherwise it falls back. Vertical drags stay scrolls, and a zoomed page pans instead.
+    const DRAG_START = 12, DRAG_COMMIT = 0.25, FLICK = 0.5;
+    type Drag = {
+      id: number; x: number; y: number; t: number; dx: number;
+      /** The view being turned to; equal to the current view until the drag is known to be sideways. */
+      target: number;
+      /** Nothing to turn to (first or last view). */
+      off: boolean;
+      turn: Turn | null; next: Built | null; prev: { content: Element | null; scroll: number } | null;
+    };
+    let drag: Drag | null = null;
+    let swallowClick = false;
+    /** The turn that puts the sheet's edge under the finger: the angle whose shadow on the page reaches from the spine to the finger. */
+    const dragProgress = (d: Drag, end: number) => {
+      const box = stage.getBoundingClientRect(), x0 = spread ? box.width / 2 : 0;
+      const rel = Math.min(Math.max((d.x + d.dx - box.left - x0) / (box.width - x0), -1), 1);
+      return Math.min(Math.acos(rel) / Math.PI, end);
+    };
+    stage.addEventListener('pointerdown', (e) => {
+      swallowClick = false; // left over from a drag the browser sent no click for
+      if (isZoomed() || e.button !== 0 || drag) return;
+      if (e.pointerType === 'mouse') e.preventDefault(); // no native image dragging
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, t: performance.now(), dx: 0, target: view, off: false, turn: null, next: null, prev: null };
+    });
+    stage.addEventListener('pointermove', async (e) => {
+      const d = drag;
+      if (!d || e.pointerId !== d.id) return;
+      // A mouse released outside the page sends us no pointerup: with no button held, the drag is over and falls back
+      if (e.pointerType === 'mouse' && !e.buttons) return release(e);
+      d.dx = e.clientX - d.x;
+      if (d.turn) return d.turn.pose(dragProgress(d, d.turn.end));
+      if (d.target !== view || d.off) return; // still preparing, or nothing to turn to
+      const dy = e.clientY - d.y;
+      if (Math.abs(d.dx) < DRAG_START && Math.abs(dy) < DRAG_START) return;
+      if (Math.abs(dy) >= Math.abs(d.dx)) { drag = null; return; } // a scroll
+      stage.setPointerCapture(d.id);
+      swallowClick = true;
+      dragging = true;
+      d.target = view + (d.dx < 0 ? 1 : -1);
+      if (d.target < 0 || d.target > lastView()) { d.off = true; return; }
+      active?.finish();
+      const next = await build(d.target);
+      if (drag !== d) return; // released while the pages loaded
+      d.prev = { content: stage.firstElementChild, scroll: stage.scrollTop };
+      d.next = next;
+      d.turn = turnTo(next, d.target > view);
+      if (!d.turn) { drag = null; dragging = false; return void show(d.target); }
+      d.turn.pose(dragProgress(d, d.turn.end));
+    });
+    const release = (e: PointerEvent) => {
+      const d = drag;
+      if (!d || e.pointerId !== d.id) return;
+      drag = null;
+      dragging = false;
+      const { turn, next } = d;
+      if (!turn || !next) return;
+      const forward = d.target > view, p = dragProgress(d, turn.end);
+      // How far the finger travelled, not where it ended: a drag that starts mid-page still has to go somewhere
+      const moved = (forward ? -d.dx : d.dx), pulled = moved / stage.clientWidth;
+      const speed = moved / Math.max(performance.now() - d.t, 1);
+      if (e.type === 'pointerup' && (pulled > DRAG_COMMIT || speed > FLICK)) {
+        settleView(d.target);
+        shown = { ...next, view: d.target };
+        play(turn, p, forward ? turn.end : 0, () => undefined);
+      } else {
+        play(turn, p, forward ? 0 : turn.end, () => { if (d.prev?.content) swap(d.prev.content as HTMLElement, d.prev.scroll); });
+      }
+    };
+    stage.addEventListener('pointerup', release);
+    stage.addEventListener('pointercancel', release);
+
+    // A tap (not a drag) on the left or right third turns the page, unless zoomed; two quick taps toggle the zoom.
     // A single tap waits a moment to make sure it is not the first of two.
     const DOUBLE_TAP_MS = 280;
     let tapTimer = 0;
     stage.addEventListener('click', (e) => {
+      if (swallowClick) { swallowClick = false; return; }
       if (tapTimer) {
         clearTimeout(tapTimer);
         tapTimer = 0;
@@ -343,12 +487,11 @@ const isVideo = ['mp4', 'webm', 'mkv'].includes(format);
       full.querySelector('.label-short')!.textContent = on ? 'Salir' : 'Completa';
     });
 
-    await show(page);
+    pickSpread();
+    await show(0);
   }
 
-  // Last, so every helper above is initialized: paged comics open without awaiting anything first
+  // Last, so every helper above is initialized
   const viewer = document.getElementById('viewer');
   if (viewer) open(viewer);
-  const video = document.getElementById('reader-video') as HTMLVideoElement | null;
-  if (video?.dataset.endpoint) keepVideoFresh(video, video.dataset.endpoint);
 </script>
